@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <!-- Moteur du calendrier professionnel (Flatpickr) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renger - Location de remorques</title>
+    
+    <!-- Chargement de Tailwind CSS pour le design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { terracotta: { 50: '#fff4f0', 500: '#d85110', 600: '#bc450b' } } } }
+        }
+    </script>
+    
+    <!-- Chargement de ton CSS personnalisé -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- 1. CHARGEMENT DU MOTEUR SUPABASE (Le vrai serveur) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 2. CHARGEMENT DE TA LOGIQUE (Le cerveau) -->
+    <script src="app.js" defer></script>
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans relative pb-20">
+
+    <!-- HEADER & AUTHENTIFICATION -->
+    <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
+        <div class="text-2xl font-bold text-terracotta-500 cursor-pointer" onclick="showWelcomeScreen()">Renger</div>
+        <div class="flex items-center gap-4">
+            <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent font-bold text-stone-600 focus:outline-none cursor-pointer">
+                <option value="fr">FR</option>
+                <option value="de">DE</option>
+                <option value="en">EN</option>
+            </select>
+            <!-- Zone utilisateur gérée par Supabase -->
+            <div id="user-menu-container">
+                <button onclick="openAuthModal()" class="bg-white border border-stone-200 text-stone-600 hover:text-terracotta-500 font-semibold py-2 px-4 rounded-xl shadow-sm transition">
+                    <span data-i18n="login">Se connecter</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 1. ÉCRAN D'ACCUEIL -->
+    <div id="welcome-screen" class="min-h-screen flex flex-col items-center justify-center p-6 pt-20">
+        <h1 class="text-5xl md:text-6xl font-bold mb-4 text-terracotta-500 tracking-tight text-center">Renger</h1>
+        <p data-i18n="subtitle" class="text-lg text-stone-600 mb-10 text-center max-w-lg">Le Airbnb de la remorque.</p>
+        <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+            <button onclick="showPage('buyer-page')" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                <span>🔍</span> <span data-i18n="btn_buyer">Je cherche une remorque</span>
+            </button>
+            <button onclick="showPage('seller-page')" class="w-full bg-white hover:bg-terracotta-50 text-terracotta-600 border-2 border-terracotta-500 font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                <span>➕</span> <span data-i18n="btn_seller">Je loue ma remorque</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. PAGE ACHETEUR -->
+    <div id="buyer-page" class="hidden min-h-screen p-6 pt-24 max-w-5xl mx-auto">
+        <button onclick="showWelcomeScreen()" class="text-terracotta-600 font-semibold mb-6 transition" data-i18n="back">← Retour</button>
+        
+        <div class="flex overflow-x-auto gap-3 pb-4 mb-6 no-scrollbar">
+            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white rounded-xl border border-stone-200 text-stone-600 shadow-sm focus:border-terracotta-500 focus:text-terracotta-500">
+                <span class="text-3xl mb-1">📦</span><span data-i18n="cat_utility" class="text-xs font-semibold">Utilitaire</span>
+            </button>
+            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white rounded-xl border border-stone-200 text-stone-600 shadow-sm focus:border-terracotta-500 focus:text-terracotta-500">
+                <span class="text-3xl mb-1">🐴</span><span data-i18n="cat_horse" class="text-xs font-semibold">Chevaux</span>
+            </button>
+            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white rounded-xl border border-stone-200 text-stone-600 shadow-sm focus:border-terracotta-500 focus:text-terracotta-500">
+                <span class="text-3xl mb-1">🚗</span><span data-i18n="cat_car" class="text-xs font-semibold">Voiture</span>
+            </button>
+        </div>
+
+        <h3 data-i18n="recommended" class="text-xl font-bold mb-4 text-stone-800">Recommandées autour de Lausanne</h3>
+        
+        <!-- C'est ici que les annonces de ton serveur Supabase vont s'injecter automatiquement -->
+        <div id="trailers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+
+    <!-- 3. PAGE DÉTAIL D'UNE ANNONCE -->
+    <!-- PAGE DÉTAIL & RÉSERVATION -->
+    <div id="detail-page" class="hidden min-h-screen p-6 pt-24 max-w-5xl mx-auto">
+        <button onclick="showPage('buyer-page')" class="text-terracotta-600 font-semibold mb-8 hover:text-terracotta-500 transition">← Retour aux annonces</button>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <!-- Colonne de gauche : Infos remorque -->
+            <div class="lg:col-span-2">
+                <div class="h-96 bg-stone-200 rounded-3xl overflow-hidden mb-8 relative">
+                    <img id="detail-img" src="" class="w-full h-full object-cover">
+                </div>
+                <h2 id="detail-title" class="text-4xl font-bold mb-4 text-stone-900">Titre</h2>
+                <div class="flex gap-4 mb-8">
+                    <span class="bg-stone-100 text-stone-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">🔌 Prise <span id="detail-socket"></span></span>
+                    <span class="bg-stone-100 text-stone-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">⚖️ Charge <span id="detail-payload"></span></span>
+                </div>
+                <p class="text-stone-600 text-lg leading-relaxed mb-8">Cette remorque est idéale pour vos transports. Un état des lieux photographique sera exigé au départ et au retour pour votre sécurité.</p>
+            </div>
+
+            <!-- Colonne de droite : Le Calendrier de réservation -->
+            <div class="bg-white p-8 rounded-3xl shadow-lg border border-stone-100 h-fit sticky top-24">
+                <div class="flex items-end gap-2 mb-6">
+                    <span id="detail-price" class="text-4xl font-bold text-stone-900"></span>
+                    <span class="text-stone-500 font-medium pb-1">CHF / jour</span>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-stone-700 mb-2">Sélectionnez vos dates</label>
+                    <!-- C'est ici que le calendrier magique va s'afficher -->
+                    <input type="text" id="booking-dates" placeholder="Date de départ - Date de retour" class="w-full border-2 border-stone-200 rounded-2xl p-4 bg-stone-50 focus:bg-white focus:border-terracotta-500 outline-none transition cursor-pointer text-stone-700 font-medium" readonly>
+                </div>
+
+                <!-- Le devis caché qui apparaît quand on choisit les dates -->
+                <div id="booking-summary" class="hidden border-t border-stone-200 pt-6 mb-6">
+                    <div class="flex justify-between text-stone-600 mb-2">
+                        <span><span id="total-days">0</span> jour(s) de location</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-xl text-stone-900 mt-4">
+                        <span>Total</span>
+                        <span id="total-price">0 CHF</span>
+                    </div>
+                </div>
+
+                <button onclick="submitBooking()" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg">
+                    Réserver cette remorque
+                </button>
+                <p class="text-center text-xs text-stone-400 mt-4">Une caution par empreinte bancaire vous sera demandée à l'étape suivante.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. PAGE VENDEUR (Création d'annonce Premium) -->
+    <div id="seller-page" class="hidden min-h-screen p-6 pt-24 max-w-3xl mx-auto">
+        <button onclick="showWelcomeScreen()" class="text-terracotta-600 font-semibold mb-8 hover:text-terracotta-500 transition">← Retour à l'accueil</button>
+        
+        <div class="mb-10">
+            <h2 class="text-4xl font-bold mb-3 text-stone-800 tracking-tight">Louez votre remorque</h2>
+            <p class="text-stone-500 text-lg">Gagnez un revenu complémentaire en toute sécurité. Renger s'occupe de la caution et des paiements.</p>
+        </div>
+        
+        <form id="add-trailer-form" onsubmit="handlePublish(event)" class="space-y-8">
+            
+            <!-- SECTION 1 : Les bases -->
+            <div class="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
+                <h3 class="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2"><span>1.</span> Les détails de la remorque</h3>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-stone-700 mb-2">Titre de votre annonce</label>
+                    <input type="text" id="ad-title" placeholder="Ex: Van à chevaux 2 places - Fautras" class="w-full border-2 border-stone-100 rounded-2xl p-4 bg-stone-50 focus:bg-white focus:border-terracotta-500 focus:ring-0 transition outline-none text-lg" required>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-stone-700 mb-2">Prix par jour (CHF)</label>
+                        <div class="relative">
+                            <input type="number" id="ad-price" placeholder="70" class="w-full border-2 border-stone-100 rounded-2xl p-4 bg-stone-50 focus:bg-white focus:border-terracotta-500 transition outline-none text-xl font-bold" required>
+                            <span class="absolute right-4 top-4 text-stone-400 font-bold">CHF</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-stone-700 mb-2">Charge utile maximale</label>
+                        <div class="relative">
+                            <input type="number" id="ad-payload" placeholder="500" class="w-full border-2 border-stone-100 rounded-2xl p-4 bg-stone-50 focus:bg-white focus:border-terracotta-500 transition outline-none text-xl font-bold" required>
+                            <span class="absolute right-4 top-4 text-stone-400 font-bold">KG</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2 : Technique & Équipements -->
+            <div class="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
+                <h3 class="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2"><span>2.</span> Caractéristiques techniques</h3>
+                
+                <label class="block text-sm font-bold text-stone-700 mb-3">Type de prise électrique</label>
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="prise" value="7 broches" class="peer sr-only" required checked>
+                        <div class="rounded-2xl border-2 border-stone-100 p-5 text-center peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 peer-checked:text-terracotta-600 hover:border-stone-300 transition">
+                            <span class="block font-bold text-lg mb-1">7 broches</span>
+                            <span class="text-xs text-stone-500 peer-checked:text-terracotta-500">Ancienne norme</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="prise" value="13 broches" class="peer sr-only">
+                        <div class="rounded-2xl border-2 border-stone-100 p-5 text-center peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 peer-checked:text-terracotta-600 hover:border-stone-300 transition">
+                            <span class="block font-bold text-lg mb-1">13 broches</span>
+                            <span class="text-xs text-stone-500 peer-checked:text-terracotta-500">Nouvelle norme</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- SECTION 3 : Upsell (Rentabilité) -->
+            <div class="bg-gradient-to-br from-terracotta-50 to-white p-8 rounded-3xl shadow-sm border border-terracotta-100">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xl font-bold text-terracotta-600 flex items-center gap-2"><span>3.</span> Boostez vos revenus 🚀</h3>
+                </div>
+                <p class="text-sm text-stone-500 mb-6">Proposez des options payantes additionnelles à vos locataires pour augmenter votre gain par location.</p>
+                
+                <div class="space-y-4">
+                    <label class="flex items-center justify-between p-4 bg-white border-2 border-white rounded-2xl cursor-pointer hover:border-terracotta-200 transition shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <input type="checkbox" class="w-6 h-6 text-terracotta-500 rounded-md border-stone-300 focus:ring-terracotta-500">
+                            <div>
+                                <span class="block font-bold text-stone-800">🚚 Livraison de la remorque</span>
+                                <span class="text-xs text-stone-500">Vous l'amenez chez le client</span>
+                            </div>
+                        </div>
+                        <span class="bg-stone-100 text-stone-600 px-3 py-1 rounded-lg font-bold text-sm">+25 CHF</span>
+                    </label>
+                    
+                    <label class="flex items-center justify-between p-4 bg-white border-2 border-white rounded-2xl cursor-pointer hover:border-terracotta-200 transition shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <input type="checkbox" class="w-6 h-6 text-terracotta-500 rounded-md border-stone-300 focus:ring-terracotta-500">
+                            <div>
+                                <span class="block font-bold text-stone-800">🛒 Prêt d'un diable / sangles</span>
+                                <span class="text-xs text-stone-500">Matériel supplémentaire</span>
+                            </div>
+                        </div>
+                        <span class="bg-stone-100 text-stone-600 px-3 py-1 rounded-lg font-bold text-sm">+10 CHF</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- SECTION 4 : Photos (Interface visuelle) -->
+            <div class="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
+                <h3 class="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2"><span>4.</span> Photos de la remorque</h3>
+                
+                <div id="photo-preview-container" class="border-2 border-dashed border-stone-300 rounded-3xl p-10 flex flex-col items-center justify-center bg-stone-50 hover:bg-stone-100 transition cursor-pointer h-64 relative overflow-hidden" onclick="document.getElementById('file-upload').click()">
+                    <span class="text-5xl mb-4">📸</span>
+                    <span class="font-bold text-stone-700">Cliquez pour ajouter une photo</span>
+                    <span class="text-sm text-stone-400 mt-2">JPG, PNG (Max 5MB)</span>
+                </div>
+                <!-- C'est cette ligne en dessous qui est cruciale pour l'aperçu ! -->
+                <input type="file" id="file-upload" class="hidden" accept="image/*" onchange="previewImage(event)">
+            </div>
+
+            <!-- BOUTON DE VALIDATION -->
+            <button type="submit" class="w-full bg-stone-900 hover:bg-black text-white font-bold py-5 rounded-2xl mt-8 shadow-xl flex flex-col items-center justify-center transition transform active:scale-95">
+                <span class="text-lg">Publier mon annonce</span>
+                <span class="text-xs font-normal text-stone-400 mt-1">Étape suivante : Liaison de votre IBAN via Stripe Connect</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- MODULE CAMÉRA -->
+    <div id="inspection-page" class="hidden fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
+        <button onclick="stopCamera(); showPage('detail-page')" data-i18n="cancel" class="absolute top-6 left-6 text-white font-bold text-lg">Annuler</button>
+        <div class="w-full max-w-sm h-[60vh] bg-stone-900 rounded-2xl overflow-hidden relative border-2 border-stone-700 mb-6 flex items-center justify-center">
+            <video id="camera-feed" class="w-full h-full object-cover" autoplay playsinline></video>
+        </div>
+        <button onclick="takePhoto()" class="w-20 h-20 bg-white rounded-full border-4 border-terracotta-500 shadow-2xl"></button>
+    </div>
+
+    <!-- MODALE AUTHENTIFICATION (Vraie sécurisation) -->
+    <div id="auth-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-50 flex items-center justify-center z-50 px-4">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-5 text-stone-400 text-3xl hover:text-terracotta-500 transition">&times;</button>
+            <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 text-center">Rejoindre Renger</h2>
+            
+            <input type="email" id="login-email" placeholder="Votre email" class="w-full border border-stone-200 rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
+            <input type="password" id="login-password" placeholder="Mot de passe (6 car. min)" class="w-full border border-stone-200 rounded-xl px-4 py-3 mb-6 focus:border-terracotta-500 focus:outline-none">
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="handleLogin()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Connexion</button>
+                <button onclick="handleSignup()" class="w-full bg-stone-200 text-stone-700 font-semibold py-3 rounded-xl hover:bg-stone-300 transition">S'inscrire</button>
+            </div>
+        </div>
+    </div>
+<!-- PAGE PROFIL / TABLEAU DE BORD -->
+    <div id="profile-page" class="hidden min-h-screen p-6 pt-24 max-w-5xl mx-auto">
+        <h2 class="text-3xl font-bold mb-8 text-stone-900">Mon Espace Renger</h2>
+        
+        <!-- Onglets de navigation -->
+        <div class="flex gap-6 mb-8 border-b border-stone-200">
+            <button id="tab-buyer" onclick="switchProfileTab('buyer')" class="text-terracotta-600 font-bold border-b-2 border-terracotta-600 pb-3 text-lg transition">Mes locations (Client)</button>
+            <button id="tab-seller" onclick="switchProfileTab('seller')" class="text-stone-400 font-bold hover:text-stone-700 pb-3 text-lg transition">Mon parc (Propriétaire)</button>
+        </div>
+
+        <!-- VUE 1 : CLIENT (Locations en cours) -->
+        <div id="profile-buyer-section" class="space-y-6">
+            <p class="text-stone-500 mb-4">Vos réservations à venir et en cours.</p>
+            <div id="buyer-bookings-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Rempli par JavaScript -->
+            </div>
+        </div>
+
+        <!-- VUE 2 : PROPRIÉTAIRE (Flotte et Revenus) -->
+        <div id="profile-seller-section" class="hidden">
+            <!-- Tableau de bord financier -->
+            <div class="bg-stone-900 rounded-3xl p-8 text-white mb-10 flex justify-between items-center shadow-lg">
+                <div>
+                    <p class="text-stone-400 font-medium mb-1">Revenus nets générés ce mois-ci</p>
+                    <p id="seller-monthly-revenue" class="text-5xl font-bold text-terracotta-500">0 CHF</p>
+                </div>
+                <div class="text-5xl">📈</div>
+            </div>
+
+            <h3 class="text-2xl font-bold text-stone-800 mb-6">État de ma flotte</h3>
+            <div id="seller-trailers-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Rempli par JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- FOOTER LÉGAL -->
+    <footer class="w-full py-8 mt-16 border-t border-stone-200 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
+        <span class="text-stone-300 hidden md:inline">© 2026 Renger</span>
+        <a href="cgu.html" class="hover:text-terracotta-500 transition font-medium">Conditions Générales d'Utilisation (CGU)</a>
+        <a href="politique-confidentialite.html" class="hover:text-terracotta-500 transition font-medium">Politique de Confidentialité</a>
+    </footer>
+</body>
+</html>

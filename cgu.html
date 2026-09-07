@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renger - Conditions Générales d'Utilisation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { terracotta: { 50: '#fcf4f2', 500: '#d16a54', 600: '#b8533e' } } } }
+        }
+    </script>
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans p-6 md:p-12 relative">
+
+    <!-- SELECTEUR DE LANGUE (Haut droit) -->
+    <div class="absolute top-6 right-6 md:top-12 md:right-12">
+        <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent font-bold text-stone-600 focus:outline-none cursor-pointer p-2 rounded-xl border border-stone-200 hover:border-terracotta-500 transition">
+            <option value="fr">FR</option>
+            <option value="de">DE</option>
+            <option value="en">EN</option>
+        </select>
+    </div>
+
+    <div class="max-w-4xl mx-auto bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 mt-10">
+        <a href="index.html" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition">← Retour à l'accueil</a>
+        
+        <h1 data-i18n="page_title" class="text-3xl md:text-4xl font-bold mb-2 text-stone-900">Conditions Générales d'Utilisation (CGU)</h1>
+        <p data-i18n="last_update" class="text-stone-500 mb-10">Dernière mise à jour : Septembre 2026 - Droit applicable : Suisse.</p>
+        
+        <div class="space-y-8 text-stone-600 leading-relaxed text-justify">
+            
+            <section>
+                <h2 data-i18n="h2_1" class="text-xl font-bold text-stone-800 mb-3">1. Statut d'intermédiaire et Absence de lien contractuel</h2>
+                <p data-i18n="p_1">La plateforme Renger agit exclusivement et strictement en qualité de fournisseur d'infrastructure technologique et d'intermédiaire de mise en relation. <strong>Le contrat de location est conclu directement et exclusivement entre le propriétaire de la remorque et le locataire.</strong> Renger n'est en aucun cas partie prenante à ce contrat, ni propriétaire, ni exploitant, ni loueur du matériel proposé sur le site.</p>
+            </section>
+
+            <section>
+                <h2 data-i18n="h2_2" class="text-xl font-bold text-stone-800 mb-3">2. Exonération totale de responsabilité civile et pénale</h2>
+                <p data-i18n="p_2">Renger se décharge de toute responsabilité civile, pénale ou administrative concernant l'utilisation du matériel loué. Renger ne saurait en aucun cas être tenu responsable en cas de :</p>
+                <ul class="list-disc pl-5 mt-2 space-y-1">
+                    <li data-i18n="li_2_1">Accident de la circulation, dommages corporels, matériels ou mortels impliquant la remorque.</li>
+                    <li data-i18n="li_2_2">Actes criminels, délits, ou utilisation de la remorque à des fins illégales.</li>
+                    <li data-i18n="li_2_3">Vol, perte, incendie ou vandalisme de la remorque, qu'elle soit attelée ou détachée.</li>
+                    <li data-i18n="li_2_4">Vices cachés, défauts d'entretien ou défaillance mécanique du matériel mis à disposition par le propriétaire.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 data-i18n="h2_3" class="text-xl font-bold text-stone-800 mb-3">3. Assurances routières et Responsabilité du véhicule tracteur</h2>
+                <p data-i18n="p_3">Conformément à la législation suisse, dès lors que la remorque est attelée, <strong>c'est l'assurance responsabilité civile (RC) du véhicule tracteur (la voiture du locataire) qui couvre les dommages causés aux tiers.</strong> Renger ne fournit aucune couverture d'assurance pour les accidents de la circulation et n'intervient à aucun moment dans la gestion des sinistres routiers.</p>
+            </section>
+
+            <section>
+                <h2 data-i18n="h2_4" class="text-xl font-bold text-stone-800 mb-3">4. Obligations légales du locataire : Permis et Conformité</h2>
+                <p data-i18n="p_4">Il incombe strictement, légalement et exclusivement au locataire de s'assurer, avant de prendre la route, qu'il est <strong>titulaire du permis de conduire adéquat (Permis B ou Permis BE)</strong> en fonction de la somme des Poids Totaux Autorisés en Charge (PTAC) de son véhicule et de la remorque. Le locataire s'engage à vérifier que son véhicule tracteur est techniquement homologué pour tracter la charge louée. Renger exclut toute responsabilité en cas de conduite sans permis valable, de surcharge ou de non-conformité.</p>
+            </section>
+
+            <section>
+                <h2 data-i18n="h2_5" class="text-xl font-bold text-stone-800 mb-3">5. Transfert de responsabilité matérielle et État des lieux</h2>
+                <p data-i18n="p_5">La responsabilité de la vérification de l'état du matériel est intégralement transférée aux utilisateurs (propriétaire et locataire). Les parties ont l'obligation stricte de réaliser un état des lieux contradictoire au moyen de photographies lors de la remise et de la restitution de la remorque. Le locataire est le seul responsable juridiquement et financièrement de toute dégradation constatée sur la remorque durant la période de location.</p>
+            </section>
+
+            <section>
+                <h2 data-i18n="h2_6" class="text-xl font-bold text-stone-800 mb-3">6. Séquestre financier et Cautionnement (Stripe)</h2>
+                <p data-i18n="p_6">Renger utilise la solution certifiée Stripe pour la gestion des transactions. En cas de dégradation prouvée ou de non-restitution, l'utilisateur autorise irrévocablement Renger à exécuter la capture de l'empreinte bancaire (caution) laissée lors de la réservation, afin d'indemniser le propriétaire. Renger n'agit qu'en tant que facilitateur de paiement et ne saurait être tenu responsable en cas d'insolvabilité du locataire ou de rejet bancaire.</p>
+            </section>
+
+        </div>
+        
+        <div data-i18n="footer_text" class="mt-12 pt-8 border-t border-stone-200 text-sm text-stone-400 text-center">
+            En créant un compte sur Renger, l'utilisateur reconnaît avoir lu, compris et accepté sans réserve les présentes Conditions Générales d'Utilisation. For juridique exclusif : Lausanne, Canton de Vaud.
+        </div>
+    </div>
+
+    <!-- SCRIPT DE TRADUCTION MULTILINGUE -->
+    <script>
+        const translations = {
+            fr: {
+                back_home: "← Retour à l'accueil",
+                page_title: "Conditions Générales d'Utilisation (CGU)",
+                last_update: "Dernière mise à jour : Septembre 2026 - Droit applicable : Suisse.",
+                h2_1: "1. Statut d'intermédiaire et Absence de lien contractuel",
+                p_1: "La plateforme Renger agit exclusivement et strictement en qualité de fournisseur d'infrastructure technologique et d'intermédiaire de mise en relation. <strong>Le contrat de location est conclu directement et exclusivement entre le propriétaire de la remorque et le locataire.</strong> Renger n'est en aucun cas partie prenante à ce contrat, ni propriétaire, ni exploitant, ni loueur du matériel proposé sur le site.",
+                h2_2: "2. Exonération totale de responsabilité civile et pénale",
+                p_2: "Renger se décharge de toute responsabilité civile, pénale ou administrative concernant l'utilisation du matériel loué. Renger ne saurait en aucun cas être tenu responsable en cas de :",
+                li_2_1: "Accident de la circulation, dommages corporels, matériels ou mortels impliquant la remorque.",
+                li_2_2: "Actes criminels, délits, ou utilisation de la remorque à des fins illégales.",
+                li_2_3: "Vol, perte, incendie ou vandalisme de la remorque, qu'elle soit attelée ou détachée.",
+                li_2_4: "Vices cachés, défauts d'entretien ou défaillance mécanique du matériel mis à disposition par le propriétaire.",
+                h2_3: "3. Assurances routières et Responsabilité du véhicule tracteur",
+                p_3: "Conformément à la législation suisse, dès lors que la remorque est attelée, <strong>c'est l'assurance responsabilité civile (RC) du véhicule tracteur (la voiture du locataire) qui couvre les dommages causés aux tiers.</strong> Renger ne fournit aucune couverture d'assurance pour les accidents de la circulation et n'intervient à aucun moment dans la gestion des sinistres routiers.",
+                h2_4: "4. Obligations légales du locataire : Permis et Conformité",
+                p_4: "Il incombe strictement, légalement et exclusivement au locataire de s'assurer, avant de prendre la route, qu'il est <strong>titulaire du permis de conduire adéquat (Permis B ou Permis BE)</strong> en fonction de la somme des Poids Totaux Autorisés en Charge (PTAC) de son véhicule et de la remorque. Le locataire s'engage à vérifier que son véhicule tracteur est techniquement homologué pour tracter la charge louée. Renger exclut toute responsabilité en cas de conduite sans permis valable, de surcharge ou de non-conformité.",
+                h2_5: "5. Transfert de responsabilité matérielle et État des lieux",
+                p_5: "La responsabilité de la vérification de l'état du matériel est intégralement transférée aux utilisateurs (propriétaire et locataire). Les parties ont l'obligation stricte de réaliser un état des lieux contradictoire au moyen de photographies lors de la remise et de la restitution de la remorque. Le locataire est le seul responsable juridiquement et financièrement de toute dégradation constatée sur la remorque durant la période de location.",
+                h2_6: "6. Séquestre financier et Cautionnement (Stripe)",
+                p_6: "Renger utilise la solution certifiée Stripe pour la gestion des transactions. En cas de dégradation prouvée ou de non-restitution, l'utilisateur autorise irrévocablement Renger à exécuter la capture de l'empreinte bancaire (caution) laissée lors de la réservation, afin d'indemniser le propriétaire. Renger n'agit qu'en tant que facilitateur de paiement et ne saurait être tenu responsable en cas d'insolvabilité du locataire ou de rejet bancaire.",
+                footer_text: "En créant un compte sur Renger, l'utilisateur reconnaît avoir lu, compris et accepté sans réserve les présentes Conditions Générales d'Utilisation. For juridique exclusif : Lausanne, Canton de Vaud."
+            },
+            de: {
+                back_home: "← Zurück zur Startseite",
+                page_title: "Allgemeine Geschäftsbedingungen (AGB)",
+                last_update: "Letzte Aktualisierung: September 2026 - Anwendbares Recht: Schweiz.",
+                h2_1: "1. Vermittlerstatus und Fehlen einer vertraglichen Beziehung",
+                p_1: "Die Renger-Plattform agiert ausschließlich und streng in ihrer Eigenschaft als Anbieter von technologischer Infrastruktur und Vermittler. <strong>Der Mietvertrag kommt direkt und ausschließlich zwischen dem Eigentümer des Anhängers und dem Mieter zustande.</strong> Renger ist in keinem Fall Vertragspartei, noch Eigentümer, Betreiber oder Vermieter der auf der Website angebotenen Ausrüstung.",
+                h2_2: "2. Vollständiger Haftungsausschluss (Zivil- und Strafrecht)",
+                p_2: "Renger lehnt jede zivil-, straf- oder verwaltungsrechtliche Haftung bezüglich der Nutzung der gemieteten Ausrüstung ab. Renger haftet in keinem Fall für:",
+                li_2_1: "Verkehrsunfälle, Personen-, Sach- oder tödliche Schäden unter Beteiligung des Anhängers.",
+                li_2_2: "Kriminelle Handlungen, Vergehen oder die Nutzung des Anhängers für illegale Zwecke.",
+                li_2_3: "Diebstahl, Verlust, Feuer oder Vandalismus des Anhängers, unabhängig davon, ob er angehängt oder abgehängt ist.",
+                li_2_4: "Versteckte Mängel, mangelnde Wartung oder mechanische Fehler der vom Eigentümer zur Verfügung gestellten Ausrüstung.",
+                h2_3: "3. Straßenversicherungen und Haftung des Zugfahrzeugs",
+                p_3: "Gemäß der Schweizer Gesetzgebung deckt ab dem Moment, in dem der Anhänger angehängt ist, <strong>die Haftpflichtversicherung (RC) des Zugfahrzeugs (das Auto des Mieters) die Schäden gegenüber Dritten ab.</strong> Renger bietet keinen Versicherungsschutz für Verkehrsunfälle und greift zu keinem Zeitpunkt in das Management von Verkehrsschäden ein.",
+                h2_4: "4. Gesetzliche Pflichten des Mieters: Führerschein und Konformität",
+                p_4: "Es obliegt streng, gesetzlich und ausschließlich dem Mieter, vor Fahrtantritt sicherzustellen, dass er <strong>im Besitz des entsprechenden Führerscheins (Ausweis B oder Ausweis BE)</strong> ist, basierend auf der Summe der zulässigen Gesamtgewichte (ZGG) seines Fahrzeugs und des Anhängers. Der Mieter verpflichtet sich zu überprüfen, ob sein Zugfahrzeug technisch für das Ziehen der gemieteten Last zugelassen ist. Renger schließt jegliche Haftung beim Fahren ohne gültigen Führerschein, Überladung oder Nichtkonformität aus.",
+                h2_5: "5. Übergang der materiellen Haftung und Zustandsprotokoll",
+                p_5: "Die Verantwortung für die Überprüfung des Zustands der Ausrüstung geht vollständig auf die Nutzer (Eigentümer und Mieter) über. Die Parteien sind streng verpflichtet, bei der Übergabe und Rückgabe des Anhängers ein gemeinsames Zustandsprotokoll mittels Fotos zu erstellen. Der Mieter ist rechtlich und finanziell allein verantwortlich für alle während der Mietdauer am Anhänger festgestellten Schäden.",
+                h2_6: "6. Finanzielle Hinterlegung und Kaution (Stripe)",
+                p_6: "Renger nutzt die zertifizierte Lösung Stripe für die Transaktionsverwaltung. Im Falle nachgewiesener Schäden oder Nichtrückgabe ermächtigt der Nutzer Renger unwiderruflich, den bei der Buchung hinterlassenen Bankabdruck (Kaution) einzuziehen, um den Eigentümer zu entschädigen. Renger fungiert nur als Zahlungsvermittler und haftet nicht für die Insolvenz des Mieters oder Bankablehnungen.",
+                footer_text: "Durch das Erstellen eines Kontos bei Renger bestätigt der Nutzer, diese Allgemeinen Geschäftsbedingungen gelesen, verstanden und vorbehaltlos akzeptiert zu haben. Ausschließlicher Gerichtsstand: Lausanne, Kanton Waadt."
+            },
+            en: {
+                back_home: "← Back to home",
+                page_title: "Terms and Conditions (T&C)",
+                last_update: "Last updated: September 2026 - Applicable law: Switzerland.",
+                h2_1: "1. Intermediary Status and Absence of Contractual Relationship",
+                p_1: "The Renger platform acts exclusively and strictly in the capacity of a technological infrastructure provider and matchmaking intermediary. <strong>The rental contract is concluded directly and exclusively between the trailer owner and the renter.</strong> Renger is in no way a party to this contract, nor the owner, operator, or lessor of the equipment offered on the site.",
+                h2_2: "2. Total Exemption from Civil and Criminal Liability",
+                p_2: "Renger disclaims any civil, criminal, or administrative liability regarding the use of the rented equipment. Renger cannot in any case be held responsible for:",
+                li_2_1: "Traffic accidents, bodily, material, or fatal damages involving the trailer.",
+                li_2_2: "Criminal acts, offenses, or use of the trailer for illegal purposes.",
+                li_2_3: "Theft, loss, fire, or vandalism of the trailer, whether hitched or unhitched.",
+                li_2_4: "Hidden defects, lack of maintenance, or mechanical failure of the equipment provided by the owner.",
+                h2_3: "3. Road Insurance and Towing Vehicle Liability",
+                p_3: "In accordance with Swiss legislation, once the trailer is hitched, <strong>the third-party liability (RC) insurance of the towing vehicle (the renter's car) covers the damages caused to third parties.</strong> Renger does not provide any insurance coverage for traffic accidents and does not intervene at any time in the management of road claims.",
+                h2_4: "4. Renter's Legal Obligations: Driving License and Compliance",
+                p_4: "It is strictly, legally, and exclusively the renter's responsibility to ensure, before hitting the road, that they <strong>hold the appropriate driving license (License B or License BE)</strong> depending on the sum of the Maximum Authorized Mass (MAM) of their vehicle and the trailer. The renter commits to verifying that their towing vehicle is technically approved to tow the rented load. Renger excludes any liability in case of driving without a valid license, overloading, or non-compliance.",
+                h2_5: "5. Transfer of Material Liability and Condition Report",
+                p_5: "The responsibility for verifying the condition of the equipment is entirely transferred to the users (owner and renter). The parties have a strict obligation to carry out a joint condition report using photographs upon handover and return of the trailer. The renter is solely legally and financially responsible for any damage noted on the trailer during the rental period.",
+                h2_6: "6. Financial Escrow and Security Deposit (Stripe)",
+                p_6: "Renger uses the certified Stripe solution for transaction management. In the event of proven damage or non-return, the user irrevocably authorizes Renger to execute the capture of the bank pre-authorization (deposit) left during booking, in order to compensate the owner. Renger acts only as a payment facilitator and cannot be held responsible in the event of renter insolvency or bank rejection.",
+                footer_text: "By creating an account on Renger, the user acknowledges having read, understood, and unreservedly accepted these Terms and Conditions. Exclusive jurisdiction: Lausanne, Canton of Vaud."
+            }
+        };
+
+        function changeLanguage(lang) {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) { 
+                    // Utiliser innerHTML pour conserver la mise en forme HTML, comme les balises <strong>
+                    element.innerHTML = translations[lang][key]; 
+                }
+            });
+            localStorage.setItem('renger_lang', lang);
+        }
+
+        // INITIALISATION AU CHARGEMENT
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedLang = localStorage.getItem('renger_lang') || 'fr';
+            document.getElementById('lang-selector').value = savedLang;
+            changeLanguage(savedLang);
+        });
+    </script>
+</body>
+</html>
