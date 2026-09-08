@@ -233,12 +233,18 @@ async function submitBooking() {
     const diffDays = parseInt(document.getElementById('total-days').innerText);
     const totalPrice = diffDays * currentTrailer.price;
 
+    // L'ANTIDOTE AU BUG : Une fonction pour garder l'heure locale
+    const formatSQLDate = (date) => {
+        const tzOffset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
+    };
+
     const newBooking = {
         trailer_id: currentTrailer.id,
         renter_id: currentUser.id,
         owner_id: currentTrailer.owner_id,
-        start_date: selectedStartDate.toISOString().split('T')[0],
-        end_date: selectedEndDate.toISOString().split('T')[0],
+        start_date: formatSQLDate(selectedStartDate), // Utilisation du nouveau format
+        end_date: formatSQLDate(selectedEndDate),     // Utilisation du nouveau format
         total_price: totalPrice,
         status: 'en_attente'
     };
