@@ -31,6 +31,35 @@ function showPage(pageId) {
     }
 }
 
+// ==========================================
+// NOTIFICATIONS SYSTÈME (TOAST)
+// ==========================================
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast-notification');
+    const icon = document.getElementById('toast-icon');
+    const text = document.getElementById('toast-message');
+
+    text.innerText = message;
+    
+    // Changement de couleur et d'icône selon la situation
+    if (type === 'success') {
+        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-green-500 pointer-events-none";
+        icon.innerText = "🎉";
+    } else if (type === 'error') {
+        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-red-500 pointer-events-none";
+        icon.innerText = "⚠️";
+    } else {
+        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-stone-800 pointer-events-none";
+        icon.innerText = "⏳";
+    }
+
+    // Fait disparaître la notification automatiquement après 3.5 secondes
+    setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('-translate-y-24', 'opacity-0');
+    }, 3500);
+}
+
 function showWelcomeScreen() { showPage('welcome-screen'); }
 function openAuthModal() { 
     const modal = document.getElementById('auth-modal');
@@ -225,10 +254,12 @@ async function openTrailerDetail(trailer) {
 }
 
 async function submitBooking() {
-    if (!currentUser) return alert("⚠️ Vous devez être connecté pour réserver.");
-    if (!selectedStartDate || !selectedEndDate) return alert("Veuillez sélectionner vos dates sur le calendrier.");
+    if (!currentUser) return showToast("Vous devez être connecté pour réserver.", "error");
+    if (!selectedStartDate || !selectedEndDate) return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
 
-    alert("Création du lien de paiement sécurisé via Stripe...");
+    showToast("Création du lien sécurisé Stripe...", "info"); // Remplace le alert()
+
+    // ... (le reste de ta fonction submitBooking reste identique)
 
     const diffDays = parseInt(document.getElementById('total-days').innerText);
     const totalPrice = diffDays * currentTrailer.price;
@@ -290,12 +321,20 @@ async function checkPaymentStatus() {
     if (paymentStatus === 'success' && pendingBookingId) {
         await supabaseClient.from('bookings').update({ status: 'paye' }).eq('id', pendingBookingId);
         localStorage.removeItem('pending_booking_id'); 
-        alert("🎉 Paiement réussi ! La réservation est maintenant confirmée sur votre Profil.");
+        
+        // On nettoie l'URL en silence
         window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // 1. La belle notification qui s'affiche toute seule
+        showToast("Paiement réussi ! Votre réservation est confirmée.", "success");
+        
+        // 2. L'EFFET DE VITESSE : On redirige instantanément le client sur son profil !
+        openProfile();
+
     } else if (paymentStatus === 'cancel') {
-        alert("⚠️ Le paiement a été annulé.");
         localStorage.removeItem('pending_booking_id');
         window.history.replaceState({}, document.title, window.location.pathname);
+        showToast("Le paiement a été annulé.", "error");
     }
 }
 
