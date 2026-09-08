@@ -531,7 +531,31 @@ async function deleteAccount() {
 // 9. DÉMARRAGE DU SITE
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
     checkUser();
     loadTrailers();
     checkPaymentStatus(); 
 });
+
+// ==========================================
+// GESTION DU MODE SOMBRE
+// ==========================================
+function toggleTheme() {
+    const html = document.documentElement;
+    html.classList.toggle('dark');
+    const isDark = html.classList.contains('dark');
+    
+    // On mémorise le choix dans le navigateur
+    localStorage.setItem('renger_theme', isDark ? 'dark' : 'light');
+    document.getElementById('theme-icon').innerText = isDark ? '☀️' : '🌙';
+}
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('renger_theme');
+    // Si l'utilisateur avait choisi "dark", on l'applique au chargement
+    if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.innerText = '☀️';
+    }
+}
