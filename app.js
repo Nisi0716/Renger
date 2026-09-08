@@ -15,7 +15,7 @@ let videoStream = null;
 // ==========================================
 // 2. NAVIGATION
 // ==========================================
-const pages = ['welcome-screen', 'buyer-page', 'seller-page', 'detail-page', 'inspection-page', 'profile-page'];
+const pages = ['welcome-screen', 'buyer-page', 'seller-page', 'detail-page', 'inspection-page', 'profile-page', 'settings-page'];
 
 function showPage(pageId) {
     pages.forEach(p => {
@@ -43,7 +43,7 @@ function closeAuthModal() {
 function changeLanguage(lang) { localStorage.setItem('renger_lang', lang); }
 
 // ==========================================
-// 3. AUTHENTIFICATION
+// 3. AUTHENTIFICATION & HEADER
 // ==========================================
 async function handleSignup() {
     if (!supabaseClient) return alert("Erreur: Supabase non chargé.");
@@ -70,6 +70,7 @@ async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     checkUser();
+    showWelcomeScreen();
 }
 
 async function checkUser() {
@@ -80,9 +81,11 @@ async function checkUser() {
     if (!container) return;
     
     if (currentUser) {
+        // MISE À JOUR : Ajout du bouton "Paramètres"
         container.innerHTML = `
             <div class="flex items-center gap-4">
-                <button onclick="openProfile()" class="text-stone-600 font-bold hover:text-terracotta-500 transition">Mon Espace</button>
+                <button onclick="openProfile()" class="text-stone-600 font-bold hover:text-terracotta-500 transition hidden md:block">Mon Espace</button>
+                <button onclick="openSettings()" class="text-stone-600 font-bold hover:text-terracotta-500 transition">Paramètres</button>
                 <button onclick="handleLogout()" class="text-stone-400 text-sm hover:underline">Déconnexion</button>
             </div>`;
     } else {
@@ -423,7 +426,59 @@ async function loadProfileData() {
 }
 
 // ==========================================
-// 8. DÉMARRAGE DU SITE
+// 8. PARAMÈTRES DU COMPTE (NOUVEAU)
+// ==========================================
+function openSettings() {
+    if (!currentUser) return;
+    document.getElementById('settings-email').innerText = currentUser.email;
+    showPage('settings-page');
+}
+
+async function setupStripePayouts() {
+    if (!currentUser) return;
+    alert("Génération du lien sécurisé Stripe pour relier votre IBAN...");
+    
+    try {
+        const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/stripe-onboarding', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: currentUser.email })
+        });
+        const data = await response.json();
+        if (data.url) window.location.href = data.url; // Redirection vers Stripe
+        else alert("Erreur Stripe : " + data.error);
+    } catch (err) {
+        alert("Erreur de connexion au serveur.");
+    }
+}
+
+async function deleteAccount() {
+    if (!currentUser) return;
+    const confirmDelete = confirm("⚠️ ATTENTION : Voulez-vous vraiment supprimer définitivement votre compte et toutes vos annonces ? Cette action est irréversible.");
+    if (!confirmDelete) return;
+
+    alert("Suppression en cours...");
+    
+    try {
+        const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/delete-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert("Compte supprimé avec succès. À bientôt !");
+            handleLogout();
+        } else {
+            alert("Erreur de suppression : " + data.error);
+        }
+    } catch (err) {
+        alert("Erreur de connexion au serveur.");
+    }
+}
+
+// ==========================================
+// 9. DÉMARRAGE DU SITE
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
     checkUser();
