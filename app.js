@@ -186,7 +186,12 @@ async function openTrailerDetail(trailer) {
     
     showPage('detail-page');
 
-    const { data: bookings } = await supabaseClient.from('bookings').select('start_date, end_date').eq('trailer_id', trailer.id);
+    // LA CORRECTION EST ICI : On ne récupère que les réservations "payées"
+    const { data: bookings } = await supabaseClient
+        .from('bookings')
+        .select('start_date, end_date')
+        .eq('trailer_id', trailer.id)
+        .eq('status', 'paye');
 
     const disabledDates = bookings ? bookings.map(b => ({
         from: b.start_date,
