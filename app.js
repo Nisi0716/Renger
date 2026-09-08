@@ -236,10 +236,27 @@ function stopCamera() {
 function takePhoto() { alert("Photo enregistrée !"); stopCamera(); showPage('detail-page'); }
 function changeLanguage(lang) { localStorage.setItem('renger_lang', lang); }
 
+// --- GESTION DU RETOUR STRIPE ---
+function checkPaymentStatus() {
+    // On analyse l'URL de la page
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+
+    if (paymentStatus === 'success') {
+        alert("🎉 Paiement réussi ! L'empreinte bancaire pour la caution est validée et votre réservation est confirmée.");
+        // On nettoie l'URL pour ne pas réafficher l'alerte si l'utilisateur rafraîchit la page
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === 'cancel') {
+        alert("⚠️ Le paiement a été annulé. Aucune somme n'a été bloquée.");
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
 // --- 5. INITIALISATION ---
 document.addEventListener("DOMContentLoaded", () => {
     checkUser();
     loadTrailers();
+    checkPaymentStatus(); // <-- La nouvelle ligne magique est ici !
 });
 
 // --- 6. SYSTÈME DE RÉSERVATION & CALENDRIER ---
