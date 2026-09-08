@@ -186,12 +186,12 @@ async function handlePublish(event) {
 async function simulateStripeCheckout() {
     if (!currentTrailer) return alert("Veuillez sélectionner une remorque.");
     
+    alert("Création du lien de paiement sécurisé via Stripe...");
+
     try {
-        // On calcule le prix total de la location
         const diffDays = parseInt(document.getElementById('total-days').innerText);
         const totalPrice = diffDays * currentTrailer.price;
 
-        // Appel de ta fonction sécurisée sur Supabase
         const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/stripe-checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -200,19 +200,21 @@ async function simulateStripeCheckout() {
                 basePrice: totalPrice,
                 payload: parseInt(currentTrailer.payload),
                 upsellsTotal: 0, 
-                ownerStripeId: "acct_12345" // ID temporaire pour tester
+                ownerStripeId: "acct_12345" 
             })
         });
 
         const data = await response.json();
-
+        
         if (data.url) {
-            window.location.href = data.url; // LA REDIRECTION MAGIQUE
+            window.location.href = data.url; // REDIRECTION MAGIQUE !
         } else {
-            alert("Erreur Stripe : " + data.error);
+            // Cette ligne magique affichera la vraie erreur, quoi qu'il arrive !
+            const errorMsg = data.error || data.message || JSON.stringify(data);
+            alert("Erreur Stripe : " + errorMsg);
         }
     } catch (err) {
-        alert("Erreur de connexion au serveur de paiement.");
+        alert("Erreur de connexion au serveur : " + err.message);
     }
 }
 
