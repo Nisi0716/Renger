@@ -194,7 +194,11 @@ async function simulateStripeCheckout() {
 
         const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/stripe-checkout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                // LE BADGE DE SÉCURITÉ OBLIGATOIRE EST ICI :
+                'Authorization': 'Bearer ' + supabaseKey
+            },
             body: JSON.stringify({
                 trailerTitle: currentTrailer.title,
                 basePrice: totalPrice,
@@ -207,11 +211,10 @@ async function simulateStripeCheckout() {
         const data = await response.json();
         
         if (data.url) {
-            window.location.href = data.url; // REDIRECTION MAGIQUE !
+            window.location.href = data.url; 
         } else {
-            // Cette ligne magique affichera la vraie erreur, quoi qu'il arrive !
             const errorMsg = data.error || data.message || JSON.stringify(data);
-            alert("Erreur Stripe : " + errorMsg);
+            alert("Erreur Serveur : " + errorMsg);
         }
     } catch (err) {
         alert("Erreur de connexion au serveur : " + err.message);
