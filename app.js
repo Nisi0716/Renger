@@ -491,18 +491,31 @@ function openSettings() {
 
 async function setupStripePayouts() {
     if (!currentUser) return;
-    alert("Génération du lien sécurisé Stripe pour relier votre IBAN...");
     
+    alert("Création de votre espace bancaire sécurisé...");
+
     try {
         const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/stripe-onboarding', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                // L'AJOUT CRUCIAL : Le laissez-passer pour Supabase
+                'Authorization': 'Bearer ' + supabaseKey
+            },
             body: JSON.stringify({ email: currentUser.email })
         });
+        
         const data = await response.json();
-        if (data.url) window.location.href = data.url; // Redirection vers Stripe
-        else alert("Erreur Stripe : " + data.error);
+        
+        if (data.url) {
+            window.location.href = data.url; // Redirection vers Stripe
+        } else {
+            // S'il y a une erreur, on affiche le message précis renvoyé par le serveur
+            console.error("Erreur détaillée du serveur :", data);
+            alert("Erreur Stripe : " + (data.error || data.message || JSON.stringify(data)));
+        }
     } catch (err) {
+        console.error("Erreur réseau :", err);
         alert("Erreur de connexion au serveur.");
     }
 }
