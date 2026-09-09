@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <!-- Moteur du calendrier professionnel (Flatpickr) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Renger - Location de remorques</title>
+    
+    <!-- Moteur du calendrier professionnel (Flatpickr) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     
     <!-- Chargement de Tailwind CSS pour le design -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,15 +17,7 @@
         }
     </script>
     
-    <!-- Chargement de ton CSS personnalisé -->
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- 1. CHARGEMENT DU MOTEUR SUPABASE (Le vrai serveur) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- 2. CHARGEMENT DE TA LOGIQUE (Le cerveau) -->
-    <script src="app.js" defer></script>
-
+    <!-- CSS de Flatpickr personnalisé -->
     <style>
         /* Adaptation du calendrier Flatpickr pour le mode sombre */
         html.dark .flatpickr-calendar {
@@ -44,10 +34,18 @@
         }
     </style>
 
+    <!-- Chargement de ton CSS personnalisé -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Scripts différés pour la performance -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="app.js" defer></script>
 </head>
 <body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative pb-20 transition-colors duration-300">
 
-<!-- NOTIFICATION TOAST (Succès / Erreur / Info) -->
+    <!-- NOTIFICATION TOAST (Succès / Erreur / Info) -->
     <div id="toast-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 -translate-y-24 opacity-0 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white pointer-events-none">
         <span id="toast-icon" class="text-2xl"></span>
         <span id="toast-message"></span>
@@ -55,26 +53,28 @@
 
     <!-- HEADER & AUTHENTIFICATION -->
     <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
-        <!-- Bouton Dark Mode -->
-<button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n="theme_btn" title="Mode sombre/clair">
-    <!-- Icône SVG par défaut (Lune) -->
-    <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-    </svg>
-</button>
+        <!-- Logo -->
         <div class="text-2xl font-bold text-terracotta-500 cursor-pointer" onclick="showWelcomeScreen()">Renger</div>
+        
+        <!-- Menu Droit -->
         <div class="flex items-center gap-4">
-        <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition text-xl mr-4" title="Mode sombre" data-i18n="theme_btn">
-    <span id="theme-icon">🌙</span>
-</button>
-            <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent font-bold text-stone-600 focus:outline-none cursor-pointer">
+            <!-- Bouton Dark Mode (SVG Uniquement) -->
+            <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n="theme_btn" title="Mode sombre/clair">
+                <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+            </button>
+
+            <!-- Sélecteur de langue -->
+            <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent dark:bg-stone-900 font-bold text-stone-600 dark:text-stone-300 focus:outline-none cursor-pointer">
                 <option value="fr">FR</option>
                 <option value="de">DE</option>
                 <option value="en">EN</option>
             </select>
+            
             <!-- Zone utilisateur gérée par Supabase -->
             <div id="user-menu-container">
-                <button onclick="openAuthModal()" class="bg-white border border-stone-200 text-stone-600 hover:text-terracotta-500 font-semibold py-2 px-4 rounded-xl shadow-sm transition">
+                <button onclick="openAuthModal()" class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-200 hover:text-terracotta-500 font-semibold py-2 px-4 rounded-xl shadow-sm transition">
                     <span data-i18n="login">Se connecter</span>
                 </button>
             </div>
@@ -84,12 +84,12 @@
     <!-- 1. ÉCRAN D'ACCUEIL -->
     <div id="welcome-screen" class="min-h-screen flex flex-col items-center justify-center p-6 pt-20">
         <h1 class="text-5xl md:text-6xl font-bold mb-4 text-terracotta-500 tracking-tight text-center">Renger</h1>
-        <p data-i18n="subtitle" class="text-lg text-stone-600 mb-10 text-center max-w-lg"> </p>
+        <p data-i18n="subtitle" class="text-lg text-stone-600 dark:text-stone-400 mb-10 text-center max-w-lg"> </p>
         <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
             <button onclick="showPage('buyer-page')" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
                 <span>🔍</span> <span data-i18n="btn_buyer">Je cherche une remorque</span>
             </button>
-            <button onclick="showPage('seller-page')" class="w-full bg-white hover:bg-terracotta-50 text-terracotta-600 border-2 border-terracotta-500 font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+            <button onclick="showPage('seller-page')" class="w-full bg-white dark:bg-stone-800 hover:bg-terracotta-50 dark:hover:bg-stone-700 text-terracotta-600 border-2 border-terracotta-500 font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
                 <span>➕</span> <span data-i18n="btn_seller">Je loue ma remorque</span>
             </button>
         </div>
@@ -100,44 +100,40 @@
         <button onclick="showWelcomeScreen()" class="text-terracotta-600 font-semibold mb-6 transition" data-i18n="back">← Retour</button>
         
         <div class="flex overflow-x-auto gap-3 pb-4 mb-6 no-scrollbar">
-            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white rounded-xl border border-stone-200 text-stone-600 shadow-sm focus:border-terracotta-500 focus:text-terracotta-500">
+            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:border-terracotta-500 focus:text-terracotta-500">
                 <span class="text-3xl mb-1">📦</span><span data-i18n="cat_utility" class="text-xs font-semibold">Utilitaire</span>
             </button>
-            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white rounded-xl border border-stone-200 text-stone-600 shadow-sm focus:border-terracotta-500 focus:text-terracotta-500">
+            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:border-terracotta-500 focus:text-terracotta-500">
                 <span class="text-3xl mb-1">🐴</span><span data-i18n="cat_horse" class="text-xs font-semibold">Chevaux</span>
             </button>
-            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white rounded-xl border border-stone-200 text-stone-600 shadow-sm focus:border-terracotta-500 focus:text-terracotta-500">
+            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:border-terracotta-500 focus:text-terracotta-500">
                 <span class="text-3xl mb-1">🚗</span><span data-i18n="cat_car" class="text-xs font-semibold">Voiture</span>
             </button>
         </div>
 
-        <h3 data-i18n="recommended" class="text-xl font-bold mb-4 text-stone-800">Recommandées autour de Lausanne</h3>
-        
-        <!-- C'est ici que les annonces de ton serveur Supabase vont s'injecter automatiquement -->
+        <h3 data-i18n="recommended" class="text-xl font-bold mb-4 text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
         <div id="trailers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
     <!-- 3. PAGE DÉTAIL D'UNE ANNONCE -->
-    <!-- PAGE DÉTAIL & RÉSERVATION -->
     <div id="detail-page" class="hidden min-h-screen p-6 pt-24 max-w-5xl mx-auto">
         <button onclick="showPage('buyer-page')" class="text-terracotta-600 font-semibold mb-8 hover:text-terracotta-500 transition">← Retour aux annonces</button>
         
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
             <!-- Colonne de gauche : Infos remorque -->
             <div class="lg:col-span-2">
-                <div class="h-96 bg-stone-200 rounded-3xl overflow-hidden mb-8 relative">
+                <div class="h-96 bg-stone-200 dark:bg-stone-800 rounded-3xl overflow-hidden mb-8 relative">
                     <img id="detail-img" src="" class="w-full h-full object-cover">
                 </div>
-                <h2 id="detail-title" class="text-4xl font-bold mb-4 text-stone-900">Titre</h2>
+                <h2 id="detail-title" class="text-4xl font-bold mb-4 text-stone-900 dark:text-white">Titre</h2>
                 <div class="flex gap-4 mb-8">
-                    <span class="bg-stone-100 text-stone-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">🔌 Prise <span id="detail-socket"></span></span>
-                    <span class="bg-stone-100 text-stone-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">⚖️ Charge <span id="detail-payload"></span></span>
+                    <span class="bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">🔌 Prise <span id="detail-socket"></span></span>
+                    <span class="bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">⚖️ Charge <span id="detail-payload"></span></span>
                 </div>
-                <p class="text-stone-600 text-lg leading-relaxed mb-8">Cette remorque est idéale pour vos transports. Un état des lieux photographique sera exigé au départ et au retour pour votre sécurité.</p>
+                <p class="text-stone-600 dark:text-stone-400 text-lg leading-relaxed mb-8">Cette remorque est idéale pour vos transports. Un état des lieux photographique sera exigé au départ et au retour pour votre sécurité.</p>
             </div>
 
-            <!-- Colonne de droite : Le Calendrier de réservation -->
-            <!-- Calendrier (Corrigé pour le contraste) -->
+            <!-- Colonne de droite : Calendrier -->
             <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-lg border border-stone-100 dark:border-stone-700 h-fit sticky top-24">
                 <div class="flex items-end gap-2 mb-6">
                     <span id="detail-price" class="text-4xl font-bold text-stone-900 dark:text-white"></span>
@@ -162,122 +158,108 @@
                 <button onclick="submitBooking()" data-i18n="book_btn" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-4">
                     Réserver cette remorque
                 </button>
-            </div>
                 <p class="text-center text-xs text-stone-400 mt-4">Une caution par empreinte bancaire vous sera demandée à l'étape suivante.</p>
             </div>
         </div>
     </div>
 
-    <!-- 4. PAGE VENDEUR (Création d'annonce Premium) -->
+    <!-- 4. PAGE VENDEUR -->
     <div id="seller-page" class="hidden min-h-screen p-6 pt-24 max-w-3xl mx-auto">
         <button onclick="showWelcomeScreen()" class="text-terracotta-600 font-semibold mb-8 hover:text-terracotta-500 transition">← Retour à l'accueil</button>
         
         <div class="mb-10">
-            <h2 class="text-4xl font-bold mb-3 text-stone-800 tracking-tight">Louez votre remorque</h2>
-            <p class="text-stone-500 text-lg">Gagnez un revenu complémentaire en toute sécurité. Renger s'occupe de la caution et des paiements.</p>
+            <h2 class="text-4xl font-bold mb-3 text-stone-800 dark:text-white tracking-tight">Louez votre remorque</h2>
+            <p class="text-stone-500 dark:text-stone-400 text-lg">Gagnez un revenu complémentaire en toute sécurité. Renger s'occupe de la caution et des paiements.</p>
         </div>
         
         <form id="add-trailer-form" onsubmit="handlePublish(event)" class="space-y-8">
-            
-            <!-- SECTION 1 : Les bases -->
-            <div class="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
-                <h3 class="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2"><span>1.</span> Les détails de la remorque</h3>
-                
+            <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700">
+                <h3 class="text-xl font-bold text-stone-800 dark:text-white mb-6 flex items-center gap-2"><span>1.</span> Les détails de la remorque</h3>
                 <div class="mb-6">
-                    <label class="block text-sm font-bold text-stone-700 mb-2">Titre de votre annonce</label>
-                    <input type="text" id="ad-title" placeholder="Ex: Van à chevaux 2 places - Fautras" class="w-full border-2 border-stone-100 rounded-2xl p-4 bg-stone-50 focus:bg-white focus:border-terracotta-500 focus:ring-0 transition outline-none text-lg" required>
+                    <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Titre de votre annonce</label>
+                    <input type="text" id="ad-title" placeholder="Ex: Van à chevaux 2 places - Fautras" class="w-full border-2 border-stone-100 dark:border-stone-700 rounded-2xl p-4 bg-stone-50 dark:bg-stone-900 dark:text-white focus:bg-white dark:focus:bg-stone-800 focus:border-terracotta-500 outline-none transition text-lg" required>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-bold text-stone-700 mb-2">Prix par jour (CHF)</label>
+                        <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Prix par jour (CHF)</label>
                         <div class="relative">
-                            <input type="number" id="ad-price" placeholder="70" class="w-full border-2 border-stone-100 rounded-2xl p-4 bg-stone-50 focus:bg-white focus:border-terracotta-500 transition outline-none text-xl font-bold" required>
+                            <input type="number" id="ad-price" placeholder="70" class="w-full border-2 border-stone-100 dark:border-stone-700 rounded-2xl p-4 bg-stone-50 dark:bg-stone-900 dark:text-white focus:bg-white dark:focus:bg-stone-800 focus:border-terracotta-500 outline-none transition text-xl font-bold" required>
                             <span class="absolute right-4 top-4 text-stone-400 font-bold">CHF</span>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-stone-700 mb-2">Charge utile maximale</label>
+                        <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Charge utile maximale</label>
                         <div class="relative">
-                            <input type="number" id="ad-payload" placeholder="500" class="w-full border-2 border-stone-100 rounded-2xl p-4 bg-stone-50 focus:bg-white focus:border-terracotta-500 transition outline-none text-xl font-bold" required>
+                            <input type="number" id="ad-payload" placeholder="500" class="w-full border-2 border-stone-100 dark:border-stone-700 rounded-2xl p-4 bg-stone-50 dark:bg-stone-900 dark:text-white focus:bg-white dark:focus:bg-stone-800 focus:border-terracotta-500 outline-none transition text-xl font-bold" required>
                             <span class="absolute right-4 top-4 text-stone-400 font-bold">KG</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- SECTION 2 : Technique & Équipements -->
-            <div class="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
-                <h3 class="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2"><span>2.</span> Caractéristiques techniques</h3>
-                
-                <label class="block text-sm font-bold text-stone-700 mb-3">Type de prise électrique</label>
+            <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700">
+                <h3 class="text-xl font-bold text-stone-800 dark:text-white mb-6 flex items-center gap-2"><span>2.</span> Caractéristiques techniques</h3>
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">Type de prise électrique</label>
                 <div class="grid grid-cols-2 gap-4 mb-8">
                     <label class="cursor-pointer relative">
                         <input type="radio" name="prise" value="7 broches" class="peer sr-only" required checked>
-                        <div class="rounded-2xl border-2 border-stone-100 p-5 text-center peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 peer-checked:text-terracotta-600 hover:border-stone-300 transition">
-                            <span class="block font-bold text-lg mb-1">7 broches</span>
+                        <div class="rounded-2xl border-2 border-stone-100 dark:border-stone-700 p-5 text-center peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-900 peer-checked:text-terracotta-600 hover:border-stone-300 transition">
+                            <span class="block font-bold text-lg mb-1 dark:text-white">7 broches</span>
                             <span class="text-xs text-stone-500 peer-checked:text-terracotta-500">Ancienne norme</span>
                         </div>
                     </label>
                     <label class="cursor-pointer relative">
                         <input type="radio" name="prise" value="13 broches" class="peer sr-only">
-                        <div class="rounded-2xl border-2 border-stone-100 p-5 text-center peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 peer-checked:text-terracotta-600 hover:border-stone-300 transition">
-                            <span class="block font-bold text-lg mb-1">13 broches</span>
+                        <div class="rounded-2xl border-2 border-stone-100 dark:border-stone-700 p-5 text-center peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-900 peer-checked:text-terracotta-600 hover:border-stone-300 transition">
+                            <span class="block font-bold text-lg mb-1 dark:text-white">13 broches</span>
                             <span class="text-xs text-stone-500 peer-checked:text-terracotta-500">Nouvelle norme</span>
                         </div>
                     </label>
                 </div>
             </div>
 
-            <!-- SECTION 3 : Upsell (Rentabilité) -->
-            <div class="bg-gradient-to-br from-terracotta-50 to-white p-8 rounded-3xl shadow-sm border border-terracotta-100">
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-xl font-bold text-terracotta-600 flex items-center gap-2"><span>3.</span> Boostez vos revenus 🚀</h3>
-                </div>
-                <p class="text-sm text-stone-500 mb-6">Proposez des options payantes additionnelles à vos locataires pour augmenter votre gain par location.</p>
+            <div class="bg-gradient-to-br from-terracotta-50 dark:from-stone-800 to-white dark:to-stone-900 p-8 rounded-3xl shadow-sm border border-terracotta-100 dark:border-stone-700">
+                <h3 class="text-xl font-bold text-terracotta-600 flex items-center gap-2 mb-2"><span>3.</span> Boostez vos revenus 🚀</h3>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Proposez des options payantes additionnelles.</p>
                 
                 <div class="space-y-4">
-                    <label class="flex items-center justify-between p-4 bg-white border-2 border-white rounded-2xl cursor-pointer hover:border-terracotta-200 transition shadow-sm">
+                    <label class="flex items-center justify-between p-4 bg-white dark:bg-stone-800 border-2 border-transparent rounded-2xl cursor-pointer hover:border-terracotta-200 transition shadow-sm">
                         <div class="flex items-center gap-4">
                             <input type="checkbox" class="w-6 h-6 text-terracotta-500 rounded-md border-stone-300 focus:ring-terracotta-500">
                             <div>
-                                <span class="block font-bold text-stone-800">🚚 Livraison de la remorque</span>
-                                <span class="text-xs text-stone-500">Vous l'amenez chez le client</span>
+                                <span class="block font-bold text-stone-800 dark:text-white">🚚 Livraison de la remorque</span>
+                                <span class="text-xs text-stone-500 dark:text-stone-400">Vous l'amenez chez le client</span>
                             </div>
                         </div>
-                        <span class="bg-stone-100 text-stone-600 px-3 py-1 rounded-lg font-bold text-sm">+25 CHF</span>
+                        <span class="bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-3 py-1 rounded-lg font-bold text-sm">+25 CHF</span>
                     </label>
-                    
-                    <label class="flex items-center justify-between p-4 bg-white border-2 border-white rounded-2xl cursor-pointer hover:border-terracotta-200 transition shadow-sm">
+                    <label class="flex items-center justify-between p-4 bg-white dark:bg-stone-800 border-2 border-transparent rounded-2xl cursor-pointer hover:border-terracotta-200 transition shadow-sm">
                         <div class="flex items-center gap-4">
                             <input type="checkbox" class="w-6 h-6 text-terracotta-500 rounded-md border-stone-300 focus:ring-terracotta-500">
                             <div>
-                                <span class="block font-bold text-stone-800">🛒 Prêt d'un diable / sangles</span>
-                                <span class="text-xs text-stone-500">Matériel supplémentaire</span>
+                                <span class="block font-bold text-stone-800 dark:text-white">🛒 Prêt d'un diable / sangles</span>
+                                <span class="text-xs text-stone-500 dark:text-stone-400">Matériel supplémentaire</span>
                             </div>
                         </div>
-                        <span class="bg-stone-100 text-stone-600 px-3 py-1 rounded-lg font-bold text-sm">+10 CHF</span>
+                        <span class="bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-3 py-1 rounded-lg font-bold text-sm">+10 CHF</span>
                     </label>
                 </div>
             </div>
 
-            <!-- SECTION 4 : Photos (Interface visuelle) -->
-            <div class="bg-white p-8 rounded-3xl shadow-sm border border-stone-100">
-                <h3 class="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2"><span>4.</span> Photos de la remorque</h3>
-                
-                <div id="photo-preview-container" class="border-2 border-dashed border-stone-300 rounded-3xl p-10 flex flex-col items-center justify-center bg-stone-50 hover:bg-stone-100 transition cursor-pointer h-64 relative overflow-hidden" onclick="document.getElementById('file-upload').click()">
+            <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700">
+                <h3 class="text-xl font-bold text-stone-800 dark:text-white mb-6 flex items-center gap-2"><span>4.</span> Photos de la remorque</h3>
+                <div id="photo-preview-container" class="border-2 border-dashed border-stone-300 dark:border-stone-600 rounded-3xl p-10 flex flex-col items-center justify-center bg-stone-50 dark:bg-stone-900 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer h-64 relative overflow-hidden" onclick="document.getElementById('file-upload').click()">
                     <span class="text-5xl mb-4">📸</span>
-                    <span class="font-bold text-stone-700">Cliquez pour ajouter une photo</span>
+                    <span class="font-bold text-stone-700 dark:text-stone-300">Cliquez pour ajouter une photo</span>
                     <span class="text-sm text-stone-400 mt-2">JPG, PNG (Max 5MB)</span>
                 </div>
-                <!-- C'est cette ligne en dessous qui est cruciale pour l'aperçu ! -->
                 <input type="file" id="file-upload" class="hidden" accept="image/*" onchange="previewImage(event)">
             </div>
 
-            <!-- BOUTON DE VALIDATION -->
-            <button type="submit" class="w-full bg-stone-900 hover:bg-black text-white font-bold py-5 rounded-2xl mt-8 shadow-xl flex flex-col items-center justify-center transition transform active:scale-95">
+            <button type="submit" class="w-full bg-stone-900 dark:bg-stone-700 hover:bg-black dark:hover:bg-stone-600 text-white font-bold py-5 rounded-2xl mt-8 shadow-xl flex flex-col items-center justify-center transition transform active:scale-95">
                 <span class="text-lg">Publier mon annonce</span>
-                <span class="text-xs font-normal text-stone-400 mt-1">Étape suivante : Liaison de votre IBAN via Stripe Connect</span>
+                <span class="text-xs font-normal text-stone-400 dark:text-stone-300 mt-1">Étape suivante : Liaison de votre IBAN via Stripe</span>
             </button>
         </form>
     </div>
@@ -291,42 +273,37 @@
         <button onclick="takePhoto()" class="w-20 h-20 bg-white rounded-full border-4 border-terracotta-500 shadow-2xl"></button>
     </div>
 
-    <!-- MODALE AUTHENTIFICATION (Vraie sécurisation) -->
+    <!-- MODALE AUTHENTIFICATION -->
     <div id="auth-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-50 flex items-center justify-center z-50 px-4">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md relative">
-            <button onclick="closeAuthModal()" class="absolute top-4 right-5 text-stone-400 text-3xl hover:text-terracotta-500 transition">&times;</button>
-            <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 text-center">Rejoindre Renger</h2>
+        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-2xl w-full max-w-md relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-5 text-stone-400 hover:text-terracotta-500 text-3xl transition">&times;</button>
+            <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 dark:text-white text-center">Rejoindre Renger</h2>
             
-            <input type="email" id="login-email" placeholder="Votre email" class="w-full border border-stone-200 rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
-            <input type="password" id="login-password" placeholder="Mot de passe (6 car. min)" class="w-full border border-stone-200 rounded-xl px-4 py-3 mb-6 focus:border-terracotta-500 focus:outline-none">
+            <input type="email" id="login-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
+            <input type="password" id="login-password" placeholder="Mot de passe (6 car. min)" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-6 focus:border-terracotta-500 focus:outline-none">
             
             <div class="flex flex-col gap-3">
                 <button onclick="handleLogin()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Connexion</button>
-                <button onclick="handleSignup()" class="w-full bg-stone-200 text-stone-700 font-semibold py-3 rounded-xl hover:bg-stone-300 transition">S'inscrire</button>
+                <button onclick="handleSignup()" class="w-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200 font-semibold py-3 rounded-xl hover:bg-stone-300 dark:hover:bg-stone-600 transition">S'inscrire</button>
             </div>
         </div>
     </div>
-<!-- PAGE PROFIL / TABLEAU DE BORD -->
+    
+    <!-- PAGE PROFIL / TABLEAU DE BORD -->
     <div id="profile-page" class="hidden min-h-screen p-6 pt-24 max-w-5xl mx-auto">
-        <h2 class="text-3xl font-bold mb-8 text-stone-900">Mon Espace Renger</h2>
+        <h2 class="text-3xl font-bold mb-8 text-stone-900 dark:text-white">Mon Espace Renger</h2>
         
-        <!-- Onglets de navigation -->
-        <div class="flex gap-6 mb-8 border-b border-stone-200">
+        <div class="flex gap-6 mb-8 border-b border-stone-200 dark:border-stone-700">
             <button id="tab-buyer" onclick="switchProfileTab('buyer')" class="text-terracotta-600 font-bold border-b-2 border-terracotta-600 pb-3 text-lg transition">Mes locations (Client)</button>
-            <button id="tab-seller" onclick="switchProfileTab('seller')" class="text-stone-400 font-bold hover:text-stone-700 pb-3 text-lg transition">Mon parc (Propriétaire)</button>
+            <button id="tab-seller" onclick="switchProfileTab('seller')" class="text-stone-400 font-bold hover:text-stone-700 dark:hover:text-stone-300 pb-3 text-lg transition">Mon parc (Propriétaire)</button>
         </div>
 
-        <!-- VUE 1 : CLIENT (Locations en cours) -->
         <div id="profile-buyer-section" class="space-y-6">
-            <p class="text-stone-500 mb-4">Vos réservations à venir et en cours.</p>
-            <div id="buyer-bookings-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Rempli par JavaScript -->
-            </div>
+            <p class="text-stone-500 dark:text-stone-400 mb-4">Vos réservations à venir et en cours.</p>
+            <div id="buyer-bookings-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </div>
 
-        <!-- VUE 2 : PROPRIÉTAIRE (Flotte et Revenus) -->
         <div id="profile-seller-section" class="hidden">
-            <!-- Tableau de bord financier -->
             <div class="bg-stone-900 rounded-3xl p-8 text-white mb-10 flex justify-between items-center shadow-lg">
                 <div>
                     <p class="text-stone-400 font-medium mb-1">Revenus nets générés ce mois-ci</p>
@@ -334,40 +311,37 @@
                 </div>
                 <div class="text-5xl">📈</div>
             </div>
-
-            <h3 class="text-2xl font-bold text-stone-800 mb-6">État de ma flotte</h3>
-            <div id="seller-trailers-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Rempli par JavaScript -->
-            </div>
+            <h3 class="text-2xl font-bold text-stone-800 dark:text-white mb-6">État de ma flotte</h3>
+            <div id="seller-trailers-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </div>
     </div>
 
-    <!-- PAGE PARAMÈTRES (RÉGLAGES) -->
+    <!-- PAGE PARAMÈTRES -->
     <div id="settings-page" class="hidden min-h-screen p-6 pt-24 max-w-3xl mx-auto">
         <button onclick="openProfile()" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition">← Retour à Mon Espace</button>
-        <h2 class="text-3xl font-bold mb-8 text-stone-900">Paramètres du compte</h2>
+        <h2 class="text-3xl font-bold mb-8 text-stone-900 dark:text-white">Paramètres du compte</h2>
         
-        <div class="bg-white p-8 rounded-3xl shadow-sm border border-stone-100 mb-8">
-            <h3 class="text-xl font-bold text-stone-800 mb-2">Vos informations</h3>
-            <p class="text-stone-500 mb-6">Connecté en tant que : <span id="settings-email" class="font-bold text-terracotta-600"></span></p>
+        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
+            <h3 class="text-xl font-bold text-stone-800 dark:text-white mb-2">Vos informations</h3>
+            <p class="text-stone-500 dark:text-stone-400 mb-6">Connecté en tant que : <span id="settings-email" class="font-bold text-terracotta-600"></span></p>
         </div>
 
-        <div class="bg-white p-8 rounded-3xl shadow-sm border border-stone-100 mb-8">
-            <h3 class="text-xl font-bold text-stone-800 mb-2">Configuration bancaire (Propriétaire)</h3>
-            <p class="text-stone-500 mb-6">Ajoutez votre IBAN de manière sécurisée via Stripe pour recevoir l'argent de vos locations (80% du montant).</p>
+        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
+            <h3 class="text-xl font-bold text-stone-800 dark:text-white mb-2">Configuration bancaire (Propriétaire)</h3>
+            <p class="text-stone-500 dark:text-stone-400 mb-6">Ajoutez votre IBAN via Stripe pour recevoir l'argent de vos locations.</p>
             <button onclick="setupStripePayouts()" class="bg-stone-900 hover:bg-stone-800 text-white font-bold py-3 px-6 rounded-xl transition shadow-md">Configurer mes versements</button>
         </div>
 
-        <div class="bg-red-50 p-8 rounded-3xl shadow-sm border border-red-100">
-            <h3 class="text-xl font-bold text-red-700 mb-2">Zone de danger</h3>
-            <p class="text-red-500 mb-6">La suppression de votre compte est immédiate et irréversible. Toutes vos annonces et réservations associées seront effacées.</p>
+        <div class="bg-red-50 dark:bg-red-950/30 p-8 rounded-3xl shadow-sm border border-red-100 dark:border-red-900">
+            <h3 class="text-xl font-bold text-red-700 dark:text-red-500 mb-2">Zone de danger</h3>
+            <p class="text-red-500 dark:text-red-400 mb-6">La suppression de votre compte est immédiate et irréversible.</p>
             <button onclick="deleteAccount()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-md">Supprimer définitivement mon compte</button>
         </div>
     </div>
     
     <!-- FOOTER LÉGAL -->
-    <footer class="w-full py-8 mt-16 border-t border-stone-200 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
-        <span class="text-stone-300 hidden md:inline">© 2026 Renger</span>
+    <footer class="w-full py-8 mt-16 border-t border-stone-200 dark:border-stone-800 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
+        <span class="text-stone-300 dark:text-stone-600 hidden md:inline">© 2026 Renger</span>
         <a href="cgu.html" class="hover:text-terracotta-500 transition font-medium">Conditions Générales d'Utilisation (CGU)</a>
         <a href="politique-confidentialite.html" class="hover:text-terracotta-500 transition font-medium">Politique de Confidentialité</a>
     </footer>
