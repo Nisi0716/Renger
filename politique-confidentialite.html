@@ -12,32 +12,39 @@
         }
     </script>
 </head>
-<body class="bg-stone-50 text-stone-800 font-sans p-6 md:p-12 relative">
+<body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans p-6 md:p-12 relative transition-colors duration-300">
 
-    <!-- SELECTEUR DE LANGUE (Haut droit) -->
-    <div class="absolute top-6 right-6 md:top-12 md:right-12">
-        <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent font-bold text-stone-600 focus:outline-none cursor-pointer p-2 rounded-xl border border-stone-200 hover:border-terracotta-500 transition">
+    <!-- CONTRÔLES (Haut droit) -->
+    <div class="absolute top-6 right-6 md:top-12 md:right-12 flex items-center gap-4">
+        <!-- Bouton Dark Mode (SVG) -->
+        <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n="theme_btn" title="Changer de thème">
+            <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+        </button>
+        <!-- Sélecteur de langue -->
+        <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent dark:bg-stone-900 font-bold text-stone-600 dark:text-stone-300 focus:outline-none cursor-pointer p-2 rounded-xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 transition">
             <option value="fr">FR</option>
             <option value="de">DE</option>
             <option value="en">EN</option>
         </select>
     </div>
 
-    <div class="max-w-4xl mx-auto bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 mt-10">
+    <div class="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mt-10">
         <a href="index.html" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition">← Retour à l'accueil</a>
         
-        <h1 data-i18n="page_title" class="text-3xl md:text-4xl font-bold mb-2 text-stone-900">Politique de Confidentialité</h1>
-        <p data-i18n="last_update" class="text-stone-500 mb-10">Dernière mise à jour : Septembre 2026 - Conforme à la nLPD (Suisse) et au RGPD (Europe).</p>
+        <h1 data-i18n="page_title" class="text-3xl md:text-4xl font-bold mb-2 text-stone-900 dark:text-white">Politique de Confidentialité</h1>
+        <p data-i18n="last_update" class="text-stone-500 dark:text-stone-400 mb-10">Dernière mise à jour : Septembre 2026 - Conforme à la nLPD (Suisse) et au RGPD (Europe).</p>
         
-        <div class="space-y-8 text-stone-600 leading-relaxed text-justify">
+        <div class="space-y-8 text-stone-600 dark:text-stone-300 leading-relaxed text-justify">
             
             <section>
-                <h2 data-i18n="h2_1" class="text-xl font-bold text-stone-800 mb-3">1. Introduction et Responsable du traitement</h2>
+                <h2 data-i18n="h2_1" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">1. Introduction et Responsable du traitement</h2>
                 <p data-i18n="p_1">La plateforme Renger s'engage à protéger la vie privée de ses utilisateurs. La présente politique explique comment nous collectons, utilisons et protégeons vos données personnelles lors de l'utilisation de notre plateforme de location de remorques. Le responsable du traitement est Renger, domicilié dans le Canton de Vaud, Suisse.</p>
             </section>
 
             <section>
-                <h2 data-i18n="h2_2" class="text-xl font-bold text-stone-800 mb-3">2. Les données que nous collectons</h2>
+                <h2 data-i18n="h2_2" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">2. Les données que nous collectons</h2>
                 <p data-i18n="p_2">Pour assurer le bon fonctionnement de notre service de mise en relation, nous collectons les données strictement nécessaires :</p>
                 <ul class="list-disc pl-5 mt-2 space-y-1">
                     <li data-i18n="li_2_1"><strong>Données de profil :</strong> Adresse email, nom et prénom lors de la création du compte via Supabase.</li>
@@ -47,7 +54,7 @@
             </section>
 
             <section>
-                <h2 data-i18n="h2_3" class="text-xl font-bold text-stone-800 mb-3">3. Traitement bancaire et Données financières (Stripe)</h2>
+                <h2 data-i18n="h2_3" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">3. Traitement bancaire et Données financières (Stripe)</h2>
                 <p data-i18n="p_3">La sécurité de vos paiements est notre priorité absolue. Renger ne stocke jamais vos coordonnées bancaires directes sur ses propres serveurs.</p>
                 <ul class="list-disc pl-5 mt-2 space-y-1">
                     <li data-i18n="li_3_1"><strong>Pour les locataires :</strong> Le paiement et le blocage de la caution se font via les interfaces sécurisées de Stripe Checkout ou Elements.</li>
@@ -56,7 +63,7 @@
             </section>
 
             <section>
-                <h2 data-i18n="h2_4" class="text-xl font-bold text-stone-800 mb-3">4. Sous-traitants technologiques (DPA)</h2>
+                <h2 data-i18n="h2_4" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">4. Sous-traitants technologiques (DPA)</h2>
                 <p data-i18n="p_4">Vos données sont traitées par des partenaires technologiques certifiés qui agissent en notre nom, conformément à des accords stricts de protection des données :</p>
                 <ul class="list-disc pl-5 mt-2 space-y-1">
                     <li data-i18n="li_4_1"><strong>Supabase :</strong> Hébergement de la base de données et gestion de l'authentification (Mots de passe cryptés, accès Google/Apple).</li>
@@ -65,12 +72,12 @@
             </section>
 
             <section>
-                <h2 data-i18n="h2_5" class="text-xl font-bold text-stone-800 mb-3">5. Sécurité de vos données</h2>
+                <h2 data-i18n="h2_5" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">5. Sécurité de vos données</h2>
                 <p data-i18n="p_5">Nous appliquons des mesures de sécurité de pointe pour protéger vos informations. Notre base de données utilise des règles de sécurité au niveau des lignes (Row Level Security - RLS) pour s'assurer que vos informations personnelles ou vos réservations ne soient accessibles qu'à vous-même et aux parties impliquées dans une location active.</p>
             </section>
 
             <section>
-                <h2 data-i18n="h2_6" class="text-xl font-bold text-stone-800 mb-3">6. Vos droits (nLPD et RGPD)</h2>
+                <h2 data-i18n="h2_6" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">6. Vos droits (nLPD et RGPD)</h2>
                 <p data-i18n="p_6">Conformément à la législation en vigueur, vous disposez des droits suivants concernant vos données personnelles :</p>
                 <ul class="list-disc pl-5 mt-2 space-y-1">
                     <li data-i18n="li_6_1"><strong>Droit d'accès et de portabilité :</strong> Vous pouvez demander un export de toutes les données liées à votre compte.</li>
@@ -82,15 +89,16 @@
 
         </div>
         
-        <div data-i18n="footer_text" class="mt-12 pt-8 border-t border-stone-200 text-sm text-stone-400 text-center">
+        <div data-i18n="footer_text" class="mt-12 pt-8 border-t border-stone-200 dark:border-stone-700 text-sm text-stone-400 dark:text-stone-500 text-center">
             En naviguant sur ce site et en créant un compte, vous acceptez notre Politique de Confidentialité.
         </div>
     </div>
 
-    <!-- SCRIPT DE TRADUCTION MULTILINGUE -->
+    <!-- SCRIPT LOGIQUE (TRADUCTION ET THEME) -->
     <script>
         const translations = {
             fr: {
+                theme_btn: "Changer de thème",
                 back_home: "← Retour à l'accueil",
                 page_title: "Politique de Confidentialité",
                 last_update: "Dernière mise à jour : Septembre 2026 - Conforme à la nLPD (Suisse) et au RGPD (Europe).",
@@ -98,28 +106,29 @@
                 p_1: "La plateforme Renger s'engage à protéger la vie privée de ses utilisateurs. La présente politique explique comment nous collectons, utilisons et protégeons vos données personnelles lors de l'utilisation de notre plateforme de location de remorques. Le responsable du traitement est Renger, domicilié dans le Canton de Vaud, Suisse.",
                 h2_2: "2. Les données que nous collectons",
                 p_2: "Pour assurer le bon fonctionnement de notre service de mise en relation, nous collectons les données strictement nécessaires :",
-                li_2_1: "Données de profil : Adresse email, nom et prénom lors de la création du compte via Supabase.",
-                li_2_2: "Données des annonces : Photos de la remorque, localisation approximative, caractéristiques techniques.",
-                li_2_3: "Données d'état des lieux : Photographies horodatées prises lors de la remise et restitution du matériel.",
+                li_2_1: "<strong>Données de profil :</strong> Adresse email, nom et prénom lors de la création du compte via Supabase.",
+                li_2_2: "<strong>Données des annonces :</strong> Photos de la remorque, localisation approximative, caractéristiques techniques.",
+                li_2_3: "<strong>Données d'état des lieux :</strong> Photographies horodatées prises lors de la remise et restitution du matériel.",
                 h2_3: "3. Traitement bancaire et Données financières (Stripe)",
                 p_3: "La sécurité de vos paiements est notre priorité absolue. Renger ne stocke jamais vos coordonnées bancaires directes sur ses propres serveurs.",
-                li_3_1: "Pour les locataires : Le paiement et le blocage de la caution se font via les interfaces sécurisées de Stripe Checkout ou Elements.",
-                li_3_2: "Pour les propriétaires : La vérification d'identité (KYC) et la récolte de l'IBAN sont entièrement déléguées au formulaire sécurisé Stripe Express Onboarding.",
+                li_3_1: "<strong>Pour les locataires :</strong> Le paiement et le blocage de la caution se font via les interfaces sécurisées de Stripe Checkout ou Elements.",
+                li_3_2: "<strong>Pour les propriétaires :</strong> La vérification d'identité (KYC) et la récolte de l'IBAN sont entièrement déléguées au formulaire sécurisé Stripe Express Onboarding.",
                 h2_4: "4. Sous-traitants technologiques (DPA)",
                 p_4: "Vos données sont traitées par des partenaires technologiques certifiés qui agissent en notre nom, conformément à des accords stricts de protection des données :",
-                li_4_1: "Supabase : Hébergement de la base de données et gestion de l'authentification (Mots de passe cryptés, accès Google/Apple).",
-                li_4_2: "Stripe Connect : Traitement des paiements, gestion du séquestre, et vérification de la fraude.",
+                li_4_1: "<strong>Supabase :</strong> Hébergement de la base de données et gestion de l'authentification (Mots de passe cryptés, accès Google/Apple).",
+                li_4_2: "<strong>Stripe Connect :</strong> Traitement des paiements, gestion du séquestre, et vérification de la fraude.",
                 h2_5: "5. Sécurité de vos données",
                 p_5: "Nous appliquons des mesures de sécurité de pointe pour protéger vos informations. Notre base de données utilise des règles de sécurité au niveau des lignes (Row Level Security - RLS) pour s'assurer que vos informations personnelles ou vos réservations ne soient accessibles qu'à vous-même et aux parties impliquées dans une location active.",
                 h2_6: "6. Vos droits (nLPD et RGPD)",
                 p_6: "Conformément à la législation en vigueur, vous disposez des droits suivants concernant vos données personnelles :",
-                li_6_1: "Droit d'accès et de portabilité : Vous pouvez demander un export de toutes les données liées à votre compte.",
-                li_6_2: "Droit de rectification : Vous pouvez modifier vos informations directement depuis votre espace profil.",
-                li_6_3: "Droit à l'oubli (Suppression) : Vous pouvez exiger la suppression définitive de votre compte et de vos données (sous réserve de nos obligations légales de conservation comptable concernant les transactions passées).",
+                li_6_1: "<strong>Droit d'accès et de portabilité :</strong> Vous pouvez demander un export de toutes les données liées à votre compte.",
+                li_6_2: "<strong>Droit de rectification :</strong> Vous pouvez modifier vos informations directement depuis votre espace profil.",
+                li_6_3: "<strong>Droit à l'oubli (Suppression) :</strong> Vous pouvez exiger la suppression définitive de votre compte et de vos données (sous réserve de nos obligations légales de conservation comptable concernant les transactions passées).",
                 p_6_4: "Pour exercer ces droits, vous pouvez nous contacter directement à l'adresse support de la plateforme.",
                 footer_text: "En naviguant sur ce site et en créant un compte, vous acceptez notre Politique de Confidentialité."
             },
             de: {
+                theme_btn: "Thema wechseln",
                 back_home: "← Zurück zur Startseite",
                 page_title: "Datenschutzerklärung",
                 last_update: "Letzte Aktualisierung: September 2026 - Konform mit dem revDSG (Schweiz) und der DSGVO (Europa).",
@@ -127,28 +136,29 @@
                 p_1: "Die Renger-Plattform verpflichtet sich, die Privatsphäre ihrer Nutzer zu schützen. Diese Richtlinie erklärt, wie wir Ihre personenbezogenen Daten bei der Nutzung unserer Anhänger-Mietplattform erheben, verwenden und schützen. Verantwortlicher für die Datenverarbeitung ist Renger, mit Sitz im Kanton Waadt, Schweiz.",
                 h2_2: "2. Daten, die wir erheben",
                 p_2: "Um das reibungslose Funktionieren unseres Vermittlungsdienstes zu gewährleisten, erheben wir nur die unbedingt notwendigen Daten:",
-                li_2_1: "Profildaten: E-Mail-Adresse, Vor- und Nachname bei der Kontoerstellung über Supabase.",
-                li_2_2: "Anzeigendaten: Fotos des Anhängers, ungefährer Standort, technische Merkmale.",
-                li_2_3: "Zustandsprotokolldaten: Zeitgestempelte Fotos, die bei der Übergabe und Rückgabe der Ausrüstung aufgenommen wurden.",
+                li_2_1: "<strong>Profildaten:</strong> E-Mail-Adresse, Vor- und Nachname bei der Kontoerstellung über Supabase.",
+                li_2_2: "<strong>Anzeigendaten:</strong> Fotos des Anhängers, ungefährer Standort, technische Merkmale.",
+                li_2_3: "<strong>Zustandsprotokolldaten:</strong> Zeitgestempelte Fotos, die bei der Übergabe und Rückgabe der Ausrüstung aufgenommen wurden.",
                 h2_3: "3. Bankabwicklung und Finanzdaten (Stripe)",
                 p_3: "Die Sicherheit Ihrer Zahlungen ist unsere höchste Priorität. Renger speichert niemals Ihre direkten Bankdaten auf eigenen Servern.",
-                li_3_1: "Für Mieter: Die Zahlung und die Blockierung der Kaution erfolgen über die sicheren Schnittstellen von Stripe Checkout oder Elements.",
-                li_3_2: "Für Eigentümer: Die Identitätsprüfung (KYC) und die Erfassung der IBAN werden vollständig an das sichere Formular Stripe Express Onboarding delegiert.",
+                li_3_1: "<strong>Für Mieter:</strong> Die Zahlung und die Blockierung der Kaution erfolgen über die sicheren Schnittstellen von Stripe Checkout oder Elements.",
+                li_3_2: "<strong>Für Eigentümer:</strong> Die Identitätsprüfung (KYC) und die Erfassung der IBAN werden vollständig an das sichere Formular Stripe Express Onboarding delegiert.",
                 h2_4: "4. Technologische Auftragsverarbeiter (DPA)",
                 p_4: "Ihre Daten werden von zertifizierten Technologiepartnern in unserem Auftrag gemäß strengen Datenschutzvereinbarungen verarbeitet:",
-                li_4_1: "Supabase: Hosting der Datenbank und Verwaltung der Authentifizierung (verschlüsselte Passwörter, Google/Apple-Zugang).",
-                li_4_2: "Stripe Connect: Zahlungsabwicklung, Treuhandverwaltung und Betrugsprüfung.",
+                li_4_1: "<strong>Supabase:</strong> Hosting der Datenbank und Verwaltung der Authentifizierung (verschlüsselte Passwörter, Google/Apple-Zugang).",
+                li_4_2: "<strong>Stripe Connect:</strong> Zahlungsabwicklung, Treuhandverwaltung und Betrugsprüfung.",
                 h2_5: "5. Sicherheit Ihrer Daten",
                 p_5: "Wir wenden modernste Sicherheitsmaßnahmen an, um Ihre Informationen zu schützen. Unsere Datenbank verwendet Sicherheitsrichtlinien auf Zeilenebene (Row Level Security - RLS), um sicherzustellen, dass Ihre persönlichen Informationen oder Buchungen nur für Sie selbst und die an einer aktiven Miete beteiligten Parteien zugänglich sind.",
                 h2_6: "6. Ihre Rechte (revDSG und DSGVO)",
                 p_6: "Gemäß der geltenden Gesetzgebung haben Sie folgende Rechte bezüglich Ihrer personenbezogenen Daten:",
-                li_6_1: "Recht auf Auskunft und Datenübertragbarkeit: Sie können einen Export aller mit Ihrem Konto verknüpften Daten anfordern.",
-                li_6_2: "Recht auf Berichtigung: Sie können Ihre Informationen direkt in Ihrem Profilbereich ändern.",
-                li_6_3: "Recht auf Vergessenwerden (Löschung): Sie können die endgültige Löschung Ihres Kontos und Ihrer Daten verlangen (vorbehaltlich unserer gesetzlichen Aufbewahrungspflichten für vergangene Transaktionen).",
+                li_6_1: "<strong>Recht auf Auskunft und Datenübertragbarkeit:</strong> Sie können einen Export aller mit Ihrem Konto verknüpften Daten anfordern.",
+                li_6_2: "<strong>Recht auf Berichtigung:</strong> Sie können Ihre Informationen direkt in Ihrem Profilbereich ändern.",
+                li_6_3: "<strong>Recht auf Vergessenwerden (Löschung):</strong> Sie können die endgültige Löschung Ihres Kontos und Ihrer Daten verlangen (vorbehaltlich unserer gesetzlichen Aufbewahrungspflichten für vergangene Transaktionen).",
                 p_6_4: "Um diese Rechte auszuüben, können Sie uns direkt über die Support-Adresse der Plattform kontaktieren.",
                 footer_text: "Durch das Surfen auf dieser Website und die Erstellung eines Kontos akzeptieren Sie unsere Datenschutzerklärung."
             },
             en: {
+                theme_btn: "Toggle theme",
                 back_home: "← Back to home",
                 page_title: "Privacy Policy",
                 last_update: "Last updated: September 2026 - Compliant with the revFADP (Switzerland) and GDPR (Europe).",
@@ -156,24 +166,24 @@
                 p_1: "The Renger platform is committed to protecting the privacy of its users. This policy explains how we collect, use, and protect your personal data when using our trailer rental platform. The data controller is Renger, domiciled in the Canton of Vaud, Switzerland.",
                 h2_2: "2. Data we collect",
                 p_2: "To ensure the proper functioning of our matchmaking service, we collect strictly necessary data:",
-                li_2_1: "Profile data: Email address, first and last name when creating an account via Supabase.",
-                li_2_2: "Listing data: Trailer photos, approximate location, technical specifications.",
-                li_2_3: "Inspection data: Time-stamped photographs taken during the handover and return of the equipment.",
+                li_2_1: "<strong>Profile data:</strong> Email address, first and last name when creating an account via Supabase.",
+                li_2_2: "<strong>Listing data:</strong> Trailer photos, approximate location, technical specifications.",
+                li_2_3: "<strong>Inspection data:</strong> Time-stamped photographs taken during the handover and return of the equipment.",
                 h2_3: "3. Banking processing and Financial data (Stripe)",
                 p_3: "The security of your payments is our top priority. Renger never stores your direct bank details on its own servers.",
-                li_3_1: "For renters: Payment and deposit holds are processed through the secure interfaces of Stripe Checkout or Elements.",
-                li_3_2: "For owners: Identity verification (KYC) and IBAN collection are fully delegated to the secure Stripe Express Onboarding form.",
+                li_3_1: "<strong>For renters:</strong> Payment and deposit holds are processed through the secure interfaces of Stripe Checkout or Elements.",
+                li_3_2: "<strong>For owners:</strong> Identity verification (KYC) and IBAN collection are fully delegated to the secure Stripe Express Onboarding form.",
                 h2_4: "4. Technological Processors (DPA)",
                 p_4: "Your data is processed by certified technological partners acting on our behalf, in accordance with strict data protection agreements:",
-                li_4_1: "Supabase: Database hosting and authentication management (encrypted passwords, Google/Apple access).",
-                li_4_2: "Stripe Connect: Payment processing, escrow management, and fraud verification.",
+                li_4_1: "<strong>Supabase:</strong> Database hosting and authentication management (encrypted passwords, Google/Apple access).",
+                li_4_2: "<strong>Stripe Connect:</strong> Payment processing, escrow management, and fraud verification.",
                 h2_5: "5. Security of your data",
                 p_5: "We apply state-of-the-art security measures to protect your information. Our database uses Row Level Security (RLS) to ensure that your personal information or bookings are only accessible to yourself and the parties involved in an active rental.",
                 h2_6: "6. Your rights (revFADP and GDPR)",
                 p_6: "In accordance with applicable legislation, you have the following rights regarding your personal data:",
-                li_6_1: "Right of access and portability: You can request an export of all data linked to your account.",
-                li_6_2: "Right to rectification: You can modify your information directly from your profile area.",
-                li_6_3: "Right to be forgotten (Deletion): You can request the permanent deletion of your account and your data (subject to our legal accounting retention obligations regarding past transactions).",
+                li_6_1: "<strong>Right of access and portability:</strong> You can request an export of all data linked to your account.",
+                li_6_2: "<strong>Right to rectification:</strong> You can modify your information directly from your profile area.",
+                li_6_3: "<strong>Right to be forgotten (Deletion):</strong> You can request the permanent deletion of your account and your data (subject to our legal accounting retention obligations regarding past transactions).",
                 p_6_4: "To exercise these rights, you can contact us directly at the platform's support address.",
                 footer_text: "By browsing this site and creating an account, you accept our Privacy Policy."
             }
@@ -183,16 +193,35 @@
             document.querySelectorAll('[data-i18n]').forEach(element => {
                 const key = element.getAttribute('data-i18n');
                 if (translations[lang] && translations[lang][key]) { 
-                    // Utiliser innerHTML pour conserver les balises <strong> éventuelles
                     element.innerHTML = translations[lang][key]; 
                 }
             });
             localStorage.setItem('renger_lang', lang);
         }
 
-        // INITIALISATION AU CHARGEMENT
-        // On vérifie le localStorage pour s'aligner sur le choix fait sur la page d'accueil
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            const isDark = html.classList.contains('dark');
+            localStorage.setItem('renger_theme', isDark ? 'dark' : 'light');
+            
+            const iconPath = isDark 
+                ? "M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" 
+                : "M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z";
+            document.querySelector('#theme-icon path').setAttribute('d', iconPath);
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('renger_theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark');
+                document.querySelector('#theme-icon path').setAttribute('d', "M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z");
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
+            initTheme();
             const savedLang = localStorage.getItem('renger_lang') || 'fr';
             document.getElementById('lang-selector').value = savedLang;
             changeLanguage(savedLang);
