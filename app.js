@@ -144,14 +144,19 @@ async function loadTrailers() {
         const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
         
         card.innerHTML = `
-            <div class="h-48 bg-stone-200 relative">
-                <img src="${imgUrl}" class="w-full h-full object-cover">
-                <div class="absolute top-3 right-3 bg-white px-2 py-1 rounded-lg text-sm font-bold shadow">${trailer.price} CHF<span class="text-xs font-normal">/j</span></div>
+            <div class="h-48 bg-stone-200 dark:bg-stone-700 relative border-b border-stone-200 dark:border-stone-700">
+                <img src="${trailer.image_url || 'https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger'}" class="w-full h-full object-cover">
+                <!-- Correction du prix : Fond sombre et texte blanc en dark mode -->
+                <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow-sm text-stone-900 dark:text-white">
+                    ${trailer.price} CHF<span class="text-xs font-normal text-stone-500 dark:text-stone-400">/j</span>
+                </div>
             </div>
-            <div class="p-5">
-                <h4 class="font-bold text-lg mb-1">${trailer.title}</h4>
-                <p class="text-sm text-stone-500 mb-4">📍 Vaud</p>
-                <button class="w-full bg-terracotta-50 text-terracotta-600 font-semibold py-2.5 rounded-xl">Voir les détails</button>
+            <div class="p-5 bg-white dark:bg-stone-800">
+                <!-- Correction du titre : Texte blanc en dark mode -->
+                <h4 class="font-bold text-lg mb-1 text-stone-900 dark:text-white">${trailer.title}</h4>
+                <button class="w-full bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 font-semibold py-2.5 rounded-xl mt-4 transition hover:bg-terracotta-500 hover:text-white dark:hover:bg-terracotta-500 dark:hover:text-white">
+                    Voir les détails
+                </button>
             </div>
         `;
         grid.appendChild(card);

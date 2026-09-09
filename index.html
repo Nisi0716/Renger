@@ -27,6 +27,23 @@
     
     <!-- 2. CHARGEMENT DE TA LOGIQUE (Le cerveau) -->
     <script src="app.js" defer></script>
+
+    <style>
+        /* Adaptation du calendrier Flatpickr pour le mode sombre */
+        html.dark .flatpickr-calendar {
+            background: #292524;
+            border-color: #44403c;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        html.dark .flatpickr-day { color: #f5f5f4; }
+        html.dark .flatpickr-day.flatpickr-disabled { color: #57534e; }
+        html.dark .flatpickr-month, html.dark .flatpickr-current-month, html.dark .flatpickr-weekday { color: #d6d3d1; fill: #d6d3d1; }
+        html.dark .flatpickr-day.selected, html.dark .flatpickr-day.startRange, html.dark .flatpickr-day.endRange { 
+            background: #d85110; 
+            border-color: #d85110; 
+        }
+    </style>
+
 </head>
 <body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative pb-20 transition-colors duration-300">
 
@@ -38,6 +55,13 @@
 
     <!-- HEADER & AUTHENTIFICATION -->
     <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
+        <!-- Bouton Dark Mode -->
+<button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n="theme_btn" title="Mode sombre/clair">
+    <!-- Icône SVG par défaut (Lune) -->
+    <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+    </svg>
+</button>
         <div class="text-2xl font-bold text-terracotta-500 cursor-pointer" onclick="showWelcomeScreen()">Renger</div>
         <div class="flex items-center gap-4">
         <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition text-xl mr-4" title="Mode sombre" data-i18n="theme_btn">
@@ -113,32 +137,32 @@
             </div>
 
             <!-- Colonne de droite : Le Calendrier de réservation -->
-            <div class="bg-white p-8 rounded-3xl shadow-lg border border-stone-100 h-fit sticky top-24">
+            <!-- Calendrier (Corrigé pour le contraste) -->
+            <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-lg border border-stone-100 dark:border-stone-700 h-fit sticky top-24">
                 <div class="flex items-end gap-2 mb-6">
-                    <span id="detail-price" class="text-4xl font-bold text-stone-900"></span>
-                    <span class="text-stone-500 font-medium pb-1">CHF / jour</span>
+                    <span id="detail-price" class="text-4xl font-bold text-stone-900 dark:text-white"></span>
+                    <span data-i18n="per_day" class="text-stone-500 dark:text-stone-400 font-medium pb-1">CHF / jour</span>
                 </div>
 
                 <div class="mb-6">
-                    <label class="block text-sm font-bold text-stone-700 mb-2">Sélectionnez vos dates</label>
-                    <!-- C'est ici que le calendrier magique va s'afficher -->
-                    <input type="text" id="booking-dates" placeholder="Date de départ - Date de retour" class="w-full border-2 border-stone-200 rounded-2xl p-4 bg-stone-50 focus:bg-white focus:border-terracotta-500 outline-none transition cursor-pointer text-stone-700 font-medium" readonly>
+                    <label data-i18n="select_dates" class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Sélectionnez vos dates</label>
+                    <input type="text" id="booking-dates" placeholder="Dates..." class="w-full border-2 border-stone-200 dark:border-stone-600 rounded-2xl p-4 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:border-terracotta-500 outline-none transition cursor-pointer font-medium" readonly>
                 </div>
 
-                <!-- Le devis caché qui apparaît quand on choisit les dates -->
-                <div id="booking-summary" class="hidden border-t border-stone-200 pt-6 mb-6">
-                    <div class="flex justify-between text-stone-600 mb-2">
-                        <span><span id="total-days">0</span> jour(s) de location</span>
+                <div id="booking-summary" class="hidden border-t border-stone-200 dark:border-stone-700 pt-6 mb-6">
+                    <div class="flex justify-between text-stone-600 dark:text-stone-400 mb-2">
+                        <span><span id="total-days">0</span> <span data-i18n="days_rent">jour(s) de location</span></span>
                     </div>
-                    <div class="flex justify-between font-bold text-xl text-stone-900 mt-4">
-                        <span>Total</span>
+                    <div class="flex justify-between font-bold text-xl text-stone-900 dark:text-white mt-4">
+                        <span data-i18n="total">Total</span>
                         <span id="total-price">0 CHF</span>
                     </div>
                 </div>
 
-                <button onclick="submitBooking()" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg">
+                <button onclick="submitBooking()" data-i18n="book_btn" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-4">
                     Réserver cette remorque
                 </button>
+            </div>
                 <p class="text-center text-xs text-stone-400 mt-4">Une caution par empreinte bancaire vous sera demandée à l'étape suivante.</p>
             </div>
         </div>
