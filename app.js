@@ -125,83 +125,66 @@ async function checkUser() {
 // ==========================================
 // 4. ANNONCES (AFFICHAGE ET CRÉATION)
 // ==========================================
+// ==========================================
+// 4. CHARGEMENT DES ANNONCES (AVEC SKELETON LOADERS)
+// ==========================================
 async function loadTrailers() {
     if (!supabaseClient) return;
-    const { data: trailers, error } = await supabaseClient.from('trailers').select('*').order('id', { ascending: false });
-    if (error) return;
-
     const grid = document.getElementById('trailers-grid');
     if (!grid) return;
+    
+    // 1. EFFET SKELETON : On affiche 3 cartes fantômes qui clignotent (animate-pulse)
+    grid.innerHTML = `
+        ${[1, 2, 3].map(() => `
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-hidden animate-pulse">
+            <div class="h-48 bg-stone-200 dark:bg-stone-700 w-full"></div>
+            <div class="p-5">
+                <div class="h-5 bg-stone-200 dark:bg-stone-700 rounded w-3/4 mb-3"></div>
+                <div class="h-4 bg-stone-200 dark:bg-stone-700 rounded w-1/2 mb-5"></div>
+                <div class="h-10 bg-stone-100 dark:bg-stone-700 rounded-xl w-full"></div>
+            </div>
+        </div>`).join('')}
+    `;
+
+    // On récupère les données
+    const { data: trailers, error } = await supabaseClient.from('trailers').select('*').order('id', { ascending: false });
+    
+    // 2. On vide les Skeletons pour afficher les vraies données
     grid.innerHTML = ''; 
     
-    if (!trailers || trailers.length === 0) return;
+    if (error || !trailers || trailers.length === 0) {
+        grid.innerHTML = '<p class="text-stone-500 text-center w-full col-span-full">Aucune remorque disponible pour le moment.</p>';
+        return;
+    }
 
     trailers.forEach(trailer => {
         const card = document.createElement('div');
-        card.className = "bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden hover:shadow-md cursor-pointer";
+        card.className = "bg-white dark:bg-stone-800 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-lg transition cursor-pointer group";
         card.onclick = () => openTrailerDetail(trailer);
         
-        const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
+        const imgUrl = trailer.image_url || "https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop";
         
         card.innerHTML = `
-            <div class="h-48 bg-stone-200 dark:bg-stone-700 relative border-b border-stone-200 dark:border-stone-700">
-                <img src="${trailer.image_url || 'https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger'}" class="w-full h-full object-cover">
-                <!-- Correction du prix : Fond sombre et texte blanc en dark mode -->
-                <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow-sm text-stone-900 dark:text-white">
+            <div class="h-48 bg-stone-200 dark:bg-stone-700 relative overflow-hidden">
+                <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                <!-- Badge Prix -->
+                <div class="absolute top-3 right-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm px-3 py-1.5 rounded-xl text-sm font-bold text-stone-900 dark:text-white shadow-sm">
                     ${trailer.price} CHF<span class="text-xs font-normal text-stone-500 dark:text-stone-400">/j</span>
                 </div>
+                <!-- Badge Confiance -->
+                <div class="absolute top-3 left-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
+                    <span class="text-xs font-bold text-stone-800 dark:text-white flex items-center gap-1">⭐ 4.9</span>
+                </div>
             </div>
-            <div class="p-5 bg-white dark:bg-stone-800">
-                <!-- Correction du titre : Texte blanc en dark mode -->
-                <h4 class="font-bold text-lg mb-1 text-stone-900 dark:text-white">${trailer.title}</h4>
-                <button class="w-full bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 font-semibold py-2.5 rounded-xl mt-4 transition hover:bg-terracotta-500 hover:text-white dark:hover:bg-terracotta-500 dark:hover:text-white">
-                    Voir les détails
-                </button>
+            <div class="p-5">
+                <h4 class="font-bold text-lg mb-1 text-stone-800 dark:text-white truncate">${trailer.title}</h4>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mb-4 flex items-center gap-1">
+                    📍 Lausanne <span class="bg-stone-100 dark:bg-stone-700 px-2 py-0.5 rounded text-xs ml-2">Pro</span>
+                </p>
             </div>
         `;
         grid.appendChild(card);
     });
-}
-
-async function handlePublish(event) {
-    event.preventDefault();
-    if (!currentUser) {
-        alert("⚠️ Vous devez être connecté pour publier.");
-        openAuthModal();
-        return;
-    }
-
-    const fileInput = document.getElementById('file-upload');
-    const file = fileInput ? fileInput.files[0] : null;
-    let finalImageUrl = "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
-
-    if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabaseClient.storage.from('trailers-images').upload(fileName, file);
-        if (uploadError) return alert("Erreur photo : " + uploadError.message);
-        
-        const { data: publicUrlData } = supabaseClient.storage.from('trailers-images').getPublicUrl(fileName);
-        finalImageUrl = publicUrlData.publicUrl;
-    }
-    
-    const newTrailer = {
-        title: document.getElementById('ad-title').value,
-        price: parseInt(document.getElementById('ad-price').value),
-        payload: parseInt(document.getElementById('ad-payload').value),
-        socket: document.querySelector('input[name="prise"]:checked').value,
-        owner_id: currentUser.id,
-        image_url: finalImageUrl
-    };
-    
-    const { error } = await supabaseClient.from('trailers').insert([newTrailer]);
-    if (error) alert("Erreur BDD : " + error.message);
-    else {
-        alert("✅ Annonce sauvegardée !");
-        document.getElementById('add-trailer-form').reset();
-        showPage('buyer-page');
-        loadTrailers();
-    }
 }
 
 // ==========================================
