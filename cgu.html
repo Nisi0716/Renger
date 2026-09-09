@@ -12,25 +12,32 @@
         }
     </script>
 </head>
-<body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans p-6 md:p-12 relative transition-colors duration-300">
+<body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative transition-colors duration-300 pb-10">
 
-    <!-- CONTRÔLES (Haut droit) -->
-    <div class="absolute top-6 right-6 md:top-12 md:right-12 flex items-center gap-4">
-        <!-- Bouton Dark Mode (SVG) -->
-        <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n="theme_btn" title="Changer de thème">
-            <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-            </svg>
-        </button>
-        <!-- Sélecteur de langue -->
-        <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent dark:bg-stone-900 font-bold text-stone-600 dark:text-stone-300 focus:outline-none cursor-pointer p-2 rounded-xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 transition">
-            <option value="fr">FR</option>
-            <option value="de">DE</option>
-            <option value="en">EN</option>
-        </select>
-    </div>
+    <!-- HEADER (Identique à l'accueil pour la cohérence) -->
+    <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
+        <!-- Logo -->
+        <a href="index.html" class="text-2xl font-bold text-terracotta-500 cursor-pointer">Renger</a>
+        
+        <!-- Menu Droit -->
+        <div class="flex items-center gap-4">
+            <!-- Bouton Dark Mode (SVG) avec data-i18n-title pour ne pas casser l'icône -->
+            <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n-title="theme_btn" title="Changer de thème">
+                <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+            </button>
 
-    <div class="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mt-10">
+            <!-- Sélecteur de langue -->
+            <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent dark:bg-stone-900 font-bold text-stone-600 dark:text-stone-300 focus:outline-none cursor-pointer">
+                <option value="fr">FR</option>
+                <option value="de">DE</option>
+                <option value="en">EN</option>
+            </select>
+        </div>
+    </header>
+
+    <div class="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mt-24 mx-4">
         <a href="index.html" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition">← Retour à l'accueil</a>
         
         <h1 data-i18n="page_title" class="text-3xl md:text-4xl font-bold mb-2 text-stone-900 dark:text-white">Conditions Générales d'Utilisation (CGU)</h1>
@@ -66,7 +73,7 @@
 
             <section>
                 <h2 data-i18n="h2_5" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">5. Transfert de responsabilité matérielle et État des lieux</h2>
-                <p data-i18n="p_5">La responsabilité de la vérification de l'état du matériel est intégralement transférée aux utilisateurs (propriétaire et locataire). Les parties ont l'obligation stricte de réaliser un état des lieux contradictoire au moyen de photographies lors de la remise et de la restitution de la remorque. Le locataire est le seul responsable juridiquement et financièrement de toute dégradation constatée sur la remorque durant la période de location.</p>
+                <p data-i18n="p_5">La responsibility de la vérification de l'état du matériel est intégralement transférée aux utilisateurs (propriétaire et locataire). Les parties ont l'obligation stricte de réaliser un état des lieux contradictoire au moyen de photographies lors de la remise et de la restitution de la remorque. Le locataire est le seul responsable juridiquement et financièrement de toute dégradation constatée sur la remorque durant la période de location.</p>
             </section>
 
             <section>
@@ -81,7 +88,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT LOGIQUE (TRADUCTION ET THEME) -->
+    <!-- SCRIPT LOGIQUE (TRADUCTION ET THEME CORRIGÉS) -->
     <script>
         const translations = {
             fr: {
@@ -156,10 +163,18 @@
         };
 
         function changeLanguage(lang) {
+            // Traduction des textes classiques
             document.querySelectorAll('[data-i18n]').forEach(element => {
                 const key = element.getAttribute('data-i18n');
                 if (translations[lang] && translations[lang][key]) { 
                     element.innerHTML = translations[lang][key]; 
+                }
+            });
+            // Traduction des infobulles sans casser les SVG !
+            document.querySelectorAll('[data-i18n-title]').forEach(element => {
+                const key = element.getAttribute('data-i18n-title');
+                if (translations[lang] && translations[lang][key]) { 
+                    element.title = translations[lang][key]; 
                 }
             });
             localStorage.setItem('renger_lang', lang);
