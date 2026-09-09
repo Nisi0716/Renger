@@ -14,21 +14,17 @@
 </head>
 <body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative transition-colors duration-300 pb-10">
 
-    <!-- HEADER (Identique à l'accueil pour la cohérence) -->
+    <!-- HEADER -->
     <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
-        <!-- Logo -->
-        <a href="index.html" class="text-2xl font-bold text-terracotta-500 cursor-pointer">Renger</a>
+        <!-- Logo réparé avec JavaScript -->
+        <button onclick="window.location.href='index.html'" class="text-2xl font-bold text-terracotta-500 hover:text-terracotta-600 transition cursor-pointer">Renger</button>
         
-        <!-- Menu Droit -->
         <div class="flex items-center gap-4">
-            <!-- Bouton Dark Mode (SVG) avec data-i18n-title pour ne pas casser l'icône -->
             <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n-title="theme_btn" title="Changer de thème">
                 <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
                 </svg>
             </button>
-
-            <!-- Sélecteur de langue -->
             <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent dark:bg-stone-900 font-bold text-stone-600 dark:text-stone-300 focus:outline-none cursor-pointer">
                 <option value="fr">FR</option>
                 <option value="de">DE</option>
@@ -38,18 +34,17 @@
     </header>
 
     <div class="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mt-24 mx-4">
-        <a href="index.html" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition">← Retour à l'accueil</a>
+        <!-- Bouton retour réparé avec JavaScript -->
+        <button onclick="window.location.href='index.html'" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition text-left">← Retour à l'accueil</button>
         
         <h1 data-i18n="page_title" class="text-3xl md:text-4xl font-bold mb-2 text-stone-900 dark:text-white">Politique de Confidentialité</h1>
         <p data-i18n="last_update" class="text-stone-500 dark:text-stone-400 mb-10">Dernière mise à jour : Septembre 2026 - Conforme à la nLPD (Suisse) et au RGPD (Europe).</p>
         
         <div class="space-y-8 text-stone-600 dark:text-stone-300 leading-relaxed text-justify">
-            
             <section>
                 <h2 data-i18n="h2_1" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">1. Introduction et Responsable du traitement</h2>
                 <p data-i18n="p_1">La plateforme Renger s'engage à protéger la vie privée de ses utilisateurs. La présente politique explique comment nous collectons, utilisons et protégeons vos données personnelles lors de l'utilisation de notre plateforme de location de remorques. Le responsable du traitement est Renger, domicilié dans le Canton de Vaud, Suisse.</p>
             </section>
-
             <section>
                 <h2 data-i18n="h2_2" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">2. Les données que nous collectons</h2>
                 <p data-i18n="p_2">Pour assurer le bon fonctionnement de notre service de mise en relation, nous collectons les données strictement nécessaires :</p>
@@ -59,7 +54,6 @@
                     <li data-i18n="li_2_3"><strong>Données d'état des lieux :</strong> Photographies horodatées prises lors de la remise et restitution du matériel.</li>
                 </ul>
             </section>
-
             <section>
                 <h2 data-i18n="h2_3" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">3. Traitement bancaire et Données financières (Stripe)</h2>
                 <p data-i18n="p_3">La sécurité de vos paiements est notre priorité absolue. Renger ne stocke jamais vos coordonnées bancaires directes sur ses propres serveurs.</p>
@@ -68,7 +62,6 @@
                     <li data-i18n="li_3_2"><strong>Pour les propriétaires :</strong> La vérification d'identité (KYC) et la récolte de l'IBAN sont entièrement déléguées au formulaire sécurisé Stripe Express Onboarding.</li>
                 </ul>
             </section>
-
             <section>
                 <h2 data-i18n="h2_4" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">4. Sous-traitants technologiques (DPA)</h2>
                 <p data-i18n="p_4">Vos données sont traitées par des partenaires technologiques certifiés qui agissent en notre nom, conformément à des accords stricts de protection des données :</p>
@@ -77,12 +70,10 @@
                     <li data-i18n="li_4_2"><strong>Stripe Connect :</strong> Traitement des paiements, gestion du séquestre, et vérification de la fraude.</li>
                 </ul>
             </section>
-
             <section>
                 <h2 data-i18n="h2_5" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">5. Sécurité de vos données</h2>
                 <p data-i18n="p_5">Nous appliquons des mesures de sécurité de pointe pour protéger vos informations. Notre base de données utilise des règles de sécurité au niveau des lignes (Row Level Security - RLS) pour s'assurer que vos informations personnelles ou vos réservations ne soient accessibles qu'à vous-même et aux parties impliquées dans une location active.</p>
             </section>
-
             <section>
                 <h2 data-i18n="h2_6" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">6. Vos droits (nLPD et RGPD)</h2>
                 <p data-i18n="p_6">Conformément à la législation en vigueur, vous disposez des droits suivants concernant vos données personnelles :</p>
@@ -93,7 +84,6 @@
                 </ul>
                 <p class="mt-2" data-i18n="p_6_4">Pour exercer ces droits, vous pouvez nous contacter directement à l'adresse support de la plateforme.</p>
             </section>
-
         </div>
         
         <div data-i18n="footer_text" class="mt-12 pt-8 border-t border-stone-200 dark:border-stone-700 text-sm text-stone-400 dark:text-stone-500 text-center">
@@ -101,7 +91,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT LOGIQUE (TRADUCTION ET THEME CORRIGÉS) -->
+    <!-- SCRIPT LOGIQUE -->
     <script>
         const translations = {
             fr: {
@@ -197,19 +187,13 @@
         };
 
         function changeLanguage(lang) {
-            // Traduction des textes classiques
             document.querySelectorAll('[data-i18n]').forEach(element => {
                 const key = element.getAttribute('data-i18n');
-                if (translations[lang] && translations[lang][key]) { 
-                    element.innerHTML = translations[lang][key]; 
-                }
+                if (translations[lang] && translations[lang][key]) { element.innerHTML = translations[lang][key]; }
             });
-            // Traduction des infobulles sans casser les SVG !
             document.querySelectorAll('[data-i18n-title]').forEach(element => {
                 const key = element.getAttribute('data-i18n-title');
-                if (translations[lang] && translations[lang][key]) { 
-                    element.title = translations[lang][key]; 
-                }
+                if (translations[lang] && translations[lang][key]) { element.title = translations[lang][key]; }
             });
             localStorage.setItem('renger_lang', lang);
         }
@@ -219,10 +203,7 @@
             html.classList.toggle('dark');
             const isDark = html.classList.contains('dark');
             localStorage.setItem('renger_theme', isDark ? 'dark' : 'light');
-            
-            const iconPath = isDark 
-                ? "M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" 
-                : "M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z";
+            const iconPath = isDark ? "M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" : "M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z";
             document.querySelector('#theme-icon path').setAttribute('d', iconPath);
         }
 

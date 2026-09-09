@@ -14,21 +14,17 @@
 </head>
 <body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative transition-colors duration-300 pb-10">
 
-    <!-- HEADER (Identique à l'accueil pour la cohérence) -->
+    <!-- HEADER -->
     <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
-        <!-- Logo -->
-        <a href="index.html" class="text-2xl font-bold text-terracotta-500 cursor-pointer">Renger</a>
+        <!-- Logo réparé avec JavaScript -->
+        <button onclick="window.location.href='index.html'" class="text-2xl font-bold text-terracotta-500 hover:text-terracotta-600 transition cursor-pointer">Renger</button>
         
-        <!-- Menu Droit -->
         <div class="flex items-center gap-4">
-            <!-- Bouton Dark Mode (SVG) avec data-i18n-title pour ne pas casser l'icône -->
             <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n-title="theme_btn" title="Changer de thème">
                 <svg id="theme-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
                 </svg>
             </button>
-
-            <!-- Sélecteur de langue -->
             <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent dark:bg-stone-900 font-bold text-stone-600 dark:text-stone-300 focus:outline-none cursor-pointer">
                 <option value="fr">FR</option>
                 <option value="de">DE</option>
@@ -38,18 +34,17 @@
     </header>
 
     <div class="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mt-24 mx-4">
-        <a href="index.html" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition">← Retour à l'accueil</a>
+        <!-- Bouton retour réparé avec JavaScript -->
+        <button onclick="window.location.href='index.html'" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition text-left">← Retour à l'accueil</button>
         
         <h1 data-i18n="page_title" class="text-3xl md:text-4xl font-bold mb-2 text-stone-900 dark:text-white">Conditions Générales d'Utilisation (CGU)</h1>
         <p data-i18n="last_update" class="text-stone-500 dark:text-stone-400 mb-10">Dernière mise à jour : Septembre 2026 - Droit applicable : Suisse.</p>
         
         <div class="space-y-8 text-stone-600 dark:text-stone-300 leading-relaxed text-justify">
-            
             <section>
                 <h2 data-i18n="h2_1" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">1. Statut d'intermédiaire et Absence de lien contractuel</h2>
                 <p data-i18n="p_1">La plateforme Renger agit exclusivement et strictement en qualité de fournisseur d'infrastructure technologique et d'intermédiaire de mise en relation. <strong>Le contrat de location est conclu directement et exclusivement entre le propriétaire de la remorque et le locataire.</strong> Renger n'est en aucun cas partie prenante à ce contrat, ni propriétaire, ni exploitant, ni loueur du matériel proposé sur le site.</p>
             </section>
-
             <section>
                 <h2 data-i18n="h2_2" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">2. Exonération totale de responsabilité civile et pénale</h2>
                 <p data-i18n="p_2">Renger se décharge de toute responsabilité civile, pénale ou administrative concernant l'utilisation du matériel loué. Renger ne saurait en aucun cas être tenu responsable en cas de :</p>
@@ -60,27 +55,22 @@
                     <li data-i18n="li_2_4">Vices cachés, défauts d'entretien ou défaillance mécanique du matériel mis à disposition par le propriétaire.</li>
                 </ul>
             </section>
-
             <section>
                 <h2 data-i18n="h2_3" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">3. Assurances routières et Responsabilité du véhicule tracteur</h2>
                 <p data-i18n="p_3">Conformément à la législation suisse, dès lors que la remorque est attelée, <strong>c'est l'assurance responsabilité civile (RC) du véhicule tracteur (la voiture du locataire) qui couvre les dommages causés aux tiers.</strong> Renger ne fournit aucune couverture d'assurance pour les accidents de la circulation et n'intervient à aucun moment dans la gestion des sinistres routiers.</p>
             </section>
-
             <section>
                 <h2 data-i18n="h2_4" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">4. Obligations légales du locataire : Permis et Conformité</h2>
                 <p data-i18n="p_4">Il incombe strictement, légalement et exclusivement au locataire de s'assurer, avant de prendre la route, qu'il est <strong>titulaire du permis de conduire adéquat (Permis B ou Permis BE)</strong> en fonction de la somme des Poids Totaux Autorisés en Charge (PTAC) de son véhicule et de la remorque. Le locataire s'engage à vérifier que son véhicule tracteur est techniquement homologué pour tracter la charge louée. Renger exclut toute responsabilité en cas de conduite sans permis valable, de surcharge ou de non-conformité.</p>
             </section>
-
             <section>
                 <h2 data-i18n="h2_5" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">5. Transfert de responsabilité matérielle et État des lieux</h2>
                 <p data-i18n="p_5">La responsibility de la vérification de l'état du matériel est intégralement transférée aux utilisateurs (propriétaire et locataire). Les parties ont l'obligation stricte de réaliser un état des lieux contradictoire au moyen de photographies lors de la remise et de la restitution de la remorque. Le locataire est le seul responsable juridiquement et financièrement de toute dégradation constatée sur la remorque durant la période de location.</p>
             </section>
-
             <section>
                 <h2 data-i18n="h2_6" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">6. Séquestre financier et Cautionnement (Stripe)</h2>
                 <p data-i18n="p_6">Renger utilise la solution certifiée Stripe pour la gestion des transactions. En cas de dégradation prouvée ou de non-restitution, l'utilisateur autorise irrévocablement Renger à exécuter la capture de l'empreinte bancaire (caution) laissée lors de la réservation, afin d'indemniser le propriétaire. Renger n'agit qu'en tant que facilitateur de paiement et ne saurait être tenu responsable en cas d'insolvabilité du locataire ou de rejet bancaire.</p>
             </section>
-
         </div>
         
         <div data-i18n="footer_text" class="mt-12 pt-8 border-t border-stone-200 dark:border-stone-700 text-sm text-stone-400 dark:text-stone-500 text-center">
@@ -88,7 +78,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT LOGIQUE (TRADUCTION ET THEME CORRIGÉS) -->
+    <!-- SCRIPT LOGIQUE -->
     <script>
         const translations = {
             fr: {
@@ -163,19 +153,13 @@
         };
 
         function changeLanguage(lang) {
-            // Traduction des textes classiques
             document.querySelectorAll('[data-i18n]').forEach(element => {
                 const key = element.getAttribute('data-i18n');
-                if (translations[lang] && translations[lang][key]) { 
-                    element.innerHTML = translations[lang][key]; 
-                }
+                if (translations[lang] && translations[lang][key]) { element.innerHTML = translations[lang][key]; }
             });
-            // Traduction des infobulles sans casser les SVG !
             document.querySelectorAll('[data-i18n-title]').forEach(element => {
                 const key = element.getAttribute('data-i18n-title');
-                if (translations[lang] && translations[lang][key]) { 
-                    element.title = translations[lang][key]; 
-                }
+                if (translations[lang] && translations[lang][key]) { element.title = translations[lang][key]; }
             });
             localStorage.setItem('renger_lang', lang);
         }
