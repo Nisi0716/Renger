@@ -20,6 +20,12 @@ function showToast(message, type = 'success') {
     const icon = document.getElementById('toast-icon');
     const text = document.getElementById('toast-message');
 
+    // Sécurité au cas où le HTML du toast n'est pas présent
+    if (!toast || !icon || !text) {
+        alert(message);
+        return;
+    }
+
     text.innerText = message;
     
     if (type === 'success') {
@@ -40,25 +46,17 @@ function showToast(message, type = 'success') {
 }
 
 // ==========================================
-// 2. NAVIGATION SÉCURISÉE
+// 2. NAVIGATION
 // ==========================================
 const pages = ['welcome-screen', 'buyer-page', 'seller-page', 'detail-page', 'inspection-page', 'profile-page', 'settings-page'];
 
 function showPage(pageId) {
-    const target = document.getElementById(pageId);
-    
-    // Le "système anti-crash" : Si la page n'existe pas, on arrête tout pour ne pas geler l'écran.
-    if (!target) {
-        console.error("Erreur de navigation : la page " + pageId + " n'existe pas dans le HTML.");
-        return;
-    }
-
     pages.forEach(p => {
         const el = document.getElementById(p);
         if (el) el.classList.add('hidden');
     });
-    
-    target.classList.remove('hidden');
+    const target = document.getElementById(pageId);
+    if (target) target.classList.remove('hidden');
     window.scrollTo(0, 0);
     
     if(pageId === 'inspection-page' && typeof startCamera === 'function') { 
@@ -81,24 +79,23 @@ function changeLanguage(lang) { localStorage.setItem('renger_lang', lang); }
 // 3. AUTHENTIFICATION & HEADER
 // ==========================================
 async function handleSignup() {
-    if (!supabaseClient) return showToast("Erreur de serveur", "error");
+    if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     const { error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) showToast("Erreur : " + error.message, "error");
-    else showToast("✅ Inscription réussie !", "success");
+    if (error) showToast("Erreur d'inscription : " + error.message, "error");
+    else showToast("Inscription réussie !", "success");
 }
 
 async function handleLogin() {
-    if (!supabaseClient) return showToast("Erreur de serveur", "error");
+    if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) showToast("Erreur : " + error.message, "error");
+    if (error) showToast("Erreur de connexion : " + error.message, "error");
     else {
         closeAuthModal();
         checkUser();
-        showToast("Content de vous revoir !", "success");
     }
 }
 
@@ -119,70 +116,90 @@ async function checkUser() {
     if (currentUser) {
         container.innerHTML = `
             <div class="flex items-center gap-4">
-                <button onclick="openProfile()" class="text-stone-600 dark:text-stone-300 font-bold hover:text-terracotta-500 transition hidden md:block">Mon Espace</button>
-                <button onclick="openSettings()" class="text-stone-600 dark:text-stone-300 font-bold hover:text-terracotta-500 transition">Paramètres</button>
+                <button onclick="openProfile()" class="text-stone-600 font-bold hover:text-terracotta-500 transition hidden md:block">Mon Espace</button>
+                <button onclick="openSettings()" class="text-stone-600 font-bold hover:text-terracotta-500 transition">Paramètres</button>
                 <button onclick="handleLogout()" class="text-stone-400 text-sm hover:underline">Déconnexion</button>
             </div>`;
     } else {
-        container.innerHTML = `<button onclick="openAuthModal()" class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-200 font-semibold py-2 px-4 rounded-xl shadow-sm transition hover:text-terracotta-500">Se connecter</button>`;
+        container.innerHTML = `<button onclick="openAuthModal()" class="bg-white border border-stone-200 text-stone-600 font-semibold py-2 px-4 rounded-xl">Se connecter</button>`;
     }
 }
 
 // ==========================================
-// 4. CHARGEMENT DES ANNONCES 
+// 4. ANNONCES (AFFICHAGE ET CRÉATION)
 // ==========================================
 async function loadTrailers() {
     if (!supabaseClient) return;
+    const { data: trailers, error } = await supabaseClient.from('trailers').select('*').order('id', { ascending: false });
+    if (error) return;
+
     const grid = document.getElementById('trailers-grid');
     if (!grid) return;
-    
-    grid.innerHTML = `
-        ${[1, 2, 3].map(() => `
-        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-hidden animate-pulse">
-            <div class="h-48 bg-stone-200 dark:bg-stone-700 w-full"></div>
-            <div class="p-5">
-                <div class="h-5 bg-stone-200 dark:bg-stone-700 rounded w-3/4 mb-3"></div>
-                <div class="h-4 bg-stone-200 dark:bg-stone-700 rounded w-1/2 mb-5"></div>
-                <div class="h-10 bg-stone-100 dark:bg-stone-700 rounded-xl w-full"></div>
-            </div>
-        </div>`).join('')}
-    `;
-
-    const { data: trailers, error } = await supabaseClient.from('trailers').select('*').order('id', { ascending: false });
-    
     grid.innerHTML = ''; 
     
-    if (error || !trailers || trailers.length === 0) {
-        grid.innerHTML = '<p class="text-stone-500 text-center w-full col-span-full">Aucune remorque disponible pour le moment.</p>';
-        return;
-    }
+    if (!trailers || trailers.length === 0) return;
 
     trailers.forEach(trailer => {
         const card = document.createElement('div');
-        card.className = "bg-white dark:bg-stone-800 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-hidden hover:shadow-lg transition cursor-pointer group";
+        card.className = "bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden hover:shadow-md cursor-pointer";
         card.onclick = () => openTrailerDetail(trailer);
         
-        const imgUrl = trailer.image_url || "https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop";
+        const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
         
         card.innerHTML = `
-            <div class="h-48 bg-stone-200 dark:bg-stone-700 relative overflow-hidden">
-                <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                <div class="absolute top-3 right-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm px-3 py-1.5 rounded-xl text-sm font-bold text-stone-900 dark:text-white shadow-sm">
-                    ${trailer.price} CHF<span class="text-xs font-normal text-stone-500 dark:text-stone-400">/j</span>
-                </div>
-                <div class="absolute top-3 left-3 bg-white/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
-                    <span class="text-xs font-bold text-stone-800 dark:text-white flex items-center gap-1">⭐ 4.9</span>
-                </div>
+            <div class="h-48 bg-stone-200 relative">
+                <img src="${imgUrl}" class="w-full h-full object-cover">
+                <div class="absolute top-3 right-3 bg-white px-2 py-1 rounded-lg text-sm font-bold shadow">${trailer.price} CHF<span class="text-xs font-normal">/j</span></div>
             </div>
             <div class="p-5">
-                <h4 class="font-bold text-lg mb-1 text-stone-800 dark:text-white truncate">${trailer.title}</h4>
-                <p class="text-sm text-stone-500 dark:text-stone-400 mb-4 flex items-center gap-1">
-                    📍 Lausanne <span class="bg-stone-100 dark:bg-stone-700 px-2 py-0.5 rounded text-xs ml-2">Pro</span>
-                </p>
+                <h4 class="font-bold text-lg mb-1">${trailer.title}</h4>
+                <p class="text-sm text-stone-500 mb-4">📍 Vaud</p>
+                <button class="w-full bg-terracotta-50 text-terracotta-600 font-semibold py-2.5 rounded-xl">Voir les détails</button>
             </div>
         `;
         grid.appendChild(card);
     });
+}
+
+async function handlePublish(event) {
+    event.preventDefault();
+    if (!currentUser) {
+        showToast("Vous devez être connecté pour publier.", "error");
+        openAuthModal();
+        return;
+    }
+
+    const fileInput = document.getElementById('file-upload');
+    const file = fileInput ? fileInput.files[0] : null;
+    let finalImageUrl = "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
+
+    if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabaseClient.storage.from('trailers-images').upload(fileName, file);
+        if (uploadError) return showToast("Erreur photo : " + uploadError.message, "error");
+        
+        const { data: publicUrlData } = supabaseClient.storage.from('trailers-images').getPublicUrl(fileName);
+        finalImageUrl = publicUrlData.publicUrl;
+    }
+    
+    const newTrailer = {
+        title: document.getElementById('ad-title').value,
+        price: parseInt(document.getElementById('ad-price').value),
+        payload: parseInt(document.getElementById('ad-payload').value),
+        socket: document.querySelector('input[name="prise"]:checked').value,
+        owner_id: currentUser.id,
+        image_url: finalImageUrl
+    };
+    
+    const { error } = await supabaseClient.from('trailers').insert([newTrailer]);
+    if (error) showToast("Erreur BDD : " + error.message, "error");
+    else {
+        showToast("Annonce sauvegardée !", "success");
+        document.getElementById('add-trailer-form').reset();
+        showPage('buyer-page');
+        loadTrailers();
+    }
 }
 
 // ==========================================
@@ -192,7 +209,7 @@ async function openTrailerDetail(trailer) {
     currentTrailer = trailer;
     document.getElementById('detail-title').innerText = trailer.title;
     document.getElementById('detail-price').innerText = trailer.price;
-    document.getElementById('detail-socket').innerText = trailer.socket || "13 broches";
+    document.getElementById('detail-socket').innerText = trailer.socket;
     document.getElementById('detail-payload').innerText = trailer.payload + " kg";
     document.getElementById('detail-img').src = trailer.image_url || "https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop";
     
@@ -201,13 +218,11 @@ async function openTrailerDetail(trailer) {
     
     showPage('detail-page');
 
-    if(!supabaseClient) return;
-
     const { data: bookings } = await supabaseClient
         .from('bookings')
         .select('start_date, end_date')
         .eq('trailer_id', trailer.id)
-        .eq('status', 'paye');
+        .eq('status', 'paye'); // Seules les réservations payées grisent le calendrier !
 
     const disabledDates = bookings ? bookings.map(b => ({
         from: b.start_date,
@@ -241,17 +256,15 @@ async function openTrailerDetail(trailer) {
 }
 
 async function submitBooking() {
-    if (!currentUser) {
-        showToast("Veuillez vous connecter pour réserver.", "info");
-        return openAuthModal();
-    }
-    if (!selectedStartDate || !selectedEndDate) return showToast("Sélectionnez vos dates d'abord", "error");
+    if (!currentUser) return showToast("Vous devez être connecté pour réserver.", "error");
+    if (!selectedStartDate || !selectedEndDate) return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
 
-    showToast("Création du lien sécurisé Stripe...", "info");
+    showToast("Création du lien de paiement sécurisé via Stripe...", "info");
 
     const diffDays = parseInt(document.getElementById('total-days').innerText);
     const totalPrice = diffDays * currentTrailer.price;
 
+    // Fonction pour garder l'heure locale et éviter les décalages de date
     const formatSQLDate = (date) => {
         const tzOffset = date.getTimezoneOffset() * 60000;
         return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
@@ -261,14 +274,14 @@ async function submitBooking() {
         trailer_id: currentTrailer.id,
         renter_id: currentUser.id,
         owner_id: currentTrailer.owner_id,
-        start_date: formatSQLDate(selectedStartDate), 
-        end_date: formatSQLDate(selectedEndDate),    
+        start_date: formatSQLDate(selectedStartDate),
+        end_date: formatSQLDate(selectedEndDate),
         total_price: totalPrice,
         status: 'en_attente'
     };
 
     const { data, error } = await supabaseClient.from('bookings').insert([newBooking]).select();
-    if (error) return showToast("Erreur d'enregistrement", "error");
+    if (error) return showToast("Erreur d'enregistrement : " + error.message, "error");
 
     localStorage.setItem('pending_booking_id', data[0].id);
 
@@ -284,7 +297,8 @@ async function submitBooking() {
                 basePrice: totalPrice,
                 payload: parseInt(currentTrailer.payload),
                 upsellsTotal: 0, 
-                ownerStripeId: "acct_12345" 
+                ownerStripeId: "acct_12345", 
+                customerEmail: currentUser.email // L'AJOUT EST ICI : On transmet l'email au serveur
             })
         });
 
@@ -296,7 +310,7 @@ async function submitBooking() {
             showToast("Erreur Stripe : " + (stripeData.error || stripeData.message), "error");
         }
     } catch (err) {
-        showToast("Erreur réseau vers le serveur de paiement.", "error");
+        showToast("Erreur de connexion au serveur de paiement.", "error");
     }
 }
 
@@ -305,7 +319,7 @@ async function checkPaymentStatus() {
     const paymentStatus = urlParams.get('payment');
     const pendingBookingId = localStorage.getItem('pending_booking_id');
 
-    if (paymentStatus === 'success' && pendingBookingId && supabaseClient) {
+    if (paymentStatus === 'success' && pendingBookingId) {
         await supabaseClient.from('bookings').update({ status: 'paye' }).eq('id', pendingBookingId);
         localStorage.removeItem('pending_booking_id'); 
         
@@ -321,7 +335,7 @@ async function checkPaymentStatus() {
 }
 
 // ==========================================
-// 6. MODULE CAMÉRA
+// 6. MODULE CAMÉRA (ÉTAT DES LIEUX)
 // ==========================================
 async function startCamera() {
     try {
@@ -340,10 +354,6 @@ function takePhoto() { showToast("Photo enregistrée !", "success"); stopCamera(
 // 7. PROFIL ET TABLEAU DE BORD
 // ==========================================
 async function openProfile() {
-    if (!currentUser) {
-        showToast("Connectez-vous pour voir vos réservations", "info");
-        return openAuthModal();
-    }
     showPage('profile-page');
     switchProfileTab('buyer');
     await loadProfileData();
@@ -359,17 +369,17 @@ function switchProfileTab(tab) {
         buyerSection.classList.remove('hidden');
         sellerSection.classList.add('hidden');
         buyerTab.className = "text-terracotta-600 font-bold border-b-2 border-terracotta-600 pb-3 text-lg transition";
-        sellerTab.className = "text-stone-400 font-bold hover:text-stone-700 dark:hover:text-stone-300 pb-3 text-lg transition";
+        sellerTab.className = "text-stone-400 font-bold hover:text-stone-700 pb-3 text-lg transition";
     } else {
         buyerSection.classList.add('hidden');
         sellerSection.classList.remove('hidden');
         sellerTab.className = "text-terracotta-600 font-bold border-b-2 border-terracotta-600 pb-3 text-lg transition";
-        buyerTab.className = "text-stone-400 font-bold hover:text-stone-700 dark:hover:text-stone-300 pb-3 text-lg transition";
+        buyerTab.className = "text-stone-400 font-bold hover:text-stone-700 pb-3 text-lg transition";
     }
 }
 
 async function loadProfileData() {
-    if (!currentUser || !supabaseClient) return;
+    if (!currentUser) return;
     const today = new Date();
 
     const { data: myBookings } = await supabaseClient.from('bookings').select('*, trailers(*)').eq('renter_id', currentUser.id).eq('status', 'paye');
@@ -395,10 +405,10 @@ async function loadProfileData() {
 
                 buyerList.innerHTML += `
                     <div class="bg-white border border-stone-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-                        <img src="${booking.trailers?.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-20 h-20 object-cover rounded-xl bg-stone-100">
+                        <img src="${booking.trailers.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-20 h-20 object-cover rounded-xl bg-stone-100">
                         <div class="flex-1">
                             <div class="flex justify-between items-start mb-1">
-                                <h4 class="font-bold text-stone-800">${booking.trailers?.title || 'Remorque Renger'}</h4>
+                                <h4 class="font-bold text-stone-800">${booking.trailers.title}</h4>
                                 ${statusHtml}
                             </div>
                             <p class="text-sm text-stone-500">Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')}</p>
@@ -411,48 +421,80 @@ async function loadProfileData() {
             buyerList.innerHTML = `<p class="text-stone-400 italic">Vous n'avez aucune réservation en cours.</p>`;
         }
     }
+
+    let monthlyRevenue = 0;
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    if (sellerBookings) {
+        sellerBookings.forEach(booking => {
+            const bDate = new Date(booking.start_date);
+            if (bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear) {
+                monthlyRevenue += (booking.total_price * 0.80);
+            }
+        });
+    }
+    
+    const revenueElement = document.getElementById('seller-monthly-revenue');
+    if(revenueElement) revenueElement.innerText = monthlyRevenue.toFixed(2) + " CHF";
+
+    const sellerList = document.getElementById('seller-trailers-list');
+    if(sellerList) {
+        sellerList.innerHTML = '';
+        if (myTrailers && myTrailers.length > 0) {
+            myTrailers.forEach(trailer => {
+                let isRentedNow = false;
+                if (sellerBookings) {
+                    isRentedNow = sellerBookings.some(b => b.trailer_id === trailer.id && today >= new Date(b.start_date) && today <= new Date(b.end_date));
+                }
+
+                const statusBadge = isRentedNow 
+                    ? '<span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-sm animate-pulse">En location actuelle</span>' 
+                    : '<span class="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-sm">Disponible</span>';
+
+                sellerList.innerHTML += `
+                    <div class="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm relative">
+                        ${statusBadge}
+                        <div class="h-32 bg-stone-200">
+                            <img src="${trailer.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-4">
+                            <h4 class="font-bold text-lg mb-1">${trailer.title}</h4>
+                            <p class="text-stone-500 text-sm mb-3">Génère ${trailer.price} CHF / jour</p>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            sellerList.innerHTML = `<p class="text-stone-400 italic">Vous n'avez pas encore publié de remorque.</p>`;
+        }
+    }
 }
 
 // ==========================================
-// 8. PARAMÈTRES DU COMPTE (NOUVEAU)
+// 8. PARAMÈTRES DU COMPTE
 // ==========================================
 function openSettings() {
-    // Sécurité: Rediriger si on essaie d'ouvrir les paramètres sans être connecté
-    if (!currentUser) {
-        showToast("Veuillez vous connecter pour accéder aux paramètres", "info");
-        return openAuthModal();
-    }
-    
+    if (!currentUser) return;
     document.getElementById('settings-email').innerText = currentUser.email;
     showPage('settings-page');
 }
 
 async function setupStripePayouts() {
     if (!currentUser) return;
+    showToast("Génération du lien sécurisé Stripe...", "info");
     
-    showToast("Création de votre espace sécurisé...", "info");
-
     try {
         const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/stripe-onboarding', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + supabaseKey
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: currentUser.email })
         });
-        
         const data = await response.json();
-        
-        if (data.url) {
-            window.location.href = data.url; 
-        } else {
-            console.error("Erreur détaillée du serveur :", data);
-            showToast("Erreur Stripe : " + (data.error || data.message || "Erreur inconnue"), "error");
-        }
+        if (data.url) window.location.href = data.url; 
+        else showToast("Erreur Stripe : " + data.error, "error");
     } catch (err) {
-        console.error("Erreur réseau :", err);
-        showToast("Impossible de joindre le serveur", "error");
+        showToast("Erreur de connexion au serveur.", "error");
     }
 }
 
@@ -471,7 +513,7 @@ async function deleteAccount() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast("Compte supprimé. À bientôt !", "success");
+            alert("Compte supprimé avec succès. À bientôt !");
             handleLogout();
         } else {
             showToast("Erreur de suppression : " + data.error, "error");
@@ -484,32 +526,13 @@ async function deleteAccount() {
 // ==========================================
 // 9. DÉMARRAGE DU SITE
 // ==========================================
-document.addEventListener("DOMContentLoaded", () => {
-    initTheme();
-    checkUser();
-    loadTrailers();
-    checkPaymentStatus(); 
-});
-
-// ==========================================
-// GESTION DU MODE SOMBRE
-// ==========================================
-function toggleTheme() {
-    const html = document.documentElement;
-    html.classList.toggle('dark');
-    const isDark = html.classList.contains('dark');
+document.addEventListener("DOMContentLoaded", async () => {
+    // 1. On attend de savoir qui est connecté
+    await checkUser();
     
-    localStorage.setItem('renger_theme', isDark ? 'dark' : 'light');
-    document.getElementById('theme-icon').innerHTML = isDark 
-        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>' 
-        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>';
-}
-
-function initTheme() {
-    const savedTheme = localStorage.getItem('renger_theme');
-    if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-        const icon = document.getElementById('theme-icon');
-        if (icon) icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>';
-    }
-}
+    // 2. On charge les annonces
+    loadTrailers();
+    
+    // 3. SEULEMENT MAINTENANT, on vérifie Stripe et le profil
+    await checkPaymentStatus(); 
+});
