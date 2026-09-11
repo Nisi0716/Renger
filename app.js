@@ -1,5 +1,5 @@
 // ==========================================
-// 1. INITIALISATION
+// 1. INITIALISATION & TRADUCTIONS
 // ==========================================
 const supabaseUrl = 'https://cwifrzajxrcpnqceyxnj.supabase.co';
 const supabaseKey = 'sb_publishable_b8sieHW3SGLka8GSxRfr_w_eM3wtyYc';
@@ -12,6 +12,64 @@ let selectedStartDate = null;
 let selectedEndDate = null;
 let videoStream = null;
 
+const translations = {
+    fr: {
+        login: "Se connecter", subtitle: "Le Airbnb de la remorque. Trouvez la remorque parfaite ou rentabilisez la vôtre.",
+        btn_buyer: "Je cherche une remorque", btn_seller: "Je loue ma remorque", back: "← Retour",
+        cat_utility: "Utilitaire", cat_horse: "Chevaux", cat_car: "Voiture", recommended: "Recommandées autour de Lausanne",
+        trailer_title: "Remorque fermée 750kg", per_day: "/ j", see_details: "Voir les détails",
+        socket: "Prise", payload: "Charge Utile", pay_btn: "💳 Payer 70 CHF (Stripe)", photo_btn: "📸 Lancer l'état des lieux",
+        publish_title: "Louer ma remorque", publish_subtitle: "Gagnez de l'argent en toute sécurité avec votre équipement.",
+        import_title: "Vous avez déjà une annonce ?", import_desc: "Collez le lien de votre annonce Anibis, Tutti ou Leboncoin. Nous créerons votre profil Renger à votre place !",
+        or_manual: "OU CRÉER MANUELLEMENT", form_title: "Titre de l'annonce", price_label: "Prix / Jour (CHF)", payload_input: "Charge Utile (kg)",
+        socket_label: "Type de prise électrique", equip_label: "Équipements inclus (Gratuit)",
+        upsell_title: "Boostez vos revenus 🚀", upsell_desc: "Proposez des options payantes additionnelles à vos locataires.",
+        form_submit: "Publier et lier mon compte bancaire", auth_title: "Rejoindre Renger", auth_btn: "Continuer", cancel: "Annuler",
+        footer_cgu: "Conditions Générales d'Utilisation (CGU)", theme_btn: "Mode sombre/clair",
+        detail_desc: "Cette remorque est idéale pour vos transports. Un état des lieux photographique sera exigé au départ et au retour."
+    },
+    en: {
+        login: "Log in", subtitle: "The Airbnb for trailers. Find the perfect trailer or rent yours out.",
+        btn_buyer: "I'm looking for a trailer", btn_seller: "I rent out my trailer", back: "← Back",
+        cat_utility: "Utility", cat_horse: "Horses", cat_car: "Car", recommended: "Recommended around Lausanne",
+        trailer_title: "Closed trailer 750kg", per_day: "/ day", see_details: "See details",
+        socket: "Socket", payload: "Payload", pay_btn: "💳 Pay 70 CHF (Stripe)", photo_btn: "📸 Start inspection",
+        publish_title: "Rent out my trailer", publish_subtitle: "Earn money safely with your equipment.",
+        import_title: "Already have a listing?", import_desc: "Paste your Anibis or Leboncoin link. We'll create your profile for you!",
+        or_manual: "OR CREATE MANUALLY", form_title: "Listing Title", price_label: "Price / Day (CHF)", payload_input: "Payload (kg)",
+        socket_label: "Socket type", equip_label: "Included equipment (Free)",
+        upsell_title: "Boost your income 🚀", upsell_desc: "Offer additional paid options to your renters.",
+        form_submit: "Publish & link bank account", auth_title: "Join Renger", auth_btn: "Continue", cancel: "Cancel",
+        footer_cgu: "Terms and Conditions (T&C)", theme_btn: "Dark/Light mode",
+        detail_desc: "This trailer is ideal for your transport needs. A photographic condition report will be required upon departure and return."
+    },
+    de: {
+        login: "Anmelden", subtitle: "Das Airbnb für Anhänger. Finden Sie den perfekten Anhänger oder vermieten Sie Ihren.",
+        btn_buyer: "Ich suche einen Anhänger", btn_seller: "Ich vermiete meinen Anhänger", back: "← Zurück",
+        cat_utility: "Nutzfahrzeug", cat_horse: "Pferde", cat_car: "Auto", recommended: "Empfohlen rund um Lausanne",
+        trailer_title: "Geschlossener Anhänger 750kg", per_day: "/ Tag", see_details: "Details ansehen",
+        socket: "Stecker", payload: "Nutzlast", pay_btn: "💳 70 CHF bezahlen (Stripe)", photo_btn: "📸 Zustandsprotokoll starten",
+        publish_title: "Meinen Anhänger vermieten", publish_subtitle: "Verdienen Sie sicher Geld mit Ihrer Ausrüstung.",
+        import_title: "Haben Sie bereits eine Anzeige?", import_desc: "Fügen Sie Ihren Anibis- oder Tutti-Link ein. Wir erstellen Ihr Profil für Sie!",
+        or_manual: "ODER MANUELL ERSTELLEN", form_title: "Anzeigentitel", price_label: "Preis / Tag (CHF)", payload_input: "Nutzlast (kg)",
+        socket_label: "Steckertyp", equip_label: "Inklusive Ausrüstung (Kostenlos)",
+        upsell_title: "Steigern Sie Ihr Einkommen 🚀", upsell_desc: "Bieten Sie Ihren Mietern zusätzliche kostenpflichtige Optionen an.",
+        form_submit: "Veröffentlichen & Bankkonto verknüpfen", auth_title: "Renger beitreten", auth_btn: "Weiter", cancel: "Abbrechen",
+        footer_cgu: "Allgemeine Geschäftsbedingungen (AGB)", theme_btn: "Dunkel-/Hellmodus",
+        detail_desc: "Dieser Anhänger ist ideal für Ihre Transporte. Ein fotografisches Zustandsprotokoll wird bei Abfahrt und Rückkehr verlangt."
+    }
+};
+
+function changeLanguage(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) { 
+            element.innerText = translations[lang][key]; 
+        }
+    });
+    localStorage.setItem('renger_lang', lang);
+}
+
 // ==========================================
 // NOTIFICATIONS SYSTÈME (TOAST)
 // ==========================================
@@ -20,7 +78,6 @@ function showToast(message, type = 'success') {
     const icon = document.getElementById('toast-icon');
     const text = document.getElementById('toast-message');
 
-    // Sécurité au cas où le HTML du toast n'est pas présent
     if (!toast || !icon || !text) {
         alert(message);
         return;
@@ -46,7 +103,7 @@ function showToast(message, type = 'success') {
 }
 
 // ==========================================
-// 2. NAVIGATION
+// 2. NAVIGATION & UI
 // ==========================================
 const pages = ['welcome-screen', 'buyer-page', 'seller-page', 'detail-page', 'inspection-page', 'profile-page', 'settings-page'];
 
@@ -73,7 +130,9 @@ function closeAuthModal() {
     const modal = document.getElementById('auth-modal');
     if (modal) modal.classList.add('hidden'); 
 }
-function changeLanguage(lang) { localStorage.setItem('renger_lang', lang); }
+function toggleTheme() {
+    document.documentElement.classList.toggle('dark');
+}
 
 // ==========================================
 // 3. AUTHENTIFICATION & HEADER
@@ -116,12 +175,12 @@ async function checkUser() {
     if (currentUser) {
         container.innerHTML = `
             <div class="flex items-center gap-4">
-                <button onclick="openProfile()" class="text-stone-600 font-bold hover:text-terracotta-500 transition hidden md:block">Mon Espace</button>
-                <button onclick="openSettings()" class="text-stone-600 font-bold hover:text-terracotta-500 transition">Paramètres</button>
+                <button onclick="openProfile()" class="text-stone-600 dark:text-stone-300 font-bold hover:text-terracotta-500 transition hidden md:block">Mon Espace</button>
+                <button onclick="openSettings()" class="text-stone-600 dark:text-stone-300 font-bold hover:text-terracotta-500 transition">Paramètres</button>
                 <button onclick="handleLogout()" class="text-stone-400 text-sm hover:underline">Déconnexion</button>
             </div>`;
     } else {
-        container.innerHTML = `<button onclick="openAuthModal()" class="bg-white border border-stone-200 text-stone-600 font-semibold py-2 px-4 rounded-xl">Se connecter</button>`;
+        container.innerHTML = `<button onclick="openAuthModal()" class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-200 font-semibold py-2 px-4 rounded-xl">Se connecter</button>`;
     }
 }
 
@@ -141,24 +200,38 @@ async function loadTrailers() {
 
     trailers.forEach(trailer => {
         const card = document.createElement('div');
-        card.className = "bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden hover:shadow-md cursor-pointer";
+        card.className = "bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden hover:shadow-md cursor-pointer transition";
         card.onclick = () => openTrailerDetail(trailer);
         
         const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
         
         card.innerHTML = `
-            <div class="h-48 bg-stone-200 relative">
+            <div class="h-48 bg-stone-200 dark:bg-stone-700 relative">
                 <img src="${imgUrl}" class="w-full h-full object-cover">
-                <div class="absolute top-3 right-3 bg-white px-2 py-1 rounded-lg text-sm font-bold shadow">${trailer.price} CHF<span class="text-xs font-normal">/j</span></div>
+                <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white">${trailer.price} CHF<span class="text-xs font-normal">/j</span></div>
             </div>
             <div class="p-5">
-                <h4 class="font-bold text-lg mb-1">${trailer.title}</h4>
-                <p class="text-sm text-stone-500 mb-4">📍 Vaud</p>
-                <button class="w-full bg-terracotta-50 text-terracotta-600 font-semibold py-2.5 rounded-xl">Voir les détails</button>
+                <h4 class="font-bold text-lg mb-1 dark:text-white">${trailer.title}</h4>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">📍 Vaud</p>
+                <button class="w-full bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 font-semibold py-2.5 rounded-xl">Voir les détails</button>
             </div>
         `;
         grid.appendChild(card);
     });
+}
+
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const container = document.getElementById('photo-preview-container');
+            if(container) {
+                container.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover rounded-3xl absolute inset-0">`;
+            }
+        }
+        reader.readAsDataURL(file);
+    }
 }
 
 async function handlePublish(event) {
@@ -197,6 +270,7 @@ async function handlePublish(event) {
     else {
         showToast("Annonce sauvegardée !", "success");
         document.getElementById('add-trailer-form').reset();
+        document.getElementById('photo-preview-container').innerHTML = `<span class="text-5xl mb-4">📸</span><span class="font-bold text-stone-700 dark:text-stone-300">Cliquez pour ajouter une photo</span>`;
         showPage('buyer-page');
         loadTrailers();
     }
@@ -222,7 +296,7 @@ async function openTrailerDetail(trailer) {
         .from('bookings')
         .select('start_date, end_date')
         .eq('trailer_id', trailer.id)
-        .eq('status', 'paye'); // Seules les réservations payées grisent le calendrier !
+        .eq('status', 'paye'); 
 
     const disabledDates = bookings ? bookings.map(b => ({
         from: b.start_date,
@@ -264,7 +338,6 @@ async function submitBooking() {
     const diffDays = parseInt(document.getElementById('total-days').innerText);
     const totalPrice = diffDays * currentTrailer.price;
 
-    // Fonction pour garder l'heure locale et éviter les décalages de date
     const formatSQLDate = (date) => {
         const tzOffset = date.getTimezoneOffset() * 60000;
         return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
@@ -298,7 +371,7 @@ async function submitBooking() {
                 payload: parseInt(currentTrailer.payload),
                 upsellsTotal: 0, 
                 ownerStripeId: "acct_12345", 
-                customerEmail: currentUser.email // L'AJOUT EST ICI : On transmet l'email au serveur
+                customerEmail: currentUser.email
             })
         });
 
@@ -354,6 +427,11 @@ function takePhoto() { showToast("Photo enregistrée !", "success"); stopCamera(
 // 7. PROFIL ET TABLEAU DE BORD
 // ==========================================
 async function openProfile() {
+    if (!currentUser) {
+        showToast("Vous devez être connecté pour accéder à votre profil.", "error");
+        openAuthModal();
+        return;
+    }
     showPage('profile-page');
     switchProfileTab('buyer');
     await loadProfileData();
@@ -369,12 +447,12 @@ function switchProfileTab(tab) {
         buyerSection.classList.remove('hidden');
         sellerSection.classList.add('hidden');
         buyerTab.className = "text-terracotta-600 font-bold border-b-2 border-terracotta-600 pb-3 text-lg transition";
-        sellerTab.className = "text-stone-400 font-bold hover:text-stone-700 pb-3 text-lg transition";
+        sellerTab.className = "text-stone-400 font-bold hover:text-stone-700 dark:hover:text-stone-300 pb-3 text-lg transition";
     } else {
         buyerSection.classList.add('hidden');
         sellerSection.classList.remove('hidden');
         sellerTab.className = "text-terracotta-600 font-bold border-b-2 border-terracotta-600 pb-3 text-lg transition";
-        buyerTab.className = "text-stone-400 font-bold hover:text-stone-700 pb-3 text-lg transition";
+        buyerTab.className = "text-stone-400 font-bold hover:text-stone-700 dark:hover:text-stone-300 pb-3 text-lg transition";
     }
 }
 
@@ -400,18 +478,18 @@ async function loadProfileData() {
                 } else if (today < startDate) {
                     statusHtml = '<span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-md">⏳ À venir</span>';
                 } else {
-                    statusHtml = '<span class="bg-stone-100 text-stone-500 text-xs font-bold px-2 py-1 rounded-md">Terminé</span>';
+                    statusHtml = '<span class="bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 text-xs font-bold px-2 py-1 rounded-md">Terminé</span>';
                 }
 
                 buyerList.innerHTML += `
-                    <div class="bg-white border border-stone-200 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-                        <img src="${booking.trailers.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-20 h-20 object-cover rounded-xl bg-stone-100">
+                    <div class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-5 rounded-2xl shadow-sm flex items-center gap-4">
+                        <img src="${booking.trailers.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-20 h-20 object-cover rounded-xl bg-stone-100 dark:bg-stone-700">
                         <div class="flex-1">
                             <div class="flex justify-between items-start mb-1">
-                                <h4 class="font-bold text-stone-800">${booking.trailers.title}</h4>
+                                <h4 class="font-bold text-stone-800 dark:text-white">${booking.trailers.title}</h4>
                                 ${statusHtml}
                             </div>
-                            <p class="text-sm text-stone-500">Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')}</p>
+                            <p class="text-sm text-stone-500 dark:text-stone-400">Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')}</p>
                             <p class="text-terracotta-600 font-bold mt-2">${booking.total_price} CHF réglés</p>
                         </div>
                     </div>
@@ -453,14 +531,14 @@ async function loadProfileData() {
                     : '<span class="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-sm">Disponible</span>';
 
                 sellerList.innerHTML += `
-                    <div class="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm relative">
+                    <div class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative">
                         ${statusBadge}
-                        <div class="h-32 bg-stone-200">
+                        <div class="h-32 bg-stone-200 dark:bg-stone-700">
                             <img src="${trailer.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-full h-full object-cover">
                         </div>
                         <div class="p-4">
-                            <h4 class="font-bold text-lg mb-1">${trailer.title}</h4>
-                            <p class="text-stone-500 text-sm mb-3">Génère ${trailer.price} CHF / jour</p>
+                            <h4 class="font-bold text-lg mb-1 dark:text-white">${trailer.title}</h4>
+                            <p class="text-stone-500 dark:text-stone-400 text-sm mb-3">Génère ${trailer.price} CHF / jour</p>
                         </div>
                     </div>
                 `;
@@ -527,12 +605,14 @@ async function deleteAccount() {
 // 9. DÉMARRAGE DU SITE
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
-    // 1. On attend de savoir qui est connecté
+    // Restaure la langue sélectionnée
+    const savedLang = localStorage.getItem('renger_lang') || 'fr';
+    const langSelector = document.getElementById('lang-selector');
+    if (langSelector) langSelector.value = savedLang;
+    changeLanguage(savedLang);
+
+    // Initialisation
     await checkUser();
-    
-    // 2. On charge les annonces
     loadTrailers();
-    
-    // 3. SEULEMENT MAINTENANT, on vérifie Stripe et le profil
     await checkPaymentStatus(); 
 });
