@@ -120,6 +120,7 @@
         
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
             <!-- Colonne de gauche : Infos remorque -->
+
             <div class="lg:col-span-2">
                 <div class="h-96 bg-stone-200 rounded-3xl overflow-hidden mb-8 relative">
                     <img id="detail-img" src="" class="w-full h-full object-cover">
@@ -134,6 +135,13 @@
                 <p id="detail-desc" class="text-stone-600 dark:text-stone-400 text-lg leading-relaxed mb-8 whitespace-pre-wrap">Cette remorque est idéale pour vos transports. Un état des lieux photographique sera exigé au départ et au retour pour votre sécurité.</p>
                 
                 <!-- On ajoute un bloc pour afficher les équipements et les upsells si présents, optionnel -->
+                 <!-- Section Équipements -->
+                <h3 id="equipments-title" class="text-xl font-bold mb-3 text-stone-800 dark:text-white hidden">Équipements inclus</h3>
+                <div id="detail-equipments" class="flex flex-wrap gap-2 mb-8"></div>
+
+                <!-- Section Options Payantes (Upsells) -->
+                <h3 id="upsells-title" class="text-xl font-bold mb-3 text-stone-800 dark:text-white hidden">Options supplémentaires</h3>
+                <div id="detail-upsells" class="flex flex-col gap-3 mb-8"></div>
             </div>
 
             <!-- Colonne de droite : Le Calendrier de réservation -->

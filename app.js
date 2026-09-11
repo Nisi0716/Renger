@@ -313,6 +313,43 @@ async function openTrailerDetail(trailer) {
     
     document.getElementById('booking-summary').classList.add('hidden');
     document.getElementById('booking-dates').value = "";
+
+        // 1. Réinitialisation des zones à chaque clic sur une annonce
+    const equipContainer = document.getElementById('detail-equipments');
+    const equipTitle = document.getElementById('equipments-title');
+    const upsellContainer = document.getElementById('detail-upsells');
+    const upsellTitle = document.getElementById('upsells-title');
+
+    if (equipContainer) equipContainer.innerHTML = '';
+    if (upsellContainer) upsellContainer.innerHTML = '';
+    if (equipTitle) equipTitle.classList.add('hidden');
+    if (upsellTitle) upsellTitle.classList.add('hidden');
+
+    // 2. Affichage des équipements (Gratuits)
+    if (trailer.equipments && trailer.equipments.length > 0) {
+        equipTitle.classList.remove('hidden');
+        trailer.equipments.forEach(eq => {
+            equipContainer.innerHTML += `<span class="bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg text-sm font-semibold capitalize">✅ ${eq}</span>`;
+        });
+    }
+
+    // 3. Affichage des Upsells (Options payantes)
+    if (trailer.upsells && trailer.upsells.length > 0) {
+        upsellTitle.classList.remove('hidden');
+        trailer.upsells.forEach(up => {
+            // Logique pour formater le texte et le prix selon l'option choisie
+            let upText = up;
+            let upPrice = "";
+            if (up === "livraison") { upText = "🚚 Livraison"; upPrice = "+25 CHF"; }
+            if (up === "diable") { upText = "🛒 Prêt d'un diable"; upPrice = "+10 CHF/j"; }
+
+            upsellContainer.innerHTML += `
+                <div class="flex justify-between items-center bg-terracotta-50 dark:bg-stone-800 border border-terracotta-100 dark:border-stone-700 p-3 rounded-xl">
+                    <span class="font-bold text-terracotta-700 dark:text-terracotta-400 capitalize">${upText}</span>
+                    <span class="text-terracotta-600 dark:text-terracotta-400 font-bold text-sm">${upPrice}</span>
+                </div>`;
+        });
+    }
     
     showPage('detail-page');
 
