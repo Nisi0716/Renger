@@ -14,7 +14,7 @@ let videoStream = null;
 
 const translations = {
     fr: {
-        login: "Se connecter", subtitle: "Le Airbnb de la remorque. Trouvez la remorque parfaite ou rentabilisez la vôtre.",
+        login: "Se connecter", subtitle: "La plateforme de location de remorques entre particuliers. Trouvez la remorque parfaite ou rentabilisez la vôtre.",
         btn_buyer: "Je cherche une remorque", btn_seller: "Je loue ma remorque", back: "← Retour",
         cat_utility: "Utilitaire", cat_horse: "Chevaux", cat_car: "Voiture", recommended: "Recommandées autour de Lausanne",
         trailer_title: "Remorque fermée 750kg", per_day: "/ j", see_details: "Voir les détails",
@@ -29,7 +29,7 @@ const translations = {
         detail_desc: "Cette remorque est idéale pour vos transports. Un état des lieux photographique sera exigé au départ et au retour."
     },
     en: {
-        login: "Log in", subtitle: "The Airbnb for trailers. Find the perfect trailer or rent yours out.",
+        login: "Log in", subtitle: "The peer-to-peer trailer rental platform. Find the perfect trailer or rent yours out.",
         btn_buyer: "I'm looking for a trailer", btn_seller: "I rent out my trailer", back: "← Back",
         cat_utility: "Utility", cat_horse: "Horses", cat_car: "Car", recommended: "Recommended around Lausanne",
         trailer_title: "Closed trailer 750kg", per_day: "/ day", see_details: "See details",
@@ -44,7 +44,7 @@ const translations = {
         detail_desc: "This trailer is ideal for your transport needs. A photographic condition report will be required upon departure and return."
     },
     de: {
-        login: "Anmelden", subtitle: "Das Airbnb für Anhänger. Finden Sie den perfekten Anhänger oder vermieten Sie Ihren.",
+        login: "Anmelden", subtitle: "Die Plattform für die private Anhängervermietung. Finden Sie den perfekten Anhänger oder vermieten Sie Ihren.",
         btn_buyer: "Ich suche einen Anhänger", btn_seller: "Ich vermiete meinen Anhänger", back: "← Zurück",
         cat_utility: "Nutzfahrzeug", cat_horse: "Pferde", cat_car: "Auto", recommended: "Empfohlen rund um Lausanne",
         trailer_title: "Geschlossener Anhänger 750kg", per_day: "/ Tag", see_details: "Details ansehen",
@@ -256,8 +256,10 @@ async function handlePublish(event) {
         finalImageUrl = publicUrlData.publicUrl;
     }
     
+    // Intégration du champ Description
     const newTrailer = {
         title: document.getElementById('ad-title').value,
+        description: document.getElementById('ad-desc').value, // On capture la description
         price: parseInt(document.getElementById('ad-price').value),
         payload: parseInt(document.getElementById('ad-payload').value),
         socket: document.querySelector('input[name="prise"]:checked').value,
@@ -277,7 +279,7 @@ async function handlePublish(event) {
 }
 
 // ==========================================
-// 5. RÉSERVATION & PAIEMENT STRIPE
+// 5. RÉSERVATION, BLOCAGE DATES & PAIEMENT
 // ==========================================
 async function openTrailerDetail(trailer) {
     currentTrailer = trailer;
@@ -287,21 +289,45 @@ async function openTrailerDetail(trailer) {
     document.getElementById('detail-payload').innerText = trailer.payload + " kg";
     document.getElementById('detail-img').src = trailer.image_url || "https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop";
     
+    // On affiche la description de la BDD, ou un texte par défaut si elle est vide
+    const defaultDesc = translations[localStorage.getItem('renger_lang') || 'fr'].detail_desc;
+    document.getElementById('detail-desc').innerText = trailer.description || defaultDesc;
+    
     document.getElementById('booking-summary').classList.add('hidden');
     document.getElementById('booking-dates').value = "";
     
     showPage('detail-page');
 
+    // On récupère les dates louées ET les dates indisponibles (bloquées par le propriétaire)
     const { data: bookings } = await supabaseClient
         .from('bookings')
         .select('start_date, end_date')
         .eq('trailer_id', trailer.id)
-        .eq('status', 'paye'); 
+        .in('status', ['paye', 'indisponible']); 
 
     const disabledDates = bookings ? bookings.map(b => ({
         from: b.start_date,
         to: b.end_date
     })) : [];
+
+    // GESTION DU PROPRIÉTAIRE VS LOCATAIRE
+    const isOwner = currentUser && currentUser.id === trailer.owner_id;
+    const actionBtn = document.getElementById('action-btn');
+    const priceHeader = document.getElementById('booking-header');
+
+    if (isOwner) {
+        // Mode Propriétaire
+        priceHeader.classList.add('hidden');
+        actionBtn.innerText = "Bloquer ces dates";
+        actionBtn.onclick = blockOwnerDates;
+        actionBtn.className = "w-full bg-stone-800 hover:bg-stone-900 dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-4";
+    } else {
+        // Mode Locataire
+        priceHeader.classList.remove('hidden');
+        actionBtn.innerText = "Réserver";
+        actionBtn.onclick = submitBooking;
+        actionBtn.className = "w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-4";
+    }
 
     if (bookingCalendar) bookingCalendar.destroy();
     
@@ -320,7 +346,8 @@ async function openTrailerDetail(trailer) {
                 const total = diffDays * currentTrailer.price;
                 
                 document.getElementById('total-days').innerText = diffDays;
-                document.getElementById('total-price').innerText = total + " CHF";
+                // Si on est le propriétaire, on affiche 0 CHF
+                document.getElementById('total-price').innerText = isOwner ? "0 CHF" : total + " CHF";
                 document.getElementById('booking-summary').classList.remove('hidden');
             } else {
                 document.getElementById('booking-summary').classList.add('hidden');
@@ -329,6 +356,37 @@ async function openTrailerDetail(trailer) {
     });
 }
 
+// Fonction pour bloquer les dates gratuitement (Propriétaire)
+async function blockOwnerDates() {
+    if (!selectedStartDate || !selectedEndDate) return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
+
+    const formatSQLDate = (date) => {
+        const tzOffset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
+    };
+
+    const newBooking = {
+        trailer_id: currentTrailer.id,
+        renter_id: currentUser.id,
+        owner_id: currentTrailer.owner_id,
+        start_date: formatSQLDate(selectedStartDate),
+        end_date: formatSQLDate(selectedEndDate),
+        total_price: 0,
+        status: 'indisponible' // Statut spécial pour bloquer sans payer
+    };
+
+    const { error } = await supabaseClient.from('bookings').insert([newBooking]);
+    
+    if (error) {
+        showToast("Erreur lors du blocage : " + error.message, "error");
+    } else {
+        showToast("Dates bloquées avec succès !", "success");
+        // On recharge la page pour griser les dates instantanément
+        openTrailerDetail(currentTrailer); 
+    }
+}
+
+// Fonction pour les clients classiques (Stripe)
 async function submitBooking() {
     if (!currentUser) return showToast("Vous devez être connecté pour réserver.", "error");
     if (!selectedStartDate || !selectedEndDate) return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
