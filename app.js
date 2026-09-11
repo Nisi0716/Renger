@@ -256,7 +256,14 @@ async function handlePublish(event) {
         finalImageUrl = publicUrlData.publicUrl;
     }
     
-    // Intégration du champ Description
+    // Récupération des équipements
+    const equipmentCheckboxes = document.querySelectorAll('input[name="equipments"]:checked');
+    const equipments = Array.from(equipmentCheckboxes).map(cb => cb.value);
+
+    // Récupération des upsells
+    const upsellCheckboxes = document.querySelectorAll('input[name="upsell"]:checked');
+    const upsells = Array.from(upsellCheckboxes).map(cb => cb.value);
+    
     const newTrailer = {
         title: document.getElementById('ad-title').value,
         description: document.getElementById('ad-desc').value, // On capture la description
@@ -264,7 +271,9 @@ async function handlePublish(event) {
         payload: parseInt(document.getElementById('ad-payload').value),
         socket: document.querySelector('input[name="prise"]:checked').value,
         owner_id: currentUser.id,
-        image_url: finalImageUrl
+        image_url: finalImageUrl,
+        equipments: equipments, // Ajout des équipements
+        upsells: upsells // Ajout des upsells
     };
     
     const { error } = await supabaseClient.from('trailers').insert([newTrailer]);
@@ -272,7 +281,16 @@ async function handlePublish(event) {
     else {
         showToast("Annonce sauvegardée !", "success");
         document.getElementById('add-trailer-form').reset();
-        document.getElementById('photo-preview-container').innerHTML = `<span class="text-5xl mb-4">📸</span><span class="font-bold text-stone-700 dark:text-stone-300">Cliquez pour ajouter une photo</span>`;
+        
+        // Reset preview
+        const container = document.getElementById('photo-preview-container');
+        if(container) {
+            container.innerHTML = `
+                <span class="text-5xl mb-4">📸</span>
+                <span class="font-bold text-stone-700 dark:text-stone-300">Cliquez pour ajouter une photo</span>
+            `;
+        }
+
         showPage('buyer-page');
         loadTrailers();
     }
