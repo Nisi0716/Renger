@@ -99,20 +99,36 @@
         <button onclick="showWelcomeScreen()" class="text-terracotta-600 font-semibold mb-6 transition" data-i18n="back">← Retour</button>
         
         <div class="flex overflow-x-auto gap-3 pb-4 mb-6 no-scrollbar">
-            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:border-terracotta-500 focus:text-terracotta-500">
-                <span class="text-3xl mb-1">📦</span><span data-i18n="cat_utility" class="text-xs font-semibold">Utilitaire</span>
+            <button id="filter-all" onclick="setFilter('all')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-terracotta-500 text-white rounded-xl border-2 border-terracotta-500 shadow-sm transition focus:outline-none">
+                <span class="text-3xl mb-1">🔍</span><span class="text-xs font-semibold">Tout</span>
             </button>
-            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:border-terracotta-500 focus:text-terracotta-500">
-                <span class="text-3xl mb-1">🐴</span><span data-i18n="cat_horse" class="text-xs font-semibold">Chevaux</span>
+            <button id="filter-utilitaire" onclick="setFilter('utilitaire')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">📦</span><span class="text-xs font-semibold">Utilitaire</span>
             </button>
-            <button class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:border-terracotta-500 focus:text-terracotta-500">
-                <span class="text-3xl mb-1">🚗</span><span data-i18n="cat_car" class="text-xs font-semibold">Voiture</span>
+            <button id="filter-cheval" onclick="setFilter('cheval')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🐴</span><span class="text-xs font-semibold">Cheval</span>
+            </button>
+            <button id="filter-voiture" onclick="setFilter('voiture')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🚗</span><span class="text-xs font-semibold">Voiture</span>
+            </button>
+            <button id="filter-moto" onclick="setFilter('moto')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🏍️</span><span class="text-xs font-semibold">Moto</span>
+            </button>
+            <button id="filter-refrigere" onclick="setFilter('refrigere')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">❄️</span><span class="text-xs font-semibold">Réfrigéré</span>
+            </button>
+            <button id="filter-porte-velo" onclick="setFilter('porte-velo')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🚲</span><span class="text-xs font-semibold">Porte-vélo</span>
+            </button>
+            <button id="filter-bagage" onclick="setFilter('bagage')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🧳</span><span class="text-xs font-semibold">Bagage de toit</span>
             </button>
         </div>
 
-        <h3 data-i18n="recommended" class="text-xl font-bold mb-4 text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
+        <h3 id="filter-title" data-i18n="recommended" class="text-xl font-bold mb-4 text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
         <div id="trailers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
+
 
     <!-- 3. PAGE DÉTAIL & RÉSERVATION -->
     <div id="detail-page" class="hidden min-h-screen p-6 pt-24 max-w-5xl mx-auto">
@@ -234,9 +250,57 @@
                 </div>
             </div>
 
-            <!-- CORRECTION : Ajout des attributs name et value pour les options -->
+            <!-- TYPE DE REMORQUE (lié aux filtres de recherche) -->
             <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
-                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3" data-i18n="equip_label">Équipements inclus</label>
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">Type de remorque</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="utilitaire" class="peer sr-only" required checked>
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">📦</span><span class="text-xs font-bold">Utilitaire</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="cheval" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🐴</span><span class="text-xs font-bold">Cheval</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="voiture" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🚗</span><span class="text-xs font-bold">Voiture</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="moto" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🏍️</span><span class="text-xs font-bold">Moto</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="refrigere" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">❄️</span><span class="text-xs font-bold">Réfrigéré</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="porte-velo" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🚲</span><span class="text-xs font-bold">Porte-vélo</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative col-span-2">
+                        <input type="radio" name="category" value="bagage" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🧳</span><span class="text-xs font-bold">Bagage de toit</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- ÉQUIPEMENTS INCLUS -->
+
                 <div class="grid grid-cols-2 gap-3">
                     <label class="cursor-pointer"><input type="checkbox" name="equipments" value="sangles" class="peer sr-only"><div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">🔗 Sangles</div></label>
                     <label class="cursor-pointer"><input type="checkbox" name="equipments" value="bache" class="peer sr-only"><div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⛺ Bâche</div></label>

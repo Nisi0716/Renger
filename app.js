@@ -41,6 +41,7 @@ let bookingCalendar = null;
 let selectedStartDate = null;
 let selectedEndDate = null;
 let videoStream = null;
+let currentFilter = 'all'; // Filtre actif sur la page des annonces
 
 const translations = {
     fr: {
@@ -217,25 +218,52 @@ async function checkUser() {
 // ==========================================
 // 4. ANNONCES (AFFICHAGE ET CRÉATION)
 // ==========================================
-async function loadTrailers() {
+async function loadTrailers(filter = currentFilter) {
     if (!supabaseClient) return;
-    const { data: trailers, error } = await supabaseClient.from('trailers').select('*').order('id', { ascending: false });
+
+    let query = supabaseClient.from('trailers').select('*').order('id', { ascending: false });
+
+    // Filtrage côté serveur si une catégorie est sélectionnée
+    if (filter && filter !== 'all') {
+        query = query.eq('category', filter);
+    }
+
+    const { data: trailers, error } = await query;
     if (error) return;
 
     const grid = document.getElementById('trailers-grid');
     if (!grid) return;
-    grid.innerHTML = ''; 
-    
-    if (!trailers || trailers.length === 0) return;
+    grid.innerHTML = '';
+
+    // Mise à jour du titre de section selon le filtre
+    const LABELS = {
+        all: 'Recommandées autour de Lausanne',
+        utilitaire: 'Remorques utilitaires',
+        cheval: 'Van à chevaux',
+        voiture: 'Porte-voitures',
+        moto: 'Porte-motos',
+        refrigere: 'Remorques réfrigérées',
+        'porte-velo': 'Porte-vélos',
+        bagage: 'Bagages de toit'
+    };
+    const titleEl = document.getElementById('filter-title');
+    if (titleEl) titleEl.textContent = LABELS[filter] || 'Annonces';
+
+    if (!trailers || trailers.length === 0) {
+        const msg = document.createElement('p');
+        msg.className = 'col-span-3 text-center text-stone-400 italic py-12';
+        msg.textContent = 'Aucune remorque disponible dans cette catégorie pour le moment.';
+        grid.appendChild(msg);
+        return;
+    }
 
     trailers.forEach(trailer => {
         const card = document.createElement('div');
         card.className = "bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden hover:shadow-md cursor-pointer transition";
         card.onclick = () => openTrailerDetail(trailer);
-        
+
         const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
-        
-        // 1. On crée la structure HTML sans y mettre aucune donnée utilisateur
+
         card.innerHTML = `
             <div class="h-48 bg-stone-200 dark:bg-stone-700 relative">
                 <img src="${imgUrl}" class="w-full h-full object-cover">
@@ -248,12 +276,38 @@ async function loadTrailers() {
             </div>
         `;
 
-        // 2. ZERO TRUST : On injecte les données avec textContent (qui neutralise le code)
         card.querySelector('.safe-title').textContent = trailer.title;
         card.querySelector('.safe-price').textContent = trailer.price;
 
         grid.appendChild(card);
     });
+}
+
+// Gestion des boutons de filtre (état visuel actif + rechargement)
+function setFilter(category) {
+    currentFilter = category;
+
+    // Reset tous les boutons au style inactif
+    const allFilterIds = ['all', 'utilitaire', 'cheval', 'voiture', 'moto', 'refrigere', 'porte-velo', 'bagage'];
+    allFilterIds.forEach(id => {
+        const btn = document.getElementById(`filter-${id}`);
+        if (!btn) return;
+        btn.className = btn.className
+            .replace(/bg-terracotta-500\s?/g, '')
+            .replace(/text-white\s?/g, '')
+            .replace(/border-terracotta-500\s?/g, '')
+            .replace(/border-2\s?/g, '');
+        // Applique le style inactif propre
+        btn.className = 'flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none';
+    });
+
+    // Style actif sur le bouton sélectionné
+    const activeBtn = document.getElementById(`filter-${category}`);
+    if (activeBtn) {
+        activeBtn.className = 'flex flex-col items-center justify-center min-w-[90px] h-24 bg-terracotta-500 text-white rounded-xl border-2 border-terracotta-500 shadow-sm transition focus:outline-none';
+    }
+
+    loadTrailers(category);
 }
 
 function previewImage(event) {
@@ -305,18 +359,24 @@ async function handlePublish(event) {
     // Récupération des upsells
     const upsellCheckboxes = document.querySelectorAll('input[name="upsell"]:checked');
     const upsells = Array.from(upsellCheckboxes).map(cb => cb.value);
+
+    // Récupération de la catégorie (type de remorque)
+    const categoryInput = document.querySelector('input[name="category"]:checked');
+    const category = categoryInput ? categoryInput.value : 'utilitaire';
     
     const newTrailer = {
         title: document.getElementById('ad-title').value,
-        description: document.getElementById('ad-desc').value, // On capture la description
+        description: document.getElementById('ad-desc').value,
         price: parseInt(document.getElementById('ad-price').value),
         payload: parseInt(document.getElementById('ad-payload').value),
         socket: document.querySelector('input[name="prise"]:checked').value,
         owner_id: currentUser.id,
         image_url: finalImageUrl,
-        equipments: equipments, // Ajout des équipements
-        upsells: upsells // Ajout des upsells
+        equipments: equipments,
+        upsells: upsells,
+        category: category  // Lié aux filtres de la page catalogue
     };
+
     
     const { error } = await supabaseClient.from('trailers').insert([newTrailer]);
     if (error) showToast("Erreur BDD : " + error.message, "error");
