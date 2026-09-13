@@ -372,12 +372,11 @@ async function openTrailerDetail(trailer) {
     
     showPage('detail-page');
 
-    // On récupère les dates louées ET les dates indisponibles (bloquées par le propriétaire)
+    // On interroge la vue publique contenant uniquement les dates
     const { data: bookings } = await supabaseClient
-        .from('bookings')
+        .from('trailer_booked_dates')
         .select('start_date, end_date')
-        .eq('trailer_id', trailer.id)
-        .in('status', ['paye', 'indisponible']); 
+        .eq('trailer_id', trailer.id);
 
     const disabledDates = bookings ? bookings.map(b => ({
         from: b.start_date,
