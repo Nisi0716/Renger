@@ -5,6 +5,36 @@ const supabaseUrl = 'https://cwifrzajxrcpnqceyxnj.supabase.co';
 const supabaseKey = 'sb_publishable_b8sieHW3SGLka8GSxRfr_w_eM3wtyYc';
 const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
+// ==========================================
+// HELPER API SÉCURISÉ (EDGE FUNCTIONS)
+// ==========================================
+async function callEdgeFunction(functionName, payload = {}) {
+    if (!supabaseClient) throw new Error("Client Supabase non initialisé.");
+    
+    // Récupération de la session active et de son JWT
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError) throw sessionError;
+
+    // Si l'utilisateur est authentifié, on transmet son access_token, sinon la clé publique
+    const token = session?.access_token || supabaseKey;
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'apikey': supabaseKey
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(data.error || data.message || `Erreur serveur (${response.status})`);
+    }
+    return data;
+}
+
 let currentUser = null;
 let currentTrailer = null; 
 let bookingCalendar = null; 
@@ -232,10 +262,16 @@ function previewImage(event) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const container = document.getElementById('photo-preview-container');
-            if(container) {
-                container.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover rounded-3xl absolute inset-0">`;
+            if (container) {
+                container.innerHTML = '';
+                const img = document.createElement('img');
+                // Le dataURL (base64) est assigné via .src, pas injecté dans innerHTML
+                img.src = e.target.result;
+                img.className = 'w-full h-full object-cover rounded-3xl absolute inset-0';
+                img.alt = 'Aperçu de la photo';
+                container.appendChild(img);
             }
-        }
+        };
         reader.readAsDataURL(file);
     }
 }
@@ -429,8 +465,11 @@ async function openTrailerDetail(trailer) {
     });
 }
 
-// Fonction pour bloquer les dates gratuitement (Propriétaire)
 async function blockOwnerDates() {
+    if (!currentUser) return showToast("Vous devez être connecté.", "error");
+    if (!currentTrailer || currentUser.id !== currentTrailer.owner_id) {
+        return showToast("Action non autorisée : vous n'êtes pas le propriétaire.", "error");
+    }
     if (!selectedStartDate || !selectedEndDate) return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
 
     const formatSQLDate = (date) => {
@@ -461,60 +500,42 @@ async function blockOwnerDates() {
 
 // Fonction pour les clients classiques (Stripe)
 async function submitBooking() {
-    if (!currentUser) return showToast("Vous devez être connecté pour réserver.", "error");
-    if (!selectedStartDate || !selectedEndDate) return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
+    if (!currentUser) {
+        showToast("Vous devez être connecté pour réserver.", "error");
+        openAuthModal();
+        return;
+    }
+    if (!selectedStartDate || !selectedEndDate) {
+        return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
+    }
 
-    showToast("Création du lien de paiement sécurisé via Stripe...", "info");
-
-    const diffDays = parseInt(document.getElementById('total-days').innerText);
-    const totalPrice = diffDays * currentTrailer.price;
+    showToast("Création de votre réservation sécurisée via Stripe...", "info");
 
     const formatSQLDate = (date) => {
         const tzOffset = date.getTimezoneOffset() * 60000;
         return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
     };
 
-    const newBooking = {
-        trailer_id: currentTrailer.id,
-        renter_id: currentUser.id,
-        owner_id: currentTrailer.owner_id,
-        start_date: formatSQLDate(selectedStartDate),
-        end_date: formatSQLDate(selectedEndDate),
-        total_price: totalPrice,
-        status: 'en_attente'
-    };
-
-    const { data, error } = await supabaseClient.from('bookings').insert([newBooking]).select();
-    if (error) return showToast("Erreur d'enregistrement : " + error.message, "error");
-
-    localStorage.setItem('pending_booking_id', data[0].id);
-
     try {
-        const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/stripe-checkout', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + supabaseKey
-            },
-            body: JSON.stringify({
-                trailerId: currentTrailer.id, // Nouveau !
-                startDate: selectedStartDate.toISOString().split('T')[0], // Nouveau !
-                endDate: selectedEndDate.toISOString().split('T')[0], // Nouveau !
-                ownerStripeId: "acct_12345", 
-                customerEmail: currentUser.email,
-                bookingId: localStorage.getItem('pending_booking_id')
-            })
+        // Le serveur valide les dates, vérifie la disponibilité, calcule le prix officiel
+        // et crée la réservation en_attente avant de renvoyer l'URL Stripe Checkout
+        const stripeData = await callEdgeFunction('stripe-checkout', {
+            trailerId: currentTrailer.id,
+            startDate: formatSQLDate(selectedStartDate),
+            endDate: formatSQLDate(selectedEndDate)
         });
-
-        const stripeData = await response.json();
         
+        if (stripeData.bookingId) {
+            localStorage.setItem('pending_booking_id', stripeData.bookingId);
+        }
+
         if (stripeData.url) {
             window.location.href = stripeData.url; 
         } else {
-            showToast("Erreur Stripe : " + (stripeData.error || stripeData.message), "error");
+            showToast("Erreur Stripe : " + (stripeData.error || stripeData.message || "Lien de paiement introuvable."), "error");
         }
     } catch (err) {
-        showToast("Erreur de connexion au serveur de paiement.", "error");
+        showToast("Erreur de réservation : " + err.message, "error");
     }
 }
 
@@ -594,42 +615,76 @@ async function loadProfileData() {
     const { data: myTrailers } = await supabaseClient.from('trailers').select('*').eq('owner_id', currentUser.id);
     const { data: sellerBookings } = await supabaseClient.from('bookings').select('*').eq('owner_id', currentUser.id).eq('status', 'paye');
 
+    // ---- Section Locataire ----
     const buyerList = document.getElementById('buyer-bookings-list');
-    if(buyerList) {
+    if (buyerList) {
         buyerList.innerHTML = '';
         if (myBookings && myBookings.length > 0) {
             myBookings.forEach(booking => {
                 const startDate = new Date(booking.start_date);
                 const endDate = new Date(booking.end_date);
-                
-                let statusHtml = '';
+
+                // Badge de statut (texte statique uniquement, zéro donnée utilisateur)
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'text-xs font-bold px-2 py-1 rounded-md';
                 if (today >= startDate && today <= endDate) {
-                    statusHtml = '<span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md">🔴 En cours</span>';
+                    statusSpan.className += ' bg-green-100 text-green-700';
+                    statusSpan.textContent = '🔴 En cours';
                 } else if (today < startDate) {
-                    statusHtml = '<span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-md">⏳ À venir</span>';
+                    statusSpan.className += ' bg-blue-100 text-blue-700';
+                    statusSpan.textContent = '⏳ À venir';
                 } else {
-                    statusHtml = '<span class="bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 text-xs font-bold px-2 py-1 rounded-md">Terminé</span>';
+                    statusSpan.className += ' bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300';
+                    statusSpan.textContent = 'Terminé';
                 }
 
-                buyerList.innerHTML += `
-                    <div class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-                        <img src="${booking.trailers.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-20 h-20 object-cover rounded-xl bg-stone-100 dark:bg-stone-700">
-                        <div class="flex-1">
-                            <div class="flex justify-between items-start mb-1">
-                                <h4 class="font-bold text-stone-800 dark:text-white">${booking.trailers.title}</h4>
-                                ${statusHtml}
-                            </div>
-                            <p class="text-sm text-stone-500 dark:text-stone-400">Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')}</p>
-                            <p class="text-terracotta-600 font-bold mt-2">${booking.total_price} CHF réglés</p>
-                        </div>
-                    </div>
-                `;
+                // Image (attribut .src assigné, pas interpolé dans innerHTML)
+                const img = document.createElement('img');
+                img.src = booking.trailers.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop';
+                img.className = 'w-20 h-20 object-cover rounded-xl bg-stone-100 dark:bg-stone-700';
+                img.alt = '';
+
+                // Titre de la remorque — textContent neutralise toute injection XSS
+                const titleEl = document.createElement('h4');
+                titleEl.className = 'font-bold text-stone-800 dark:text-white';
+                titleEl.textContent = booking.trailers.title;
+
+                const titleRow = document.createElement('div');
+                titleRow.className = 'flex justify-between items-start mb-1';
+                titleRow.appendChild(titleEl);
+                titleRow.appendChild(statusSpan);
+
+                // Dates (toLocaleDateString retourne une chaîne sûre)
+                const datesEl = document.createElement('p');
+                datesEl.className = 'text-sm text-stone-500 dark:text-stone-400';
+                datesEl.textContent = `Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')}`;
+
+                // Prix (valeur numérique de la BDD)
+                const priceEl = document.createElement('p');
+                priceEl.className = 'text-terracotta-600 font-bold mt-2';
+                priceEl.textContent = `${Number(booking.total_price).toFixed(2)} CHF réglés`;
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex-1';
+                infoDiv.appendChild(titleRow);
+                infoDiv.appendChild(datesEl);
+                infoDiv.appendChild(priceEl);
+
+                const card = document.createElement('div');
+                card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-5 rounded-2xl shadow-sm flex items-center gap-4';
+                card.appendChild(img);
+                card.appendChild(infoDiv);
+                buyerList.appendChild(card);
             });
         } else {
-            buyerList.innerHTML = `<p class="text-stone-400 italic">Vous n'avez aucune réservation en cours.</p>`;
+            const emptyMsg = document.createElement('p');
+            emptyMsg.className = 'text-stone-400 italic';
+            emptyMsg.textContent = "Vous n'avez aucune réservation en cours.";
+            buyerList.appendChild(emptyMsg);
         }
     }
 
+    // ---- Calcul des revenus mensuels ----
     let monthlyRevenue = 0;
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
@@ -642,39 +697,68 @@ async function loadProfileData() {
             }
         });
     }
-    
-    const revenueElement = document.getElementById('seller-monthly-revenue');
-    if(revenueElement) revenueElement.innerText = monthlyRevenue.toFixed(2) + " CHF";
 
+    const revenueElement = document.getElementById('seller-monthly-revenue');
+    if (revenueElement) revenueElement.textContent = monthlyRevenue.toFixed(2) + ' CHF';
+
+    // ---- Section Propriétaire ----
     const sellerList = document.getElementById('seller-trailers-list');
-    if(sellerList) {
+    if (sellerList) {
         sellerList.innerHTML = '';
         if (myTrailers && myTrailers.length > 0) {
             myTrailers.forEach(trailer => {
-                let isRentedNow = false;
-                if (sellerBookings) {
-                    isRentedNow = sellerBookings.some(b => b.trailer_id === trailer.id && today >= new Date(b.start_date) && today <= new Date(b.end_date));
+                const isRentedNow = sellerBookings
+                    ? sellerBookings.some(b => b.trailer_id === trailer.id && today >= new Date(b.start_date) && today <= new Date(b.end_date))
+                    : false;
+
+                // Badge de statut (texte statique uniquement)
+                const badge = document.createElement('span');
+                badge.className = 'absolute top-3 left-3 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-sm';
+                if (isRentedNow) {
+                    badge.className += ' bg-red-500 animate-pulse';
+                    badge.textContent = 'En location actuelle';
+                } else {
+                    badge.className += ' bg-green-500';
+                    badge.textContent = 'Disponible';
                 }
 
-                const statusBadge = isRentedNow 
-                    ? '<span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-sm animate-pulse">En location actuelle</span>' 
-                    : '<span class="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-sm">Disponible</span>';
+                // Image
+                const img = document.createElement('img');
+                img.src = trailer.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop';
+                img.className = 'w-full h-full object-cover';
+                img.alt = '';
 
-                sellerList.innerHTML += `
-                    <div class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative">
-                        ${statusBadge}
-                        <div class="h-32 bg-stone-200 dark:bg-stone-700">
-                            <img src="${trailer.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-full h-full object-cover">
-                        </div>
-                        <div class="p-4">
-                            <h4 class="font-bold text-lg mb-1 dark:text-white">${trailer.title}</h4>
-                            <p class="text-stone-500 dark:text-stone-400 text-sm mb-3">Génère ${trailer.price} CHF / jour</p>
-                        </div>
-                    </div>
-                `;
+                const imgWrapper = document.createElement('div');
+                imgWrapper.className = 'h-32 bg-stone-200 dark:bg-stone-700 relative';
+                imgWrapper.appendChild(badge);
+                imgWrapper.appendChild(img);
+
+                // Titre — textContent neutralise toute injection XSS
+                const titleEl = document.createElement('h4');
+                titleEl.className = 'font-bold text-lg mb-1 dark:text-white';
+                titleEl.textContent = trailer.title;
+
+                // Prix (valeur numérique de la BDD)
+                const priceEl = document.createElement('p');
+                priceEl.className = 'text-stone-500 dark:text-stone-400 text-sm mb-3';
+                priceEl.textContent = `Génère ${Number(trailer.price).toFixed(2)} CHF / jour`;
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'p-4';
+                infoDiv.appendChild(titleEl);
+                infoDiv.appendChild(priceEl);
+
+                const card = document.createElement('div');
+                card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative';
+                card.appendChild(imgWrapper);
+                card.appendChild(infoDiv);
+                sellerList.appendChild(card);
             });
         } else {
-            sellerList.innerHTML = `<p class="text-stone-400 italic">Vous n'avez pas encore publié de remorque.</p>`;
+            const emptyMsg = document.createElement('p');
+            emptyMsg.className = 'text-stone-400 italic';
+            emptyMsg.textContent = "Vous n'avez pas encore publié de remorque.";
+            sellerList.appendChild(emptyMsg);
         }
     }
 }
@@ -693,16 +777,14 @@ async function setupStripePayouts() {
     showToast("Génération du lien sécurisé Stripe...", "info");
     
     try {
-        const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/stripe-onboarding', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: currentUser.email })
-        });
-        const data = await response.json();
-        if (data.url) window.location.href = data.url; 
-        else showToast("Erreur Stripe : " + data.error, "error");
+        const data = await callEdgeFunction('stripe-onboarding');
+        if (data.url) {
+            window.location.href = data.url; 
+        } else {
+            showToast("Erreur Stripe : " + (data.error || "Lien de configuration introuvable"), "error");
+        }
     } catch (err) {
-        showToast("Erreur de connexion au serveur.", "error");
+        showToast("Erreur Stripe : " + err.message, "error");
     }
 }
 
@@ -714,20 +796,15 @@ async function deleteAccount() {
     showToast("Suppression en cours...", "info");
     
     try {
-        const response = await fetch('https://cwifrzajxrcpnqceyxnj.supabase.co/functions/v1/delete-account', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id })
-        });
-        const data = await response.json();
+        const data = await callEdgeFunction('delete-account');
         if (data.success) {
             alert("Compte supprimé avec succès. À bientôt !");
             handleLogout();
         } else {
-            showToast("Erreur de suppression : " + data.error, "error");
+            showToast("Erreur de suppression : " + (data.error || "Échec de la suppression"), "error");
         }
     } catch (err) {
-        showToast("Erreur de connexion au serveur.", "error");
+        showToast("Erreur de suppression : " + err.message, "error");
     }
 }
 
