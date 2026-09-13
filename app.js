@@ -262,8 +262,6 @@ function previewImage(event) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const container = document.getElementById('photo-preview-container');
-            if(container) {
-                container.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover rounded-3xl absolute inset-0">`;
             if (container) {
                 container.innerHTML = '';
                 const img = document.createElement('img');
@@ -273,7 +271,6 @@ function previewImage(event) {
                 img.alt = 'Aperçu de la photo';
                 container.appendChild(img);
             }
-        }
         };
         reader.readAsDataURL(file);
     }
@@ -620,46 +617,27 @@ async function loadProfileData() {
 
     // ---- Section Locataire ----
     const buyerList = document.getElementById('buyer-bookings-list');
-    if(buyerList) {
     if (buyerList) {
         buyerList.innerHTML = '';
         if (myBookings && myBookings.length > 0) {
             myBookings.forEach(booking => {
                 const startDate = new Date(booking.start_date);
                 const endDate = new Date(booking.end_date);
-                
-                let statusHtml = '';
 
                 // Badge de statut (texte statique uniquement, zéro donnée utilisateur)
                 const statusSpan = document.createElement('span');
                 statusSpan.className = 'text-xs font-bold px-2 py-1 rounded-md';
                 if (today >= startDate && today <= endDate) {
-                    statusHtml = '<span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-md">🔴 En cours</span>';
                     statusSpan.className += ' bg-green-100 text-green-700';
                     statusSpan.textContent = '🔴 En cours';
                 } else if (today < startDate) {
-                    statusHtml = '<span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-md">⏳ À venir</span>';
                     statusSpan.className += ' bg-blue-100 text-blue-700';
                     statusSpan.textContent = '⏳ À venir';
                 } else {
-                    statusHtml = '<span class="bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 text-xs font-bold px-2 py-1 rounded-md">Terminé</span>';
                     statusSpan.className += ' bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300';
                     statusSpan.textContent = 'Terminé';
                 }
 
-                buyerList.innerHTML += `
-                    <div class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-                        <img src="${booking.trailers.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-20 h-20 object-cover rounded-xl bg-stone-100 dark:bg-stone-700">
-                        <div class="flex-1">
-                            <div class="flex justify-between items-start mb-1">
-                                <h4 class="font-bold text-stone-800 dark:text-white">${booking.trailers.title}</h4>
-                                ${statusHtml}
-                            </div>
-                            <p class="text-sm text-stone-500 dark:text-stone-400">Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')}</p>
-                            <p class="text-terracotta-600 font-bold mt-2">${booking.total_price} CHF réglés</p>
-                        </div>
-                    </div>
-                `;
                 // Image (attribut .src assigné, pas interpolé dans innerHTML)
                 const img = document.createElement('img');
                 img.src = booking.trailers.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop';
@@ -699,7 +677,6 @@ async function loadProfileData() {
                 buyerList.appendChild(card);
             });
         } else {
-            buyerList.innerHTML = `<p class="text-stone-400 italic">Vous n'avez aucune réservation en cours.</p>`;
             const emptyMsg = document.createElement('p');
             emptyMsg.className = 'text-stone-400 italic';
             emptyMsg.textContent = "Vous n'avez aucune réservation en cours.";
@@ -720,22 +697,16 @@ async function loadProfileData() {
             }
         });
     }
-    
 
     const revenueElement = document.getElementById('seller-monthly-revenue');
-    if(revenueElement) revenueElement.innerText = monthlyRevenue.toFixed(2) + " CHF";
     if (revenueElement) revenueElement.textContent = monthlyRevenue.toFixed(2) + ' CHF';
 
     // ---- Section Propriétaire ----
     const sellerList = document.getElementById('seller-trailers-list');
-    if(sellerList) {
     if (sellerList) {
         sellerList.innerHTML = '';
         if (myTrailers && myTrailers.length > 0) {
             myTrailers.forEach(trailer => {
-                let isRentedNow = false;
-                if (sellerBookings) {
-                    isRentedNow = sellerBookings.some(b => b.trailer_id === trailer.id && today >= new Date(b.start_date) && today <= new Date(b.end_date));
                 const isRentedNow = sellerBookings
                     ? sellerBookings.some(b => b.trailer_id === trailer.id && today >= new Date(b.start_date) && today <= new Date(b.end_date))
                     : false;
@@ -751,27 +722,12 @@ async function loadProfileData() {
                     badge.textContent = 'Disponible';
                 }
 
-                const statusBadge = isRentedNow 
-                    ? '<span class="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-sm animate-pulse">En location actuelle</span>' 
-                    : '<span class="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-sm">Disponible</span>';
                 // Image
                 const img = document.createElement('img');
                 img.src = trailer.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop';
                 img.className = 'w-full h-full object-cover';
                 img.alt = '';
 
-                sellerList.innerHTML += `
-                    <div class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative">
-                        ${statusBadge}
-                        <div class="h-32 bg-stone-200 dark:bg-stone-700">
-                            <img src="${trailer.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop'}" class="w-full h-full object-cover">
-                        </div>
-                        <div class="p-4">
-                            <h4 class="font-bold text-lg mb-1 dark:text-white">${trailer.title}</h4>
-                            <p class="text-stone-500 dark:text-stone-400 text-sm mb-3">Génère ${trailer.price} CHF / jour</p>
-                        </div>
-                    </div>
-                `;
                 const imgWrapper = document.createElement('div');
                 imgWrapper.className = 'h-32 bg-stone-200 dark:bg-stone-700 relative';
                 imgWrapper.appendChild(badge);
@@ -799,7 +755,6 @@ async function loadProfileData() {
                 sellerList.appendChild(card);
             });
         } else {
-            sellerList.innerHTML = `<p class="text-stone-400 italic">Vous n'avez pas encore publié de remorque.</p>`;
             const emptyMsg = document.createElement('p');
             emptyMsg.className = 'text-stone-400 italic';
             emptyMsg.textContent = "Vous n'avez pas encore publié de remorque.";
