@@ -542,19 +542,53 @@ async function submitBooking() {
 async function checkPaymentStatus() {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get('payment');
-    const pendingBookingId = localStorage.getItem('pending_booking_id');
 
-    if (paymentStatus === 'success' && pendingBookingId) {
-        localStorage.removeItem('pending_booking_id'); 
-        
+    // Lecture du bookingId depuis l'URL (transmis par stripe-checkout Edge Function)
+    // ou en fallback depuis localStorage si l'URL ne le contient pas
+    const bookingId = urlParams.get('booking_id') || localStorage.getItem('pending_booking_id');
+
+    if (paymentStatus === 'success' && bookingId) {
+        // Nettoyage immédiat de l'URL et du localStorage
+        localStorage.removeItem('pending_booking_id');
         window.history.replaceState({}, document.title, window.location.pathname);
-        showToast("Paiement validé par Stripe ! Votre profil sera mis à jour.", "success");
-        openProfile();
+
+        showToast("Paiement reçu ! Vérification en cours...", "info");
+
+        // Polling : on attend que le webhook Stripe ait passé le statut à 'paye'
+        // Tentatives : toutes les 1.5s, jusqu'à 8 fois (12 secondes max)
+        const MAX_ATTEMPTS = 8;
+        const POLL_INTERVAL_MS = 1500;
+
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+
+            const { data: booking, error } = await supabaseClient
+                .from('bookings')
+                .select('id, status')
+                .eq('id', bookingId)
+                .single();
+
+            if (error || !booking) continue;
+
+            if (booking.status === 'paye') {
+                showToast("🎉 Réservation confirmée ! Retrouvez-la dans vos réservations.", "success");
+                await openProfile();
+                // Forcer l'onglet "Mes locations (Client)"
+                switchProfileTab('buyer');
+                return;
+            }
+        }
+
+        // Délai dépassé : le webhook n'a pas encore répondu mais on affiche quand même
+        // le profil avec un message informatif
+        showToast("Paiement validé. Votre réservation apparaîtra dans quelques instants.", "success");
+        await openProfile();
+        switchProfileTab('buyer');
 
     } else if (paymentStatus === 'cancel') {
         localStorage.removeItem('pending_booking_id');
         window.history.replaceState({}, document.title, window.location.pathname);
-        showToast("Le paiement a été annulé.", "error");
+        showToast("Le paiement a été annulé. Votre réservation n'a pas été créée.", "error");
     }
 }
 
