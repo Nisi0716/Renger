@@ -205,17 +205,23 @@ async function loadTrailers() {
         
         const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
         
+        // 1. On crée la structure HTML sans y mettre aucune donnée utilisateur
         card.innerHTML = `
             <div class="h-48 bg-stone-200 dark:bg-stone-700 relative">
                 <img src="${imgUrl}" class="w-full h-full object-cover">
-                <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white">${trailer.price} CHF<span class="text-xs font-normal">/j</span></div>
+                <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
             </div>
             <div class="p-5">
-                <h4 class="font-bold text-lg mb-1 dark:text-white">${trailer.title}</h4>
+                <h4 class="safe-title font-bold text-lg mb-1 dark:text-white"></h4>
                 <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">📍 Vaud</p>
                 <button class="w-full bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 font-semibold py-2.5 rounded-xl">Voir les détails</button>
             </div>
         `;
+
+        // 2. ZERO TRUST : On injecte les données avec textContent (qui neutralise le code)
+        card.querySelector('.safe-title').textContent = trailer.title;
+        card.querySelector('.safe-price').textContent = trailer.price;
+
         grid.appendChild(card);
     });
 }
@@ -325,29 +331,42 @@ async function openTrailerDetail(trailer) {
     if (equipTitle) equipTitle.classList.add('hidden');
     if (upsellTitle) upsellTitle.classList.add('hidden');
 
-    // 2. Affichage des équipements (Gratuits)
+    /// 2. Affichage des équipements (Sécurisé contre les XSS)
     if (trailer.equipments && trailer.equipments.length > 0) {
         equipTitle.classList.remove('hidden');
         trailer.equipments.forEach(eq => {
-            equipContainer.innerHTML += `<span class="bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg text-sm font-semibold capitalize">✅ ${eq}</span>`;
+            const span = document.createElement('span');
+            span.className = "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg text-sm font-semibold capitalize";
+            // L'utilisation de textContent désamorce toute tentative d'injection
+            span.textContent = "✅ " + eq;
+            equipContainer.appendChild(span);
         });
     }
 
-    // 3. Affichage des Upsells (Options payantes)
+    // 3. Affichage des Upsells (Sécurisé contre les XSS)
     if (trailer.upsells && trailer.upsells.length > 0) {
         upsellTitle.classList.remove('hidden');
         trailer.upsells.forEach(up => {
-            // Logique pour formater le texte et le prix selon l'option choisie
             let upText = up;
             let upPrice = "";
             if (up === "livraison") { upText = "🚚 Livraison"; upPrice = "+25 CHF"; }
             if (up === "diable") { upText = "🛒 Prêt d'un diable"; upPrice = "+10 CHF/j"; }
 
-            upsellContainer.innerHTML += `
-                <div class="flex justify-between items-center bg-terracotta-50 dark:bg-stone-800 border border-terracotta-100 dark:border-stone-700 p-3 rounded-xl">
-                    <span class="font-bold text-terracotta-700 dark:text-terracotta-400 capitalize">${upText}</span>
-                    <span class="text-terracotta-600 dark:text-terracotta-400 font-bold text-sm">${upPrice}</span>
-                </div>`;
+            // Création de la structure ligne par ligne sans innerHTML
+            const div = document.createElement('div');
+            div.className = "flex justify-between items-center bg-terracotta-50 dark:bg-stone-800 border border-terracotta-100 dark:border-stone-700 p-3 rounded-xl";
+            
+            const spanTitle = document.createElement('span');
+            spanTitle.className = "font-bold text-terracotta-700 dark:text-terracotta-400 capitalize";
+            spanTitle.textContent = upText;
+
+            const spanPrice = document.createElement('span');
+            spanPrice.className = "text-terracotta-600 dark:text-terracotta-400 font-bold text-sm";
+            spanPrice.textContent = upPrice;
+
+            div.appendChild(spanTitle);
+            div.appendChild(spanPrice);
+            upsellContainer.appendChild(div);
         });
     }
     
@@ -479,12 +498,12 @@ async function submitBooking() {
                 'Authorization': 'Bearer ' + supabaseKey
             },
             body: JSON.stringify({
-                trailerTitle: currentTrailer.title,
-                basePrice: totalPrice,
-                payload: parseInt(currentTrailer.payload),
-                upsellsTotal: 0, 
+                trailerId: currentTrailer.id, // Nouveau !
+                startDate: selectedStartDate.toISOString().split('T')[0], // Nouveau !
+                endDate: selectedEndDate.toISOString().split('T')[0], // Nouveau !
                 ownerStripeId: "acct_12345", 
-                customerEmail: currentUser.email
+                customerEmail: currentUser.email,
+                bookingId: localStorage.getItem('pending_booking_id')
             })
         });
 
@@ -506,11 +525,10 @@ async function checkPaymentStatus() {
     const pendingBookingId = localStorage.getItem('pending_booking_id');
 
     if (paymentStatus === 'success' && pendingBookingId) {
-        await supabaseClient.from('bookings').update({ status: 'paye' }).eq('id', pendingBookingId);
         localStorage.removeItem('pending_booking_id'); 
         
         window.history.replaceState({}, document.title, window.location.pathname);
-        showToast("Paiement réussi ! Votre réservation est confirmée.", "success");
+        showToast("Paiement validé par Stripe ! Votre profil sera mis à jour.", "success");
         openProfile();
 
     } else if (paymentStatus === 'cancel') {
