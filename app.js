@@ -368,6 +368,57 @@ async function handleSignup() {
     checkUser();
 }
 
+// Connexion via Google OAuth
+async function handleGoogleLogin() {
+    if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: window.location.origin + window.location.pathname
+        }
+    });
+    if (error) showToast("Erreur Google : " + error.message, "error");
+    // Supabase redirige vers Google — le retour est géré dans DOMContentLoaded via onAuthStateChange
+}
+
+// Crée un profil si l'utilisateur n'en a pas encore (pour les connexions OAuth/Google)
+async function ensureProfileExists(user) {
+    if (!user || !supabaseClient) return;
+
+    const { data: existing } = await supabaseClient
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    if (existing) return; // Profil déjà présent
+
+    // Générer un username depuis l'email Google ou via l'UUID
+    let base = (user.email || '').split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '_')
+        .substring(0, 16);
+    if (!base || base.length < 1) base = 'user';
+
+    // Vérifier disponibilité et ajouter un suffixe si nécessaire
+    let username = base;
+    let suffix = 1;
+    while (true) {
+        const { data: taken } = await supabaseClient
+            .from('profiles')
+            .select('id')
+            .eq('username', username)
+            .maybeSingle();
+        if (!taken) break;
+        username = base.substring(0, 14) + '_' + suffix;
+        suffix++;
+        if (suffix > 99) { username = 'user_' + user.id.replace(/-/g, '').substring(0, 8); break; }
+    }
+
+    await supabaseClient.from('profiles').insert({ id: user.id, username });
+    showToast("Bienvenue sur Renger ! Votre username : @" + username + " (modifiable dans Paramètres)", "success");
+}
+
 async function handleLogin() {
     if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
     const email = document.getElementById('login-email').value;
@@ -395,6 +446,9 @@ async function checkUser() {
     if (!container) return;
     
     if (currentUser) {
+        // Auto-créer le profil si l'utilisateur vient de se connecter via Google (ou autre OAuth)
+        ensureProfileExists(currentUser);
+
         container.innerHTML = `
             <div class="flex items-center gap-4">
                 <button onclick="openProfile()" class="text-stone-600 dark:text-stone-300 font-bold hover:text-terracotta-500 transition hidden md:block">Mon Espace</button>
