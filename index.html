@@ -170,6 +170,19 @@
                 <!-- Section Options Payantes (Upsells) -->
                 <h3 id="upsells-title" class="text-xl font-bold mb-3 text-stone-800 dark:text-white hidden">Options supplémentaires</h3>
                 <div id="detail-upsells" class="flex flex-col gap-3 mb-8"></div>
+
+                <!-- Carte Propriétaire -->
+                <div id="owner-card" class="hidden bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl p-5">
+                    <p class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">Proposé par</p>
+                    <div class="flex items-center gap-4">
+                        <div id="owner-avatar" class="w-12 h-12 rounded-full flex-shrink-0 overflow-hidden"></div>
+                        <div class="flex-1 min-w-0">
+                            <p id="owner-username" class="font-bold text-stone-800 dark:text-white truncate"></p>
+                            <div id="owner-badges" class="flex flex-wrap gap-1 mt-1"></div>
+                        </div>
+                        <button id="owner-profile-btn" class="flex-shrink-0 text-sm font-semibold text-terracotta-500 hover:underline whitespace-nowrap">Voir le profil →</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Colonne de droite : Le Calendrier de réservation -->
@@ -358,19 +371,43 @@
         <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-2xl w-full max-w-md relative">
             <button onclick="closeAuthModal()" class="absolute top-4 right-5 text-stone-400 hover:text-terracotta-500 text-3xl transition">&times;</button>
 
-            <!-- Panneau Connexion / Inscription -->
+            <!-- Panneau Connexion -->
             <div id="auth-panel-login">
                 <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 dark:text-white text-center">Rejoindre Renger</h2>
                 <input type="email" id="login-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
                 <input type="password" id="login-password" placeholder="Mot de passe" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-2 focus:border-terracotta-500 focus:outline-none">
-                <!-- Lien mot de passe oublié -->
-                <div class="text-right mb-6">
+                <div class="text-right mb-5">
                     <button onclick="showResetPanel()" class="text-sm text-terracotta-500 hover:underline font-medium">Mot de passe oublié ?</button>
                 </div>
-                <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-3 mb-5">
                     <button onclick="handleLogin()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Connexion</button>
-                    <button onclick="handleSignup()" class="w-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200 font-semibold py-3 rounded-xl hover:bg-stone-300 dark:hover:bg-stone-600 transition">S'inscrire</button>
                 </div>
+
+                <!-- Séparateur -->
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                    <span class="text-xs text-stone-400 font-medium">Nouveau sur Renger ?</span>
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                </div>
+
+                <!-- Champ username — uniquement pour l'inscription -->
+                <div class="mb-3">
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">@</span>
+                        <input
+                            type="text"
+                            id="signup-username"
+                            placeholder="nom_utilisateur"
+                            oninput="checkUsernameAvailability(this.value)"
+                            maxlength="20"
+                            class="w-full pl-8 pr-10 py-3 border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl focus:border-terracotta-500 focus:outline-none transition"
+                        >
+                        <!-- Indicateur état : check / cross / spinner -->
+                        <span id="username-status-icon" class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5"></span>
+                    </div>
+                    <p id="username-feedback" class="text-xs mt-1 text-stone-400">Lettres minuscules, chiffres, . - _ — 1 à 20 caractères</p>
+                </div>
+                <button onclick="handleSignup()" class="w-full bg-stone-800 dark:bg-stone-200 dark:text-stone-900 text-white font-semibold py-3 rounded-xl hover:bg-stone-700 dark:hover:bg-white transition">S'inscrire</button>
             </div>
 
             <!-- Panneau Mot de passe oublié -->
@@ -421,6 +458,36 @@
             <p class="text-stone-500 dark:text-stone-400 text-lg">Connecté avec : <span id="settings-email" class="font-bold text-stone-800 dark:text-white"></span></p>
         </div>
 
+        <!-- SECTION MON PROFIL -->
+        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
+            <h3 class="text-2xl font-bold text-stone-800 dark:text-white mb-6">Mon profil public</h3>
+            <div class="flex flex-col sm:flex-row gap-6 items-start">
+                <!-- Avatar -->
+                <div class="flex flex-col items-center gap-3 flex-shrink-0">
+                    <div id="settings-avatar-preview" class="w-20 h-20 rounded-full overflow-hidden flex-shrink-0"></div>
+                    <label class="cursor-pointer text-sm font-semibold text-terracotta-500 hover:underline">
+                        Changer la photo
+                        <input type="file" id="avatar-upload" accept="image/*" onchange="handleAvatarUpload(event)" class="hidden">
+                    </label>
+                </div>
+                <!-- Champs -->
+                <div class="flex-1 w-full space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Nom d'utilisateur</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">@</span>
+                            <input type="text" id="settings-username" maxlength="20"
+                                class="w-full pl-8 py-3 border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl focus:border-terracotta-500 focus:outline-none transition">
+                        </div>
+                        <p id="settings-username-info" class="text-xs mt-1 text-stone-400"></p>
+                    </div>
+                    <button onclick="handleSaveProfile()" class="bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 px-6 rounded-xl transition">
+                        Sauvegarder le profil
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-gradient-to-br from-white to-stone-50 dark:from-stone-800 dark:to-stone-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8 relative overflow-hidden">
             <div class="absolute -right-6 -top-6 text-9xl opacity-5 pointer-events-none">🏦</div>
 
@@ -464,7 +531,42 @@
         </div>
     </div>
     
+    <!-- PAGE PROFIL PUBLIC -->
+    <div id="public-profile-page" class="hidden min-h-screen p-6 pt-24 max-w-4xl mx-auto mb-24">
+        <button id="public-profile-back-btn" onclick="history.back()" class="text-terracotta-600 font-semibold mb-8 hover:text-terracotta-500 transition">← Retour</button>
+
+        <!-- En-tête profil -->
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 p-8 mb-8">
+            <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <div id="public-profile-avatar" class="w-20 h-20 rounded-full overflow-hidden flex-shrink-0"></div>
+                <div class="flex-1 text-center sm:text-left">
+                    <h2 id="public-profile-username" class="text-2xl font-bold text-stone-900 dark:text-white mb-1"></h2>
+                    <p id="public-profile-since" class="text-sm text-stone-400 mb-3"></p>
+                    <!-- Badges -->
+                    <div id="public-profile-badges" class="flex flex-wrap gap-2 justify-center sm:justify-start"></div>
+                </div>
+            </div>
+
+            <!-- Étoiles — Placeholder (système de notation à venir) -->
+            <div class="mt-6 pt-6 border-t border-stone-100 dark:border-stone-700 flex items-center gap-3">
+                <div class="flex gap-1">
+                    <svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </div>
+                <span class="text-sm text-stone-400 italic">Système de notation disponible prochainement</span>
+            </div>
+        </div>
+
+        <!-- Annonces du propriétaire -->
+        <h3 id="public-profile-trailers-title" class="text-xl font-bold mb-4 text-stone-800 dark:text-stone-100"></h3>
+        <div id="public-profile-trailers" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+
     <!-- FOOTER LÉGAL -->
+
     <footer class="w-full py-8 mt-16 border-t border-stone-200 dark:border-stone-800 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
         <span class="text-stone-300 dark:text-stone-600 hidden md:inline">© 2026 Renger</span>
         <a href="cgu.html" class="hover:text-terracotta-500 transition font-medium">Conditions Générales d'Utilisation (CGU)</a>

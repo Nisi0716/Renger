@@ -136,7 +136,7 @@ function showToast(message, type = 'success') {
 // ==========================================
 // 2. NAVIGATION & UI
 // ==========================================
-const pages = ['welcome-screen', 'buyer-page', 'seller-page', 'detail-page', 'inspection-page', 'profile-page', 'settings-page'];
+const pages = ['welcome-screen', 'buyer-page', 'seller-page', 'detail-page', 'inspection-page', 'profile-page', 'settings-page', 'public-profile-page'];
 
 function showPage(pageId) {
     pages.forEach(p => {
@@ -194,13 +194,178 @@ function toggleTheme() {
 // ==========================================
 // 3. AUTHENTIFICATION & HEADER
 // ==========================================
+
+// --- Utilitaires profil ---
+
+// Couleur d'avatar déterministe à partir du username
+function avatarColor(username) {
+    const COLORS = ['#d85110','#2563eb','#16a34a','#9333ea','#0891b2','#dc2626','#d97706','#0d9488'];
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    return COLORS[Math.abs(hash) % COLORS.length];
+}
+
+// Retourne un élément DOM avatar (photo ou initiale colorée)
+function renderAvatar(profile, size = 48) {
+    const wrapper = document.createElement('div');
+    wrapper.style.width = size + 'px';
+    wrapper.style.height = size + 'px';
+    wrapper.style.borderRadius = '50%';
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.flexShrink = '0';
+
+    if (profile?.avatar_url) {
+        const img = document.createElement('img');
+        img.src = profile.avatar_url;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        wrapper.appendChild(img);
+    } else {
+        const initial = (profile?.username || '?')[0].toUpperCase();
+        const color = avatarColor(profile?.username || '?');
+        wrapper.style.background = color;
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.color = '#fff';
+        wrapper.style.fontWeight = '700';
+        wrapper.style.fontSize = Math.round(size * 0.4) + 'px';
+        wrapper.textContent = initial;
+    }
+    return wrapper;
+}
+
+// SVG icons pour les badges (stroke style, 16x16)
+const BADGE_SVGS = {
+    nouveau:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12c0-2.76 1.12-5.26 2.93-7.07"/><path d="M12 12c0-2.21 1.79-4 4-4"/><path d="M12 12c-2.21 0-4-1.79-4-4"/><line x1="12" y1="2" x2="12" y2="12"/></svg>`,
+    proprio:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+    multi:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="3.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3"/></svg>`,
+    actif:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>`,
+    super:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    elite:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><line x1="5" y1="20" x2="19" y2="20"/></svg>`,
+};
+
+// Calcule les badges selon le profil et le nombre de remorques
+function computeBadges(profile, trailersCount) {
+    const r = profile?.completed_rentals || 0;
+    const t = trailersCount || 0;
+    const badges = [];
+
+    // Toujours
+    badges.push({ key: 'nouveau', label: 'Nouveau membre', color: '#6b7280' });
+
+    if (t >= 1)  badges.push({ key: 'proprio', label: 'Propriétaire actif', color: '#d85110' });
+    if (t >= 3)  badges.push({ key: 'multi',   label: 'Multi-propriétaire', color: '#9333ea' });
+    if (r >= 3)  badges.push({ key: 'actif',   label: 'Membre actif',       color: '#2563eb' });
+    if (r >= 10 || t >= 5) badges.push({ key: 'super', label: 'Super membre', color: '#d97706' });
+    if (r >= 25 || t >= 10) badges.push({ key: 'elite', label: 'Elite Renger', color: '#16a34a' });
+
+    return badges;
+}
+
+// Génère un élément DOM de badge avec SVG + label
+function renderBadge(badge, compact = false) {
+    const el = document.createElement('span');
+    el.title = badge.label;
+    el.style.color = badge.color;
+    el.className = compact
+        ? 'inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border'
+        : 'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border';
+    el.style.borderColor = badge.color + '55';
+    el.style.background = badge.color + '11';
+
+    const icon = document.createElement('span');
+    icon.style.width = '14px';
+    icon.style.height = '14px';
+    icon.style.display = 'inline-block';
+    icon.style.flexShrink = '0';
+    icon.innerHTML = BADGE_SVGS[badge.key] || '';
+    el.appendChild(icon);
+
+    if (!compact) {
+        const label = document.createElement('span');
+        label.textContent = badge.label;
+        el.appendChild(label);
+    }
+    return el;
+}
+
+// Validation format username
+function validateUsernameFormat(username) {
+    return /^[a-z0-9._-]{1,20}$/.test(username);
+}
+
+// Vérification disponibilité username (debounce 400ms)
+let usernameCheckTimer = null;
+async function checkUsernameAvailability(value) {
+    const icon = document.getElementById('username-status-icon');
+    const feedback = document.getElementById('username-feedback');
+    if (!icon || !feedback) return;
+
+    const username = value.trim().toLowerCase();
+
+    if (!username) {
+        icon.innerHTML = '';
+        feedback.textContent = 'Lettres minuscules, chiffres, . - _ — 1 à 20 caractères';
+        feedback.className = 'text-xs mt-1 text-stone-400';
+        return;
+    }
+    if (!validateUsernameFormat(username)) {
+        icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+        feedback.textContent = 'Format invalide — lettres minuscules, chiffres, . - _ uniquement';
+        feedback.className = 'text-xs mt-1 text-red-500';
+        return;
+    }
+
+    // Spinner pendant la vérification
+    icon.innerHTML = `<svg class="animate-spin" viewBox="0 0 24 24" fill="none" stroke="#a8a29e" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>`;
+    feedback.textContent = 'Vérification...';
+    feedback.className = 'text-xs mt-1 text-stone-400';
+
+    clearTimeout(usernameCheckTimer);
+    usernameCheckTimer = setTimeout(async () => {
+        const { data } = await supabaseClient.from('profiles').select('username').eq('username', username).maybeSingle();
+        if (data) {
+            icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+            feedback.textContent = '@' + username + ' est déjà pris';
+            feedback.className = 'text-xs mt-1 text-red-500';
+        } else {
+            icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>`;
+            feedback.textContent = '@' + username + ' est disponible !';
+            feedback.className = 'text-xs mt-1 text-green-600';
+        }
+    }, 400);
+}
+
+// --- Auth ---
+
 async function handleSignup() {
     if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
-    const email = document.getElementById('login-email').value;
+    const email    = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-    const { error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) showToast("Erreur d'inscription : " + error.message, "error");
-    else showToast("Inscription réussie !", "success");
+    const username = (document.getElementById('signup-username')?.value || '').trim().toLowerCase();
+
+    if (!username) return showToast("Veuillez choisir un nom d'utilisateur.", "error");
+    if (!validateUsernameFormat(username)) return showToast("Format du nom d'utilisateur invalide.", "error");
+
+    // Vérifier unicité une dernière fois avant d'inscrire
+    const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', username).maybeSingle();
+    if (existing) return showToast("Ce nom d'utilisateur est déjà pris.", "error");
+
+    const { data: signupData, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) return showToast("Erreur d'inscription : " + error.message, "error");
+
+    // Créer le profil avec le username choisi
+    if (signupData?.user) {
+        await supabaseClient.from('profiles').insert({
+            id: signupData.user.id,
+            username: username
+        });
+    }
+    showToast("Inscription réussie ! Bienvenue @" + username, "success");
+    closeAuthModal();
+    checkUser();
 }
 
 async function handleLogin() {
@@ -586,7 +751,6 @@ async function openTrailerDetail(trailer) {
                 const total = diffDays * currentTrailer.price;
                 
                 document.getElementById('total-days').innerText = diffDays;
-                // Si on est le propriétaire, on affiche 0 CHF
                 document.getElementById('total-price').innerText = isOwner ? "0 CHF" : total + " CHF";
                 document.getElementById('booking-summary').classList.remove('hidden');
             } else {
@@ -594,6 +758,47 @@ async function openTrailerDetail(trailer) {
             }
         }
     });
+
+    // Charger et afficher la carte propriétaire (async, non bloquant)
+    if (trailer.owner_id) {
+        const ownerCard = document.getElementById('owner-card');
+        if (ownerCard) ownerCard.classList.add('hidden');
+
+        const { data: ownerProfile } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', trailer.owner_id)
+            .maybeSingle();
+
+        if (ownerProfile && ownerCard) {
+            // Avatar
+            const avatarEl = document.getElementById('owner-avatar');
+            if (avatarEl) {
+                avatarEl.innerHTML = '';
+                avatarEl.appendChild(renderAvatar(ownerProfile, 48));
+            }
+
+            // Username
+            const usernameEl = document.getElementById('owner-username');
+            if (usernameEl) usernameEl.textContent = '@' + ownerProfile.username;
+
+            // Badges (compact — icône seulement)
+            const { data: ownerTrailers } = await supabaseClient
+                .from('trailers').select('id').eq('owner_id', trailer.owner_id);
+            const badges = computeBadges(ownerProfile, ownerTrailers?.length || 0);
+            const badgesEl = document.getElementById('owner-badges');
+            if (badgesEl) {
+                badgesEl.innerHTML = '';
+                badges.slice(0, 3).forEach(b => badgesEl.appendChild(renderBadge(b, true)));
+            }
+
+            // Bouton profil public
+            const profileBtn = document.getElementById('owner-profile-btn');
+            if (profileBtn) profileBtn.onclick = () => openPublicProfile(ownerProfile.username);
+
+            ownerCard.classList.remove('hidden');
+        }
+    }
 }
 
 async function blockOwnerDates() {
@@ -959,6 +1164,7 @@ function openSettings() {
     if (!currentUser) return;
     document.getElementById('settings-email').innerText = currentUser.email;
     showPage('settings-page');
+    loadProfileSettings(); // Charger le profil dans le formulaire
 }
 
 async function setupStripePayouts() {
@@ -1010,5 +1216,239 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initialisation
     await checkUser();
     loadTrailers();
-    await checkPaymentStatus(); 
+    await checkPaymentStatus();
+
+    // Routing : si l'URL contient ?user=username, ouvrir le profil public
+    const urlParams = new URLSearchParams(window.location.search);
+    const userParam = urlParams.get('user');
+    if (userParam) {
+        openPublicProfile(userParam);
+    }
 });
+
+// ==========================================
+// 10. PROFILS PUBLICS & SETTINGS PROFIL
+// ==========================================
+
+// Ouvre la page profil public d'un utilisateur via son username
+async function openPublicProfile(username) {
+    if (!supabaseClient) return;
+
+    showPage('public-profile-page');
+
+    // Bouton retour : adapte selon le contexte
+    const backBtn = document.getElementById('public-profile-back-btn');
+    if (backBtn) backBtn.onclick = () => history.length > 1 ? history.back() : showPage('buyer-page');
+
+    // Charger le profil
+    const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .maybeSingle();
+
+    if (error || !profile) {
+        showToast("Profil introuvable.", "error");
+        showPage('buyer-page');
+        return;
+    }
+
+    // Charger ses remorques
+    const { data: trailers } = await supabaseClient
+        .from('trailers')
+        .select('*')
+        .eq('owner_id', profile.id)
+        .order('id', { ascending: false });
+
+    const trailersCount = trailers?.length || 0;
+    const badges = computeBadges(profile, trailersCount);
+
+    // --- Remplir l'en-tête ---
+    // Avatar
+    const avatarContainer = document.getElementById('public-profile-avatar');
+    if (avatarContainer) {
+        avatarContainer.innerHTML = '';
+        avatarContainer.appendChild(renderAvatar(profile, 80));
+    }
+
+    // Username
+    const usernameEl = document.getElementById('public-profile-username');
+    if (usernameEl) usernameEl.textContent = '@' + profile.username;
+
+    // Membre depuis
+    const sinceEl = document.getElementById('public-profile-since');
+    if (sinceEl) {
+        const since = new Date(profile.created_at).toLocaleDateString('fr-CH', { month: 'long', year: 'numeric' });
+        sinceEl.textContent = 'Membre depuis ' + since;
+    }
+
+    // Badges
+    const badgesEl = document.getElementById('public-profile-badges');
+    if (badgesEl) {
+        badgesEl.innerHTML = '';
+        badges.forEach(b => badgesEl.appendChild(renderBadge(b, false)));
+    }
+
+    // --- Remorques ---
+    const titleEl = document.getElementById('public-profile-trailers-title');
+    if (titleEl) {
+        titleEl.textContent = trailersCount > 0
+            ? `${trailersCount} remorque${trailersCount > 1 ? 's' : ''} en location`
+            : 'Aucune remorque pour le moment';
+    }
+
+    const grid = document.getElementById('public-profile-trailers');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (!trailers || trailersCount === 0) {
+        const msg = document.createElement('p');
+        msg.className = 'col-span-3 text-center text-stone-400 italic py-8';
+        msg.textContent = 'Ce membre n\'a pas encore publié d\'annonce.';
+        grid.appendChild(msg);
+        return;
+    }
+
+    trailers.forEach(trailer => {
+        const card = document.createElement('div');
+        card.className = 'bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden hover:shadow-md cursor-pointer transition';
+        card.onclick = () => openTrailerDetail(trailer);
+        const imgUrl = trailer.image_url || 'https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger';
+        const cat = CATEGORY_MAP[trailer.category];
+        card.innerHTML = `
+            <div class="h-40 bg-stone-200 dark:bg-stone-700 relative">
+                <img src="${imgUrl}" class="w-full h-full object-cover">
+                <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
+                ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg">${cat.emoji} <span class="safe-cat"></span></div>` : ''}
+            </div>
+            <div class="p-4">
+                <h4 class="safe-title font-bold text-base mb-3 dark:text-white"></h4>
+                <button class="w-full bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 font-semibold py-2 rounded-xl text-sm">Voir les détails</button>
+            </div>
+        `;
+        card.querySelector('.safe-title').textContent = trailer.title;
+        card.querySelector('.safe-price').textContent = trailer.price;
+        if (cat) card.querySelector('.safe-cat').textContent = cat.label;
+        grid.appendChild(card);
+    });
+
+    // Mettre à jour l'URL sans recharger la page (pour le partage de lien)
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('user', username);
+    history.pushState({ user: username }, '', newUrl.toString());
+}
+
+// Charge et affiche le profil dans la page settings
+async function loadProfileSettings() {
+    if (!supabaseClient || !currentUser) return;
+
+    const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+    if (!profile) return;
+
+    // Avatar
+    const avatarPreview = document.getElementById('settings-avatar-preview');
+    if (avatarPreview) {
+        avatarPreview.innerHTML = '';
+        avatarPreview.appendChild(renderAvatar(profile, 80));
+    }
+
+    // Username
+    const usernameInput = document.getElementById('settings-username');
+    if (usernameInput) usernameInput.value = profile.username || '';
+
+    // Info cooldown changement username
+    const info = document.getElementById('settings-username-info');
+    if (info && profile.last_username_change) {
+        const lastChange = new Date(profile.last_username_change);
+        const nextAllowed = new Date(lastChange.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        if (now < nextAllowed) {
+            if (usernameInput) usernameInput.disabled = true;
+            info.textContent = 'Prochain changement possible le ' + nextAllowed.toLocaleDateString('fr-CH');
+            info.className = 'text-xs mt-1 text-amber-500';
+        } else {
+            if (usernameInput) usernameInput.disabled = false;
+            info.textContent = 'Vous pouvez modifier votre nom d\'utilisateur (1 fois par mois)';
+            info.className = 'text-xs mt-1 text-stone-400';
+        }
+    } else if (info) {
+        info.textContent = 'Vous pouvez modifier votre nom d\'utilisateur (1 fois par mois)';
+        info.className = 'text-xs mt-1 text-stone-400';
+    }
+}
+
+// Sauvegarde les modifications de profil (username)
+async function handleSaveProfile() {
+    if (!supabaseClient || !currentUser) return showToast("Vous devez être connecté.", "error");
+
+    const newUsername = (document.getElementById('settings-username')?.value || '').trim().toLowerCase();
+    if (!newUsername) return showToast("Le nom d'utilisateur ne peut pas être vide.", "error");
+    if (!validateUsernameFormat(newUsername)) return showToast("Format du nom d'utilisateur invalide.", "error");
+
+    // Récupérer le profil actuel pour vérifier le cooldown
+    const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+
+    if (profile?.last_username_change) {
+        const lastChange = new Date(profile.last_username_change);
+        const nextAllowed = new Date(lastChange.getTime() + 30 * 24 * 60 * 60 * 1000);
+        if (new Date() < nextAllowed) {
+            return showToast("Vous ne pouvez changer votre username qu'une fois par mois.", "error");
+        }
+    }
+
+    // Vérifier unicité si username a changé
+    if (newUsername !== profile?.username) {
+        const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', newUsername).maybeSingle();
+        if (existing) return showToast("Ce nom d'utilisateur est déjà pris.", "error");
+    }
+
+    const updateData = { username: newUsername };
+    if (newUsername !== profile?.username) updateData.last_username_change = new Date().toISOString();
+
+    const { error } = await supabaseClient.from('profiles').update(updateData).eq('id', currentUser.id);
+    if (error) return showToast("Erreur : " + error.message, "error");
+
+    showToast("✅ Profil sauvegardé !", "success");
+    loadProfileSettings(); // Rafraîchir l'affichage
+}
+
+// Upload de l'avatar vers Supabase Storage
+async function handleAvatarUpload(event) {
+    if (!supabaseClient || !currentUser) return;
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Vérifier taille (max 2 Mo)
+    if (file.size > 2 * 1024 * 1024) return showToast("Image trop lourde (max 2 Mo).", "error");
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    const filePath = `${currentUser.id}/avatar.${ext}`;
+
+    showToast("Upload en cours...", "info");
+
+    const { error: uploadError } = await supabaseClient.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+    if (uploadError) return showToast("Erreur d'upload : " + uploadError.message, "error");
+
+    // Récupérer l'URL publique
+    const { data: urlData } = supabaseClient.storage.from('avatars').getPublicUrl(filePath);
+    const avatarUrl = urlData.publicUrl + '?t=' + Date.now(); // Cache-busting
+
+    // Mettre à jour le profil
+    await supabaseClient.from('profiles').update({ avatar_url: avatarUrl }).eq('id', currentUser.id);
+
+    // Rafraîchir l'aperçu
+    const preview = document.getElementById('settings-avatar-preview');
+    if (preview) {
+        preview.innerHTML = '';
+        preview.appendChild(renderAvatar({ avatar_url: avatarUrl }, 80));
+    }
+    showToast("✅ Photo de profil mise à jour !", "success");
+}
