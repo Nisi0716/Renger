@@ -1,0 +1,17 @@
+Utilisation : cupsfilter [ options ] [ -- ] nom_fichier
+Options :
+  --list-filters          Lister les filtres utilisés.
+  -D                      Supprimer le fichier source une fois terminé.
+  -P nom_fichier.ppd         Définir le fichier PPD.
+  -U nom_utilisateur             Spécifier le nom d’utilisateur.
+  -c cups-files.conf      Définir quel fichier cups-files.conf utiliser.
+  -d imprimante              Utiliser l’imprimante indiquée.
+  -e                      Utiliser chacun des filtres du fichier PPD.
+  -i mime/type            Définir le fichier MIME à convertir (sinon stdin).
+  -j id-tâche[,N]           Filtre fichier N de la tâche spécifiée (valeur par défaut : fichier 1).
+  -m mime/type            Définir le type MIME de sortie (sinon application/pdf).
+  -n copies               Définir le nombre de copies.
+  -o nom=valeur           Définir les options.
+  -p nom_fichier.ppd         Définir le fichier PPD.
+  -t titre                Définir le titre.
+  -u                      Supprimer le fichier PPD une fois terminé.

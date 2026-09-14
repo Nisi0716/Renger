@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Renger - Location de remorques</title>
     
+    <!-- Sécurité : Politique de Sécurité du Contenu (CSP) & Contrôle de Référant -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://npmcdn.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com;">
+    
     <!-- Moteur du calendrier professionnel (Flatpickr) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     
@@ -394,8 +398,8 @@
                     <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
                 </div>
 
-                <input type="email" id="login-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
-                <input type="password" id="login-password" placeholder="Mot de passe" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-2 focus:border-terracotta-500 focus:outline-none">
+                <input type="email" id="login-email" placeholder="Votre email" autocomplete="email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
+                <input type="password" id="login-password" placeholder="Mot de passe (8 caractères minimum)" minlength="8" autocomplete="current-password" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-2 focus:border-terracotta-500 focus:outline-none">
                 <div class="text-right mb-5">
                     <button onclick="showResetPanel()" class="text-sm text-terracotta-500 hover:underline font-medium">Mot de passe oublié ?</button>
                 </div>

@@ -499,7 +499,8 @@ let currentSearch = '';
 let searchDebounceTimer = null;
 
 function handleSearch(term) {
-    currentSearch = term.trim();
+    // Désamorçage injection PostgREST : suppression des virgules, parenthèses, crochets et antislashs
+    currentSearch = (term || '').replace(/[,()[\]\\"]/g, '').trim();
     // Debounce : on attend 350ms après la dernière frappe avant de requêter
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
@@ -512,14 +513,17 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
 
     showSkeletonCards(6);
 
+    // Assainissement supplémentaire du terme de recherche
+    const cleanSearch = (search || '').replace(/[,()[\]\\"]/g, '').trim();
+
     let query = supabaseClient.from('trailers').select('*').order('id', { ascending: false });
 
     if (filter && filter !== 'all') {
         query = query.eq('category', filter);
     }
-    if (search) {
-        // Recherche insensible à la casse dans le titre et la description
-        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    if (cleanSearch) {
+        // Recherche insensible à la casse dans le titre et la description avec terme assaini
+        query = query.or(`title.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%`);
     }
 
     const { data: trailers, error } = await query;
@@ -531,8 +535,8 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     // Titre de section dynamique
     const titleEl = document.getElementById('filter-title');
     if (titleEl) {
-        if (search) {
-            titleEl.textContent = `Résultats pour "${search}"`;
+        if (cleanSearch) {
+            titleEl.textContent = `Résultats pour "${cleanSearch}"`;
         } else {
             titleEl.textContent = FILTER_LABELS[filter] || 'Annonces';
         }
@@ -541,8 +545,8 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     if (error || !trailers || trailers.length === 0) {
         const msg = document.createElement('p');
         msg.className = 'col-span-3 text-center text-stone-400 italic py-12';
-        msg.textContent = search
-            ? `Aucun résultat pour "${search}". Essayez un autre terme.`
+        msg.textContent = cleanSearch
+            ? `Aucun résultat pour "${cleanSearch}". Essayez un autre terme.`
             : 'Aucune remorque disponible dans cette catégorie pour le moment.';
         grid.appendChild(msg);
         return;
@@ -556,9 +560,10 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
         const cat = CATEGORY_MAP[trailer.category];
 
+        // CORRECTION XSS : L'URL n'est plus interpolée dans le HTML, l'élément img est rempli via .src
         card.innerHTML = `
             <div class="h-48 bg-stone-200 dark:bg-stone-700 relative">
-                <img src="${imgUrl}" class="w-full h-full object-cover">
+                <img class="trailer-card-img w-full h-full object-cover" alt="">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
                 ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg">${cat.emoji} <span class="safe-cat"></span></div>` : ''}
             </div>
@@ -569,6 +574,8 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
             </div>
         `;
 
+        // Assignation sécurisée des attributs et contenus textuels (aucun risque XSS)
+        card.querySelector('.trailer-card-img').src = imgUrl;
         card.querySelector('.safe-title').textContent = trailer.title;
         card.querySelector('.safe-price').textContent = trailer.price;
         if (cat) card.querySelector('.safe-cat').textContent = cat.label;
@@ -1020,7 +1027,56 @@ async function startCamera() {
 function stopCamera() { 
     if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; } 
 }
-function takePhoto() { showToast("Photo enregistrée !", "success"); stopCamera(); showPage('detail-page'); }
+async function takePhoto() {
+    const feed = document.getElementById('camera-feed');
+    if (!feed || !videoStream) {
+        showToast("Caméra indisponible.", "error");
+        return;
+    }
+
+    try {
+        showToast("Capture et certification de l'état des lieux...", "info");
+
+        // 1. Création d'un canvas pour extraire l'image instantanée du flux vidéo
+        const canvas = document.createElement('canvas');
+        canvas.width = feed.videoWidth || 1280;
+        canvas.height = feed.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(feed, 0, 0, canvas.width, canvas.height);
+
+        // 2. Conversion en Blob image/jpeg
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+        if (!blob) throw new Error("Échec de la conversion de l'image.");
+
+        // 3. Upload vers le bucket Supabase sécurisé 'inspections'
+        if (supabaseClient && currentUser) {
+            const trailerId = currentTrailer ? currentTrailer.id : 'generale';
+            const timestamp = Date.now();
+            const filePath = `${currentUser.id}/${trailerId}_${timestamp}.jpg`;
+
+            const { error: uploadError } = await supabaseClient.storage
+                .from('inspections')
+                .upload(filePath, blob, {
+                    contentType: 'image/jpeg',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.warn("Avertissement stockage inspection :", uploadError.message);
+                showToast("Photo capturée (attention : " + uploadError.message + ")", "info");
+            } else {
+                showToast("📸 État des lieux photographique certifié et sauvegardé !", "success");
+            }
+        } else {
+            showToast("Photo capturée localement. Connectez-vous pour certifier en ligne.", "info");
+        }
+    } catch (err) {
+        showToast("Erreur lors de la capture : " + err.message, "error");
+    } finally {
+        stopCamera();
+        showPage('detail-page');
+    }
+}
 
 // ==========================================
 // 7. PROFIL ET TABLEAU DE BORD
@@ -1371,7 +1427,7 @@ async function openPublicProfile(username) {
         const cat = CATEGORY_MAP[trailer.category];
         card.innerHTML = `
             <div class="h-40 bg-stone-200 dark:bg-stone-700 relative">
-                <img src="${imgUrl}" class="w-full h-full object-cover">
+                <img class="public-trailer-img w-full h-full object-cover" alt="">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
                 ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg">${cat.emoji} <span class="safe-cat"></span></div>` : ''}
             </div>
@@ -1380,6 +1436,7 @@ async function openPublicProfile(username) {
                 <button class="w-full bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 font-semibold py-2 rounded-xl text-sm">Voir les détails</button>
             </div>
         `;
+        card.querySelector('.public-trailer-img').src = imgUrl;
         card.querySelector('.safe-title').textContent = trailer.title;
         card.querySelector('.safe-price').textContent = trailer.price;
         if (cat) card.querySelector('.safe-cat').textContent = cat.label;
