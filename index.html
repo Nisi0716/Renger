@@ -125,7 +125,19 @@
             </button>
         </div>
 
-        <h3 id="filter-title" data-i18n="recommended" class="text-xl font-bold mb-4 text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
+        <!-- Barre de recherche textuelle -->
+        <div class="relative mb-5">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg pointer-events-none">🔍</span>
+            <input
+                type="search"
+                id="search-input"
+                placeholder="Rechercher une remorque (ex: van à chevaux, fermée...)"
+                oninput="handleSearch(this.value)"
+                class="w-full pl-11 pr-4 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm"
+            >
+        </div>
+
+        <h3 id="filter-title" class="text-xl font-bold mb-4 text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
         <div id="trailers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
@@ -300,7 +312,8 @@
             </div>
 
             <!-- ÉQUIPEMENTS INCLUS -->
-
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3" data-i18n="equip_label">Équipements inclus</label>
                 <div class="grid grid-cols-2 gap-3">
                     <label class="cursor-pointer"><input type="checkbox" name="equipments" value="sangles" class="peer sr-only"><div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">🔗 Sangles</div></label>
                     <label class="cursor-pointer"><input type="checkbox" name="equipments" value="bache" class="peer sr-only"><div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⛺ Bâche</div></label>
@@ -344,17 +357,33 @@
     <div id="auth-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-50 flex items-center justify-center z-50 px-4">
         <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-2xl w-full max-w-md relative">
             <button onclick="closeAuthModal()" class="absolute top-4 right-5 text-stone-400 hover:text-terracotta-500 text-3xl transition">&times;</button>
-            <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 dark:text-white text-center">Rejoindre Renger</h2>
-            
-            <input type="email" id="login-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
-            <input type="password" id="login-password" placeholder="Mot de passe" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-6 focus:border-terracotta-500 focus:outline-none">
-            
-            <div class="flex flex-col gap-3">
-                <button onclick="handleLogin()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Connexion</button>
-                <button onclick="handleSignup()" class="w-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200 font-semibold py-3 rounded-xl hover:bg-stone-300 dark:hover:bg-stone-600 transition">S'inscrire</button>
+
+            <!-- Panneau Connexion / Inscription -->
+            <div id="auth-panel-login">
+                <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 dark:text-white text-center">Rejoindre Renger</h2>
+                <input type="email" id="login-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
+                <input type="password" id="login-password" placeholder="Mot de passe" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-2 focus:border-terracotta-500 focus:outline-none">
+                <!-- Lien mot de passe oublié -->
+                <div class="text-right mb-6">
+                    <button onclick="showResetPanel()" class="text-sm text-terracotta-500 hover:underline font-medium">Mot de passe oublié ?</button>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <button onclick="handleLogin()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Connexion</button>
+                    <button onclick="handleSignup()" class="w-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200 font-semibold py-3 rounded-xl hover:bg-stone-300 dark:hover:bg-stone-600 transition">S'inscrire</button>
+                </div>
+            </div>
+
+            <!-- Panneau Mot de passe oublié -->
+            <div id="auth-panel-reset" class="hidden">
+                <button onclick="showLoginPanel()" class="text-terracotta-500 font-semibold mb-6 flex items-center gap-1 hover:underline">← Retour</button>
+                <h2 class="text-2xl font-bold mb-3 text-stone-800 dark:text-white">Réinitialiser le mot de passe</h2>
+                <p class="text-stone-500 dark:text-stone-400 text-sm mb-6">Entrez votre email. Nous vous enverrons un lien pour créer un nouveau mot de passe.</p>
+                <input type="email" id="reset-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
+                <button onclick="handleResetPassword()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Envoyer le lien de réinitialisation</button>
             </div>
         </div>
     </div>
+
     
     <!-- PAGE PROFIL / TABLEAU DE BORD -->
     <div id="profile-page" class="hidden min-h-screen p-6 pt-24 max-w-5xl mx-auto">
@@ -457,6 +486,45 @@
             <span class="text-[10px] font-bold tracking-wide">Profil</span>
         </button>
     </nav>
+
+    <!-- MODALE CONFIRMATION DE RÉSERVATION -->
+    <div id="booking-confirm-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+            <!-- Image de la remorque -->
+            <div class="h-44 bg-stone-200 dark:bg-stone-700 relative">
+                <img id="confirm-img" src="" alt="" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                <button onclick="closeBookingConfirmModal()" class="absolute top-4 right-4 bg-white/20 backdrop-blur-sm text-white rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold hover:bg-white/40 transition">&times;</button>
+            </div>
+            <!-- Contenu -->
+            <div class="p-6">
+                <h3 id="confirm-title" class="text-xl font-bold text-stone-900 dark:text-white mb-1"></h3>
+                <p class="text-stone-400 text-sm mb-5">📍 Vaud</p>
+
+                <div class="bg-stone-50 dark:bg-stone-900 rounded-2xl p-4 mb-5 space-y-3">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-stone-500 dark:text-stone-400">Dates</span>
+                        <span id="confirm-dates" class="font-semibold text-stone-800 dark:text-white"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-stone-500 dark:text-stone-400">Durée</span>
+                        <span id="confirm-days" class="font-semibold text-stone-800 dark:text-white"></span>
+                    </div>
+                    <div class="border-t border-stone-200 dark:border-stone-700 pt-3 flex justify-between">
+                        <span class="font-bold text-stone-800 dark:text-white">Total estimé</span>
+                        <span id="confirm-price" class="font-bold text-xl text-terracotta-500"></span>
+                    </div>
+                </div>
+
+                <p class="text-xs text-stone-400 mb-5 text-center">Le prix final est calculé et confirmé par notre serveur sécurisé. Une caution par empreinte bancaire vous sera demandée.</p>
+
+                <div class="flex gap-3">
+                    <button onclick="closeBookingConfirmModal()" class="flex-1 border-2 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 font-semibold py-3 rounded-2xl hover:bg-stone-50 dark:hover:bg-stone-700 transition">Annuler</button>
+                    <button onclick="processBooking()" class="flex-1 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 rounded-2xl shadow-lg transition active:scale-95">Confirmer et payer →</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- LES SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

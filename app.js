@@ -155,11 +155,37 @@ function showPage(pageId) {
 function showWelcomeScreen() { showPage('welcome-screen'); }
 function openAuthModal() { 
     const modal = document.getElementById('auth-modal');
-    if (modal) modal.classList.remove('hidden'); 
+    if (modal) modal.classList.remove('hidden');
+    showLoginPanel(); // Toujours ouvrir sur le panneau connexion
 }
 function closeAuthModal() { 
     const modal = document.getElementById('auth-modal');
     if (modal) modal.classList.add('hidden'); 
+}
+function showResetPanel() {
+    document.getElementById('auth-panel-login').classList.add('hidden');
+    document.getElementById('auth-panel-reset').classList.remove('hidden');
+    // Pré-remplir l'email si déjà saisi
+    const loginEmail = document.getElementById('login-email').value;
+    if (loginEmail) document.getElementById('reset-email').value = loginEmail;
+}
+function showLoginPanel() {
+    document.getElementById('auth-panel-reset').classList.add('hidden');
+    document.getElementById('auth-panel-login').classList.remove('hidden');
+}
+async function handleResetPassword() {
+    if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
+    const email = document.getElementById('reset-email').value.trim();
+    if (!email) return showToast("Veuillez saisir votre email.", "error");
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin
+    });
+    if (error) {
+        showToast("Erreur : " + error.message, "error");
+    } else {
+        showToast("✉️ Lien envoyé ! Vérifiez votre boîte mail.", "success");
+        closeAuthModal();
+    }
 }
 function toggleTheme() {
     document.documentElement.classList.toggle('dark');
@@ -215,44 +241,90 @@ async function checkUser() {
     }
 }
 
-// ==========================================
-// 4. ANNONCES (AFFICHAGE ET CRÉATION)
-// ==========================================
-async function loadTrailers(filter = currentFilter) {
+// Mapping catégories → emoji+label pour les badges
+const CATEGORY_MAP = {
+    utilitaire:   { emoji: '📦', label: 'Utilitaire' },
+    cheval:       { emoji: '🐴', label: 'Cheval' },
+    voiture:      { emoji: '🚗', label: 'Voiture' },
+    moto:         { emoji: '🏍️', label: 'Moto' },
+    refrigere:    { emoji: '❄️', label: 'Réfrigéré' },
+    'porte-velo': { emoji: '🚲', label: 'Porte-vélo' },
+    bagage:       { emoji: '🧳', label: 'Bagage de toit' },
+};
+const FILTER_LABELS = {
+    all: 'Recommandées autour de Lausanne',
+    ...Object.fromEntries(Object.entries(CATEGORY_MAP).map(([k, v]) => [k, `${v.emoji} ${v.label}s`]))
+};
+
+// Affiche des cartes skeleton pendant le chargement
+function showSkeletonCards(count = 6) {
+    const grid = document.getElementById('trailers-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const sk = document.createElement('div');
+        sk.className = 'bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden animate-pulse';
+        sk.innerHTML = `
+            <div class="h-48 bg-stone-200 dark:bg-stone-700"></div>
+            <div class="p-5">
+                <div class="h-5 bg-stone-200 dark:bg-stone-700 rounded-lg mb-3 w-3/4"></div>
+                <div class="h-4 bg-stone-100 dark:bg-stone-600 rounded-lg mb-4 w-1/2"></div>
+                <div class="h-10 bg-stone-100 dark:bg-stone-600 rounded-xl"></div>
+            </div>
+        `;
+        grid.appendChild(sk);
+    }
+}
+
+let currentSearch = '';
+let searchDebounceTimer = null;
+
+function handleSearch(term) {
+    currentSearch = term.trim();
+    // Debounce : on attend 350ms après la dernière frappe avant de requêter
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+        loadTrailers(currentFilter, currentSearch);
+    }, 350);
+}
+
+async function loadTrailers(filter = currentFilter, search = currentSearch) {
     if (!supabaseClient) return;
+
+    showSkeletonCards(6);
 
     let query = supabaseClient.from('trailers').select('*').order('id', { ascending: false });
 
-    // Filtrage côté serveur si une catégorie est sélectionnée
     if (filter && filter !== 'all') {
         query = query.eq('category', filter);
     }
+    if (search) {
+        // Recherche insensible à la casse dans le titre et la description
+        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    }
 
     const { data: trailers, error } = await query;
-    if (error) return;
 
     const grid = document.getElementById('trailers-grid');
     if (!grid) return;
     grid.innerHTML = '';
 
-    // Mise à jour du titre de section selon le filtre
-    const LABELS = {
-        all: 'Recommandées autour de Lausanne',
-        utilitaire: 'Remorques utilitaires',
-        cheval: 'Van à chevaux',
-        voiture: 'Porte-voitures',
-        moto: 'Porte-motos',
-        refrigere: 'Remorques réfrigérées',
-        'porte-velo': 'Porte-vélos',
-        bagage: 'Bagages de toit'
-    };
+    // Titre de section dynamique
     const titleEl = document.getElementById('filter-title');
-    if (titleEl) titleEl.textContent = LABELS[filter] || 'Annonces';
+    if (titleEl) {
+        if (search) {
+            titleEl.textContent = `Résultats pour "${search}"`;
+        } else {
+            titleEl.textContent = FILTER_LABELS[filter] || 'Annonces';
+        }
+    }
 
-    if (!trailers || trailers.length === 0) {
+    if (error || !trailers || trailers.length === 0) {
         const msg = document.createElement('p');
         msg.className = 'col-span-3 text-center text-stone-400 italic py-12';
-        msg.textContent = 'Aucune remorque disponible dans cette catégorie pour le moment.';
+        msg.textContent = search
+            ? `Aucun résultat pour "${search}". Essayez un autre terme.`
+            : 'Aucune remorque disponible dans cette catégorie pour le moment.';
         grid.appendChild(msg);
         return;
     }
@@ -263,11 +335,13 @@ async function loadTrailers(filter = currentFilter) {
         card.onclick = () => openTrailerDetail(trailer);
 
         const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
+        const cat = CATEGORY_MAP[trailer.category];
 
         card.innerHTML = `
             <div class="h-48 bg-stone-200 dark:bg-stone-700 relative">
                 <img src="${imgUrl}" class="w-full h-full object-cover">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
+                ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg">${cat.emoji} <span class="safe-cat"></span></div>` : ''}
             </div>
             <div class="p-5">
                 <h4 class="safe-title font-bold text-lg mb-1 dark:text-white"></h4>
@@ -278,6 +352,7 @@ async function loadTrailers(filter = currentFilter) {
 
         card.querySelector('.safe-title').textContent = trailer.title;
         card.querySelector('.safe-price').textContent = trailer.price;
+        if (cat) card.querySelector('.safe-cat').textContent = cat.label;
 
         grid.appendChild(card);
     });
@@ -286,28 +361,24 @@ async function loadTrailers(filter = currentFilter) {
 // Gestion des boutons de filtre (état visuel actif + rechargement)
 function setFilter(category) {
     currentFilter = category;
+    // Réinitialise aussi la recherche textuelle pour éviter les conflits
+    currentSearch = '';
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) searchInput.value = '';
 
-    // Reset tous les boutons au style inactif
     const allFilterIds = ['all', 'utilitaire', 'cheval', 'voiture', 'moto', 'refrigere', 'porte-velo', 'bagage'];
     allFilterIds.forEach(id => {
         const btn = document.getElementById(`filter-${id}`);
         if (!btn) return;
-        btn.className = btn.className
-            .replace(/bg-terracotta-500\s?/g, '')
-            .replace(/text-white\s?/g, '')
-            .replace(/border-terracotta-500\s?/g, '')
-            .replace(/border-2\s?/g, '');
-        // Applique le style inactif propre
         btn.className = 'flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none';
     });
 
-    // Style actif sur le bouton sélectionné
     const activeBtn = document.getElementById(`filter-${category}`);
     if (activeBtn) {
         activeBtn.className = 'flex flex-col items-center justify-center min-w-[90px] h-24 bg-terracotta-500 text-white rounded-xl border-2 border-terracotta-500 shadow-sm transition focus:outline-none';
     }
 
-    loadTrailers(category);
+    loadTrailers(category, '');
 }
 
 function previewImage(event) {
@@ -558,8 +629,8 @@ async function blockOwnerDates() {
     }
 }
 
-// Fonction pour les clients classiques (Stripe)
-async function submitBooking() {
+// Ouvre la modale de confirmation avec un résumé avant de payer
+function submitBooking() {
     if (!currentUser) {
         showToast("Vous devez être connecté pour réserver.", "error");
         openAuthModal();
@@ -569,6 +640,32 @@ async function submitBooking() {
         return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
     }
 
+    // Calculer les infos pour la modale
+    const diffTime = Math.abs(selectedEndDate - selectedStartDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    const totalEstim = diffDays * currentTrailer.price;
+
+    const fmtDate = (d) => d.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' });
+
+    // Remplir la modale avec textContent (XSS-safe)
+    document.getElementById('confirm-img').src = currentTrailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
+    document.getElementById('confirm-title').textContent = currentTrailer.title;
+    document.getElementById('confirm-dates').textContent = `${fmtDate(selectedStartDate)} → ${fmtDate(selectedEndDate)}`;
+    document.getElementById('confirm-days').textContent = `${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+    document.getElementById('confirm-price').textContent = `${totalEstim} CHF`;
+
+    // Afficher la modale
+    document.getElementById('booking-confirm-modal').classList.remove('hidden');
+}
+
+function closeBookingConfirmModal() {
+    document.getElementById('booking-confirm-modal').classList.add('hidden');
+}
+
+// Lance la vraie transaction Stripe (appelée depuis le bouton "Confirmer et payer")
+async function processBooking() {
+    closeBookingConfirmModal();
+
     showToast("Création de votre réservation sécurisée via Stripe...", "info");
 
     const formatSQLDate = (date) => {
@@ -577,8 +674,6 @@ async function submitBooking() {
     };
 
     try {
-        // Le serveur valide les dates, vérifie la disponibilité, calcule le prix officiel
-        // et crée la réservation en_attente avant de renvoyer l'URL Stripe Checkout
         const stripeData = await callEdgeFunction('stripe-checkout', {
             trailerId: currentTrailer.id,
             startDate: formatSQLDate(selectedStartDate),
