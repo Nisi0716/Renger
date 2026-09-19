@@ -752,7 +752,26 @@ let pendingPhotos = []; // Array de { file: File, objectUrl: string }
  * Ajoute les nouveaux fichiers à pendingPhotos[] dans la limite de 10.
  * Utilise URL.createObjectURL pour un affichage instantané sans surcharger la mémoire en base64.
  */
-function handleMultiPhotoSelect(event) {
+async function validateImageMagicBytes(file) {
+    let buffer;
+    if (file.slice && typeof file.arrayBuffer === 'function') {
+        buffer = await file.slice(0, 4).arrayBuffer();
+    } else {
+        buffer = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsArrayBuffer(file.slice ? file.slice(0, 4) : file);
+        });
+    }
+    const bytes = new Uint8Array(buffer);
+    const isJpeg = bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF;
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
+    const isWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46; // RIFF
+    return isJpeg || isPng || isWebp;
+}
+
+async function handleMultiPhotoSelect(event) {
     const files = Array.from(event.target.files);
     const remaining = 10 - pendingPhotos.length;
 
@@ -762,15 +781,28 @@ function handleMultiPhotoSelect(event) {
 
     const toAdd = files.slice(0, remaining);
 
-    toAdd.forEach(file => {
+    for (const file of toAdd) {
         // Vérification taille (max 5 Mo par photo)
         if (file.size > 5 * 1024 * 1024) {
             showToast(`"${file.name}" dépasse 5 Mo et a été ignorée.`, 'error');
-            return;
+            continue;
         }
+        
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (['svg', 'html', 'htm'].includes(ext)) {
+            showToast(`L'extension de "${file.name}" n'est pas autorisée.`, 'error');
+            continue;
+        }
+        
+        const isValid = await validateImageMagicBytes(file);
+        if (!isValid) {
+            showToast(`Le fichier "${file.name}" n'est pas une image valide.`, 'error');
+            continue;
+        }
+
         const objectUrl = URL.createObjectURL(file);
         pendingPhotos.push({ file, objectUrl });
-    });
+    }
 
     renderPhotoGrid();
 
@@ -1906,9 +1938,8 @@ async function checkPaymentStatus() {
             }
         }
 
-        // Délai dépassé : le webhook n'a pas encore répondu mais on affiche quand même
-        // le profil avec un message informatif
-        showToast("Paiement validé. Votre réservation apparaîtra dans quelques instants.", "success");
+        // Délai dépassé : le webhook n'a pas encore répondu
+        showToast("Paiement en cours de traitement bancaire. Votre réservation sera confirmée dès validation.", "info");
         await openProfile();
         switchProfileTab('buyer');
 
@@ -3148,6 +3179,15 @@ async function handleAvatarUpload(event) {
     if (file.size > 2 * 1024 * 1024) return showToast("Image trop lourde (max 2 Mo).", "error");
 
     const ext = file.name.split('.').pop().toLowerCase();
+    if (['svg', 'html', 'htm'].includes(ext)) {
+        return showToast("L'extension de l'image n'est pas autorisée.", "error");
+    }
+    
+    const isValid = await validateImageMagicBytes(file);
+    if (!isValid) {
+        return showToast("Le fichier n'est pas une image valide.", "error");
+    }
+
     const filePath = `${currentUser.id}/avatar.${ext}`;
 
     showToast("Upload en cours...", "info");
@@ -3385,8 +3425,7 @@ async function resolveInspectionImageUrl(filePath) {
             .createSignedUrl(filePath, 3600);
 
         if (error || !data?.signedUrl) {
-            const { data: pub } = supabaseClient.storage.from('inspections').getPublicUrl(filePath);
-            return pub?.publicUrl || null;
+            return null;
         }
 
         signedUrlCache.set(filePath, {

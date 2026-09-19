@@ -16,16 +16,14 @@
 <body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative transition-colors duration-300 pb-10">
 
     <!-- HEADER -->
-    <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
-        <!-- Logo réparé avec JavaScript -->
-        <button onclick="window.location.href='index.html'" class="text-2xl font-bold text-terracotta-500 hover:text-terracotta-600 transition cursor-pointer">Renger</button>
+    <header class="w-full p-4 sm:p-6 flex justify-between items-center max-w-5xl mx-auto z-40 relative">
         <!-- Logo -->
-        <button onclick="window.location.href='index.html'" class="flex items-center gap-3 group transition cursor-pointer text-left" title="Retour à l'accueil">
+        <a href="index.html" class="flex items-center gap-3 group transition cursor-pointer text-left" title="Retour à l'accueil">
             <div class="w-10 h-10 rounded-xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
                 <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
             </div>
             <span class="text-2xl sm:text-3xl font-extrabold text-terracotta-500 tracking-tight transition-colors group-hover:text-terracotta-600">Renger</span>
-        </button>
+        </a>
         
         <div class="flex items-center gap-4">
             <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n-title="theme_btn" title="Changer de thème">
@@ -41,10 +39,9 @@
         </div>
     </header>
 
-    <div class="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mt-24 mx-4">
-        <!-- Bouton retour réparé avec JavaScript -->
-        <button onclick="window.location.href='index.html'" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition text-left">← Retour à l'accueil</button>
-        <button onclick="window.location.href='index.html'" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-6 inline-block hover:text-terracotta-500 transition text-left">← Retour à l'accueil</button>
+    <div class="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mt-4 md:mt-6 mb-12 mx-4">
+        <!-- Bouton retour -->
+        <a href="index.html" data-i18n="back_home" class="text-terracotta-600 dark:text-terracotta-400 font-semibold mb-6 inline-block hover:text-terracotta-500 transition cursor-pointer text-left">← Retour à l'accueil</a>
         
         <!-- Badge officiel Renger -->
         <div class="flex items-center gap-3 mb-4">

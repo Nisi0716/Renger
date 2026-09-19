@@ -87,11 +87,67 @@ serve(async (req) => {
       })
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (startDate < todayStr) {
+      return new Response(JSON.stringify({ error: "La date de début ne peut pas être dans le passé." }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (startDate > endDate) {
+      return new Response(JSON.stringify({ error: "La date de fin doit être postérieure à la date de début." }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // 3. Calculs financiers précis (Location + Frais Renger 5% min 4.90 CHF)
     const start = new Date(startDate)
     const end = new Date(endDate)
-    const diffTime = Math.abs(end.getTime() - start.getTime())
+    const diffTime = end.getTime() - start.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+    
+    // Rate Limiting (VULN-11) : max 5 réservations récentes dans les 10 dernières minutes
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { count: recentBookingsCount } = await supabaseAdmin
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('renter_id', user.id)
+      .gte('created_at', tenMinutesAgo);
+
+    if (recentBookingsCount !== null && recentBookingsCount >= 5) {
+      return new Response(JSON.stringify({ error: "Trop de tentatives de réservation. Veuillez patienter 10 minutes." }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Vérification stricte avant insertion (Prévention Surbooking - VULN-03)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    
+    const { data: conflicts } = await supabaseAdmin
+      .from('bookings')
+      .select('id, status, created_at')
+      .eq('trailer_id', trailerId)
+      .in('status', ['paye', 'en_attente', 'indisponible'])
+      .lte('start_date', endDate)
+      .gte('end_date', startDate);
+
+    const hasValidConflict = conflicts?.some(c => {
+      if (c.status === 'en_attente') {
+         return c.created_at > thirtyMinutesAgo;
+      }
+      return true;
+    });
+
+    if (hasValidConflict) {
+      return new Response(JSON.stringify({ 
+        error: "Ces dates ne sont plus disponibles. Veuillez en choisir d'autres." 
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
     // Prix de base de la location
     const totalRentalPrice = diffDays * Number(trailer.price)
@@ -104,11 +160,8 @@ serve(async (req) => {
     const totalPaidPrice = parseFloat((totalRentalPrice + serviceFee).toFixed(2))
 
     // Montant de la caution (empreinte non débitée)
-    let caution = Number(cautionAmount) || Number(trailer.caution) || Number(trailer.deposit) || 0
-    if (!caution || caution <= 0) {
-      const isHeavy = ['cheval', 'voiture', 'refrigere'].includes(trailer.category) || (trailer.payload && trailer.payload > 1200)
-      caution = isHeavy ? 400 : 200
-    }
+    const isHeavy = ['cheval', 'voiture', 'refrigere'].includes(trailer.category) || (trailer.payload && trailer.payload > 1200)
+    const caution = Number(trailer.caution) > 0 ? Number(trailer.caution) : (isHeavy ? 400 : 200);
 
     // 4. Création de la réservation en statut 'en_attente'
     const { data: booking, error: bookingError } = await supabaseAdmin
@@ -172,19 +225,7 @@ serve(async (req) => {
             unit_amount: Math.round(serviceFee * 100),
           },
           quantity: 1,
-        },
-        // LIGNE 3 : Caution de garantie (affichée distinctement à 0 CHF pour prouver le non-débit)
-        {
-          price_data: {
-            currency: 'chf',
-            product_data: {
-              name: `Caution de garantie (Empreinte bancaire)`,
-              description: `Non débitée • 0 CHF prélevé (garantie temporaire de ${caution} CHF)`,
-            },
-            unit_amount: 0,
-          },
-          quantity: 1,
-        },
+        }
       ],
       // Message de réassurance clair et visible au-dessus du bouton de validation
       custom_text: {
@@ -202,6 +243,7 @@ serve(async (req) => {
         caution_amount: caution.toString(),
       },
       payment_intent_data: {
+        setup_future_usage: 'off_session',
         description: `Renger #${booking.id} - ${trailer.title}`,
         metadata: {
           booking_id: booking.id.toString(),
