@@ -215,6 +215,16 @@
                     Réserver
                 </button>
                 <p class="text-center text-xs text-stone-400">Une caution par empreinte bancaire vous sera demandée à l'étape suivante.</p>
+
+                <!-- Bouton chat pré-réservation -->
+                <button id="chat-btn" onclick="openChatModal()" disabled
+                    class="w-full mt-3 flex items-center justify-center gap-2 border-2 border-stone-200 dark:border-stone-700 text-stone-400 font-semibold py-3 rounded-2xl transition cursor-not-allowed opacity-60"
+                    title="Connectez-vous et sélectionnez des dates pour poser une question">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4.03-.86L3 20l1.16-3.87A7.94 7.94 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    Poser une question au propriétaire
+                </button>
             </div>
         </div>
     </div>
@@ -648,6 +658,49 @@
                     <button onclick="closeBookingConfirmModal()" class="flex-1 border-2 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 font-semibold py-3 rounded-2xl hover:bg-stone-50 dark:hover:bg-stone-700 transition">Annuler</button>
                     <button onclick="processBooking()" class="flex-1 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 rounded-2xl shadow-lg transition active:scale-95">Confirmer et payer →</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE CHAT PRÉ-RÉSERVATION -->
+    <div id="chat-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleChatModalBackdrop(event)">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md flex flex-col" style="max-height: 85vh;" onclick="event.stopPropagation()">
+            <!-- En-tête -->
+            <div class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-700 flex-shrink-0">
+                <div>
+                    <h3 class="font-bold text-stone-900 dark:text-white text-lg">Question au propriétaire</h3>
+                    <p id="chat-modal-subtitle" class="text-xs text-stone-400 mt-0.5">Posez vos questions sur la remorque</p>
+                </div>
+                <button onclick="closeChatModal()" class="w-9 h-9 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-600 transition text-xl font-bold leading-none">&times;</button>
+            </div>
+
+            <!-- Avertissement anti-contournement -->
+            <div class="mx-6 mt-4 flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-4 py-3 flex gap-3 items-start">
+                <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                <p class="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Les coordonnées personnelles (email, téléphone) sont automatiquement masquées pour votre sécurité et celle du propriétaire.</p>
+            </div>
+
+            <!-- Zone de messages -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto px-6 py-4 space-y-3 min-h-0">
+                <p class="text-center text-sm text-stone-400 italic py-4">Chargement des messages...</p>
+            </div>
+
+            <!-- Zone de saisie -->
+            <div class="px-6 pb-6 pt-3 border-t border-stone-100 dark:border-stone-700 flex-shrink-0">
+                <div class="flex gap-3 items-end">
+                    <textarea id="chat-input" placeholder="Votre question… (ex: Compatible 7 broches ?)" rows="2"
+                        class="flex-1 border-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-2xl px-4 py-3 text-sm resize-none focus:border-terracotta-500 outline-none transition leading-relaxed"
+                        maxlength="800" onkeydown="handleChatKeydown(event)"></textarea>
+                    <button onclick="sendChatMessage()" id="chat-send-btn"
+                        class="flex-shrink-0 bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-bold w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-xs text-stone-300 dark:text-stone-600 mt-2 text-right"><span id="chat-char-count">0</span>/800</p>
             </div>
         </div>
     </div>

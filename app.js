@@ -700,6 +700,9 @@ async function handlePublish(event) {
 // ==========================================
 async function openTrailerDetail(trailer) {
     currentTrailer = trailer;
+    // Reset des dates à chaque ouverture pour repartir d'un état propre
+    selectedStartDate = null;
+    selectedEndDate = null;
     document.getElementById('detail-title').innerText = trailer.title;
     document.getElementById('detail-price').innerText = trailer.price;
     document.getElementById('detail-socket').innerText = trailer.socket;
@@ -764,6 +767,7 @@ async function openTrailerDetail(trailer) {
     }
     
     showPage('detail-page');
+    updateChatButtonState(); // État initial du bouton chat (grisé car pas de dates)
 
     // On interroge la vue publique contenant uniquement les dates
     const { data: bookings } = await supabaseClient
@@ -814,8 +818,12 @@ async function openTrailerDetail(trailer) {
                 document.getElementById('total-days').innerText = diffDays;
                 document.getElementById('total-price').innerText = isOwner ? "0 CHF" : total + " CHF";
                 document.getElementById('booking-summary').classList.remove('hidden');
+                updateChatButtonState();
             } else {
+                selectedStartDate = null;
+                selectedEndDate = null;
                 document.getElementById('booking-summary').classList.add('hidden');
+                updateChatButtonState();
             }
         }
     });
@@ -1562,4 +1570,232 @@ async function handleAvatarUpload(event) {
         preview.appendChild(renderAvatar({ avatar_url: avatarUrl }, 80));
     }
     showToast("✅ Photo de profil mise à jour !", "success");
+}
+
+
+// ==========================================
+// 9. SYSTÈME DE CHAT PRÉ-RÉSERVATION
+// ==========================================
+
+/**
+ * Active ou grise le bouton #chat-btn selon l'état de la session et des dates.
+ * Conditions : currentUser actif ET selectedStartDate ET selectedEndDate définis.
+ * Le propriétaire de l'annonce n'a pas besoin de poser une question à lui-même.
+ */
+function updateChatButtonState() {
+    const chatBtn = document.getElementById('chat-btn');
+    if (!chatBtn) return;
+
+    const isOwner = currentUser && currentTrailer && currentUser.id === currentTrailer.owner_id;
+    const canChat = !isOwner && currentUser && selectedStartDate && selectedEndDate;
+
+    if (canChat) {
+        chatBtn.disabled = false;
+        chatBtn.className = "w-full mt-3 flex items-center justify-center gap-2 border-2 border-terracotta-400 text-terracotta-600 dark:text-terracotta-400 font-semibold py-3 rounded-2xl transition hover:bg-terracotta-50 dark:hover:bg-stone-700 cursor-pointer";
+        chatBtn.title = "Poser une question au propriétaire";
+    } else {
+        chatBtn.disabled = true;
+        chatBtn.className = "w-full mt-3 flex items-center justify-center gap-2 border-2 border-stone-200 dark:border-stone-700 text-stone-400 font-semibold py-3 rounded-2xl transition cursor-not-allowed opacity-60";
+        if (!currentUser) {
+            chatBtn.title = "Connectez-vous pour poser une question";
+        } else if (!selectedStartDate || !selectedEndDate) {
+            chatBtn.title = "Sélectionnez vos dates pour débloquer le chat";
+        } else if (isOwner) {
+            chatBtn.title = "Vous êtes le propriétaire de cette annonce";
+        }
+    }
+
+    // Masquer le bouton si le user est propriétaire (inutile pour lui)
+    if (isOwner) {
+        chatBtn.classList.add('hidden');
+    } else {
+        chatBtn.classList.remove('hidden');
+    }
+}
+
+/**
+ * Filtre anti-contournement de plateforme.
+ * Remplace les emails et les suites de chiffres (>8 caractères consécutifs, i.e. téléphones)
+ * par un placeholder neutre.
+ */
+function sanitizeMessage(text) {
+    const MASK = '[Information masquée avant réservation]';
+    // Email
+    text = text.replace(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, MASK);
+    // Suites de chiffres > 8 caractères (numéros de téléphone, IBAN partiel, etc.)
+    // On autorise les séparateurs courants (espace, point, tiret) entre groupes
+    text = text.replace(/(\d[\s.\-]?){9,}/g, MASK);
+    return text;
+}
+
+/**
+ * Ouvre la modale de chat et charge l'historique depuis Supabase.
+ */
+async function openChatModal() {
+    if (!currentUser || !currentTrailer) return;
+
+    const modal = document.getElementById('chat-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    // Mettre à jour le sous-titre avec le nom de la remorque
+    const subtitle = document.getElementById('chat-modal-subtitle');
+    if (subtitle) subtitle.textContent = currentTrailer.title || 'Remorque';
+
+    // Mise à jour du compteur de caractères
+    const input = document.getElementById('chat-input');
+    if (input) {
+        input.value = '';
+        input.addEventListener('input', () => {
+            const counter = document.getElementById('chat-char-count');
+            if (counter) counter.textContent = input.value.length;
+        }, { once: false });
+        // Réinitialiser le compteur
+        const counter = document.getElementById('chat-char-count');
+        if (counter) counter.textContent = '0';
+    }
+
+    await loadChatMessages();
+}
+
+/**
+ * Charge et affiche les messages du fil de conversation
+ * entre currentUser et le propriétaire de currentTrailer.
+ */
+async function loadChatMessages() {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    container.innerHTML = '<p class="text-center text-sm text-stone-400 italic py-4">Chargement...</p>';
+
+    const { data: messages, error } = await supabaseClient
+        .from('messages')
+        .select('id, sender_id, receiver_id, content, created_at')
+        .eq('trailer_id', currentTrailer.id)
+        .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        container.innerHTML = '<p class="text-center text-sm text-red-400 py-4">Erreur lors du chargement des messages.</p>';
+        return;
+    }
+
+    renderChatMessages(messages || []);
+}
+
+/**
+ * Affiche les bulles de messages dans le conteneur.
+ * Bulles terracotta pour les messages envoyés, stone pour les reçus.
+ */
+function renderChatMessages(messages) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (messages.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'text-center text-sm text-stone-400 italic py-8';
+        empty.textContent = 'Aucun message. Posez votre première question !';
+        container.appendChild(empty);
+        return;
+    }
+
+    messages.forEach(msg => {
+        const isMine = msg.sender_id === currentUser.id;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex ' + (isMine ? 'justify-end' : 'justify-start');
+
+        const bubble = document.createElement('div');
+        bubble.className = 'max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ' +
+            (isMine
+                ? 'bg-terracotta-500 text-white rounded-br-sm'
+                : 'bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-100 rounded-bl-sm');
+
+        const text = document.createElement('p');
+        text.textContent = msg.content; // textContent = XSS-safe
+
+        const time = document.createElement('p');
+        time.className = 'text-[10px] mt-1 ' + (isMine ? 'text-terracotta-200 text-right' : 'text-stone-400');
+        const d = new Date(msg.created_at);
+        time.textContent = d.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' }) +
+            ' ' + d.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
+
+        bubble.appendChild(text);
+        bubble.appendChild(time);
+        wrapper.appendChild(bubble);
+        container.appendChild(wrapper);
+    });
+
+    // Auto-scroll vers le bas
+    container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Envoie un message dans la table `messages`.
+ * Le contenu est filtré par sanitizeMessage avant envoi.
+ */
+async function sendChatMessage() {
+    if (!currentUser || !currentTrailer) return;
+
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+
+    const rawText = input.value.trim();
+    if (!rawText) return showToast('Écrivez un message avant d\'envoyer.', 'error');
+
+    const sanitized = sanitizeMessage(rawText);
+    const sendBtn = document.getElementById('chat-send-btn');
+
+    // Désactiver temporairement pour éviter les doubles envois
+    if (sendBtn) sendBtn.disabled = true;
+
+    const { error } = await supabaseClient.from('messages').insert([{
+        sender_id: currentUser.id,
+        receiver_id: currentTrailer.owner_id,
+        trailer_id: currentTrailer.id,
+        content: sanitized
+    }]);
+
+    if (sendBtn) sendBtn.disabled = false;
+
+    if (error) {
+        showToast('Erreur lors de l\'envoi : ' + error.message, 'error');
+        return;
+    }
+
+    input.value = '';
+    const counter = document.getElementById('chat-char-count');
+    if (counter) counter.textContent = '0';
+
+    // Rechargement de la conversation
+    await loadChatMessages();
+}
+
+/**
+ * Ferme la modale de chat.
+ */
+function closeChatModal() {
+    const modal = document.getElementById('chat-modal');
+    if (modal) modal.classList.add('hidden');
+    const input = document.getElementById('chat-input');
+    if (input) input.value = '';
+}
+
+/**
+ * Ferme la modale si l'utilisateur clique sur le fond opaque.
+ */
+function handleChatModalBackdrop(event) {
+    if (event.target === document.getElementById('chat-modal')) {
+        closeChatModal();
+    }
+}
+
+/**
+ * Envoi du message avec Ctrl+Entrée (ou Cmd+Entrée sur Mac).
+ */
+function handleChatKeydown(event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        sendChatMessage();
+    }
 }
