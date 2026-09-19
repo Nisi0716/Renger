@@ -1929,7 +1929,24 @@ async function setupStripePayouts() {
     showToast("Génération du lien sécurisé Stripe...", "info");
     
     try {
-        const data = await callEdgeFunction('stripe-onboarding');
+        // Récupérer le stripe_account_id actuel si déjà enregistré
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('stripe_account_id')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+
+        const returnUrl = window.location.origin + window.location.pathname + '?stripe=success';
+        const refreshUrl = window.location.origin + window.location.pathname + '?stripe=refresh';
+
+        const data = await callEdgeFunction('stripe-onboarding', {
+            email: currentUser.email,
+            userId: currentUser.id,
+            account: profile?.stripe_account_id || null,
+            return_url: returnUrl,
+            refresh_url: refreshUrl
+        });
+
         if (data.url) {
             window.location.href = data.url; 
         } else {
@@ -1966,6 +1983,29 @@ async function deleteAccount() {
     }
 }
 
+async function checkStripeConnectStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const stripeStatus = urlParams.get('stripe');
+    if (!stripeStatus) return;
+
+    // Nettoyer le paramètre 'stripe' de l'URL sans recharger la page
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('stripe');
+    window.history.replaceState({}, document.title, newUrl.pathname + (newUrl.search ? newUrl.search : ''));
+
+    if (stripeStatus === 'success') {
+        showToast("🎉 Vos coordonnées bancaires ont été enregistrées avec succès !", "success");
+        if (currentUser) {
+            openSettings();
+        }
+    } else if (stripeStatus === 'refresh') {
+        showToast("Configuration bancaire interrompue. Vous pouvez la reprendre à tout moment.", "info");
+        if (currentUser) {
+            openSettings();
+        }
+    }
+}
+
 // ==========================================
 // 9. DÉMARRAGE DU SITE
 // ==========================================
@@ -1983,6 +2023,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await checkUser();
     loadTrailers();
     await checkPaymentStatus();
+    await checkStripeConnectStatus();
 
     // Routing : si l'URL contient ?user=username, ouvrir le profil public
     const urlParams = new URLSearchParams(window.location.search);
@@ -2194,6 +2235,30 @@ async function loadProfileSettings() {
     } else if (info) {
         info.textContent = 'Vous pouvez modifier votre nom d\'utilisateur (1 fois par mois)';
         info.className = 'text-xs mt-1 text-stone-400';
+    }
+
+    // Statut Stripe Connect
+    const stripeBadge = document.getElementById('settings-stripe-status-badge');
+    const stripeBtnText = document.getElementById('settings-stripe-btn-text');
+    if (profile.stripe_account_id) {
+        if (stripeBadge) {
+            stripeBadge.innerHTML = `<span class="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                COMPTE CONFIGURÉ
+            </span>`;
+        }
+        if (stripeBtnText) {
+            stripeBtnText.textContent = "Modifier mes coordonnées bancaires";
+        }
+    } else {
+        if (stripeBadge) {
+            stripeBadge.innerHTML = `<span class="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 text-xs px-2.5 py-1 rounded-full font-bold inline-flex">
+                À CONFIGURER
+            </span>`;
+        }
+        if (stripeBtnText) {
+            stripeBtnText.textContent = "Configurer mes versements sécurisés";
+        }
     }
 }
 
