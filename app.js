@@ -43,6 +43,8 @@ let selectedEndDate = null;
 let videoStream = null;
 let currentFilter = 'all'; // Filtre actif sur la page des annonces
 let toastTimer = null; // Timer d'annulation pour éviter la collision des notifications toast
+let activeChatPartnerId = null; // ID du destinataire de la conversation active
+let currentBookingContext = null; // Contexte de réservation pour la transaction active
 
 /**
  * Formate un objet Date en chaîne SQL standard YYYY-MM-DD
@@ -1402,29 +1404,290 @@ async function checkPaymentStatus() {
 
 // ==========================================
 // 6. MODULE CAMÉRA (ÉTAT DES LIEUX)
+// 6. MODULE CAMÉRA GUIDÉE & GHOSTING (ÉTAT DES LIEUX)
 // ==========================================
 async function startCamera() {
+
+const INSPECTION_STEPS = [
+    {
+        step: 1,
+        title: "Tête d'attelage",
+        instruction: "Cadrez le système d'attache, la roue jockey et le câble de sécurité.",
+        overlayId: 'ghost-overlay-1',
+        pillId: 'step-pill-1'
+    },
+    {
+        step: 2,
+        title: "Avant et Côté Gauche",
+        instruction: "Reculez pour cadrer le 3/4 avant gauche, la carrosserie et le pneu gauche.",
+        overlayId: 'ghost-overlay-2',
+        pillId: 'step-pill-2'
+    },
+    {
+        step: 3,
+        title: "Arrière et Côté Droit",
+        instruction: "Cadrez l'arrière avec la plaque d'immatriculation, les feux et le flanc droit.",
+        overlayId: 'ghost-overlay-3',
+        pillId: 'step-pill-3'
+    },
+    {
+        step: 4,
+        title: "Intérieur (Propreté)",
+        instruction: "Cadrez l'intérieur de la cuve : plancher propre, vide et sans dégradations.",
+        overlayId: 'ghost-overlay-4',
+        pillId: 'step-pill-4'
+    }
+];
+
+let inspectionContext = {
+    mode: 'departure', // 'departure' (propriétaire) ou 'return' (locataire)
+    trailerId: null,
+    bookingId: null,
+    receiverId: null,
+    currentStepIndex: 0,
+    isCapturing: false,
+    facingMode: 'environment',
+    clockInterval: null,
+    cachedCoords: null
+};
+
+async function startGuidedInspection(mode, trailerId, receiverId, bookingId) {
+    if (!currentUser) {
+        showToast("Vous devez être connecté pour réaliser un état des lieux.", "error");
+        openAuthModal();
+        return;
+    }
+
+    inspectionContext.mode = mode || 'departure';
+    inspectionContext.trailerId = trailerId || (currentTrailer ? currentTrailer.id : null);
+    inspectionContext.receiverId = receiverId || activeChatPartnerId;
+    inspectionContext.bookingId = bookingId || currentBookingContext?.id;
+    inspectionContext.currentStepIndex = 0;
+    inspectionContext.isCapturing = false;
+
+    showPage('inspection-page');
+    updateInspectionHUD();
+    startInspectionClock();
+    await startCamera(inspectionContext.facingMode);
+    updateGPSStatusBadge();
+}
+
+function updateInspectionHUD() {
+    const step = INSPECTION_STEPS[inspectionContext.currentStepIndex];
+    if (!step) return;
+
+    // Mode texte
+    const modeText = document.getElementById('inspection-mode-text');
+    if (modeText) {
+        modeText.textContent = inspectionContext.mode === 'departure'
+            ? 'État des lieux de départ'
+            : 'État des lieux de retour';
+    }
+
+    // Étape titre et instructions
+    const stepTitle = document.getElementById('inspection-step-title');
+    if (stepTitle) stepTitle.textContent = `Étape ${step.step} sur 4 : ${step.title}`;
+
+    const stepCounter = document.getElementById('inspection-step-counter');
+    if (stepCounter) stepCounter.textContent = `${step.step} / 4`;
+
+    const stepInstruction = document.getElementById('inspection-step-instruction');
+    if (stepInstruction) stepInstruction.textContent = step.instruction;
+
+    // Barre de progression
+    const progressBar = document.getElementById('inspection-progress-bar');
+    if (progressBar) progressBar.style.width = `${(step.step / 4) * 100}%`;
+
+    // Calques ghosting SVG et pastilles
+    INSPECTION_STEPS.forEach((s, idx) => {
+        const overlay = document.getElementById(s.overlayId);
+        if (overlay) {
+            if (idx === inspectionContext.currentStepIndex) {
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        const pill = document.getElementById(s.pillId);
+        if (pill) {
+            if (idx < inspectionContext.currentStepIndex) {
+                pill.className = 'flex-1 py-1.5 px-2 bg-emerald-950/70 border border-emerald-500 text-emerald-400 rounded-xl text-center text-xs font-bold transition';
+                pill.innerHTML = `✓ ${idx + 1}`;
+            } else if (idx === inspectionContext.currentStepIndex) {
+                pill.className = 'flex-1 py-1.5 px-2 bg-terracotta-500/20 border-2 border-terracotta-500 text-terracotta-400 rounded-xl text-center text-xs font-extrabold transition shadow-sm';
+                pill.innerHTML = `${idx + 1}. ${s.title.split(' ')[0]}`;
+            } else {
+                pill.className = 'flex-1 py-1.5 px-2 bg-stone-900 border border-stone-800 text-stone-500 rounded-xl text-center text-xs font-bold transition';
+                pill.innerHTML = `${idx + 1}. ${s.title.split(' ')[0]}`;
+            }
+        }
+    });
+}
+
+function startInspectionClock() {
+    if (inspectionContext.clockInterval) clearInterval(inspectionContext.clockInterval);
+    const clockEl = document.getElementById('camera-clock-badge');
+    const updateTime = () => {
+        if (clockEl) {
+            const now = new Date();
+            clockEl.textContent = now.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+    };
+    updateTime();
+    inspectionContext.clockInterval = setInterval(updateTime, 1000);
+}
+
+function stopInspectionClock() {
+    if (inspectionContext.clockInterval) {
+        clearInterval(inspectionContext.clockInterval);
+        inspectionContext.clockInterval = null;
+    }
+}
+
+async function getCurrentCoordinates() {
+    if (!('geolocation' in navigator)) {
+        return { latitude: null, longitude: null, accuracy: null, text: 'Non supporté' };
+    }
+    return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const coords = {
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: Math.round(pos.coords.accuracy),
+                    text: `${pos.coords.latitude.toFixed(4)}°N, ${pos.coords.longitude.toFixed(4)}°E (±${Math.round(pos.coords.accuracy)}m)`
+                };
+                inspectionContext.cachedCoords = coords;
+                resolve(coords);
+            },
+            (err) => {
+                console.warn("Géolocalisation inaccessible :", err.message);
+                resolve({ latitude: null, longitude: null, accuracy: null, text: 'Coordonnées approximatives' });
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+        );
+    });
+}
+
+async function updateGPSStatusBadge() {
+    const gpsText = document.getElementById('camera-gps-text');
+    if (!gpsText) return;
+    gpsText.textContent = '📍 Recherche GPS...';
+
+    const coords = await getCurrentCoordinates();
+    if (coords.latitude) {
+        gpsText.textContent = `📍 GPS Précis (±${coords.accuracy}m)`;
+    } else {
+        gpsText.textContent = '📍 GPS approximatif';
+    }
+}
+
+async function startCamera(facing = 'environment') {
+    stopCamera();
     try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        videoStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: facing,
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            }
+        });
         const feed = document.getElementById('camera-feed');
         if (feed) feed.srcObject = videoStream;
     } catch (err) { showToast("Erreur caméra.", "error"); showPage('detail-page'); }
+    } catch (err) {
+        console.warn("Erreur caméra :", err.message);
+        showToast("Impossible d'accéder à la caméra.", "error");
+    }
 }
 
 function stopCamera() { 
     if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; } 
+function stopCamera() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    stopInspectionClock();
 }
 async function takePhoto() {
+
+async function switchCamera() {
+    inspectionContext.facingMode = inspectionContext.facingMode === 'environment' ? 'user' : 'environment';
+    await startCamera(inspectionContext.facingMode);
+}
+
+function confirmExitInspection() {
+    if (inspectionContext.currentStepIndex > 0 && inspectionContext.currentStepIndex < 4) {
+        const exit = confirm("Voulez-vous vraiment quitter l'état des lieux ? Vos photos des étapes déjà validées sont conservées dans la conversation.");
+        if (!exit) return;
+    }
+    stopCamera();
+    stopInspectionClock();
+    showPage('detail-page');
+    openChatModal();
+}
+
+function applyInspectionWatermark(ctx, canvasWidth, canvasHeight, stepConfig, coords, date) {
+    const bannerHeight = Math.max(68, Math.round(canvasHeight * 0.11));
+
+    // Fond sombre du bandeau légal
+    ctx.fillStyle = 'rgba(15, 17, 21, 0.88)';
+    ctx.fillRect(0, canvasHeight - bannerHeight, canvasWidth, bannerHeight);
+
+    // Filet supérieur décoratif terracotta
+    ctx.fillStyle = '#E05A47';
+    ctx.fillRect(0, canvasHeight - bannerHeight, canvasWidth, 3);
+
+    // Typographies adaptatives
+    const fontSizeTitle = Math.max(13, Math.round(bannerHeight * 0.28));
+    const fontSizeMeta = Math.max(10, Math.round(bannerHeight * 0.21));
+
+    // Ligne 1 : Titre & Étape
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `bold ${fontSizeTitle}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    const modeLabel = inspectionContext.mode === 'departure' ? 'DÉPART (PROPRIÉTAIRE)' : 'RETOUR (LOCATAIRE)';
+    ctx.fillText(`🛡️ RENGER CERTIFIÉ — ÉTAT DES LIEUX ${modeLabel} | ÉTAPE ${stepConfig.step}/4 : ${stepConfig.title.toUpperCase()}`, 18, canvasHeight - bannerHeight + fontSizeTitle + 10);
+
+    // Ligne 2 : Horodatage & Géolocalisation
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = `${fontSizeMeta}px monospace`;
+    const dateStr = date.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const gpsStr = coords.latitude ? `📍 ${coords.text}` : '📍 GPS non accessible';
+    ctx.fillText(`📅 ${dateStr} ${timeStr} CEST  |  ${gpsStr}`, 18, canvasHeight - 12);
+}
+
+async function takeGuidedInspectionPhoto() {
+    if (inspectionContext.isCapturing) return;
     const feed = document.getElementById('camera-feed');
     if (!feed || !videoStream) {
         showToast("Caméra indisponible.", "error");
         return;
+        return showToast("La caméra n'est pas active.", "error");
     }
+
+    const currentStep = INSPECTION_STEPS[inspectionContext.currentStepIndex];
+    if (!currentStep) return;
+
+    inspectionContext.isCapturing = true;
+
+    // 1. Effet Flash visuel
+    const flashEl = document.getElementById('camera-flash');
+    if (flashEl) {
+        flashEl.style.opacity = '1';
+        setTimeout(() => { flashEl.style.opacity = '0'; }, 150);
+    }
+
+    showToast(`📸 Certification de l'étape ${currentStep.step}/4 en cours...`, "info");
 
     try {
         showToast("Capture et certification de l'état des lieux...", "info");
 
         // 1. Création d'un canvas pour extraire l'image instantanée du flux vidéo
+        // 2. Extraire la photo sur canvas
         const canvas = document.createElement('canvas');
         canvas.width = feed.videoWidth || 1280;
         canvas.height = feed.videoHeight || 720;
@@ -1434,8 +1697,24 @@ async function takePhoto() {
         // 2. Conversion en Blob image/jpeg
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
         if (!blob) throw new Error("Échec de la conversion de l'image.");
+        // 3. Obtenir géolocalisation et horodatage précis
+        const now = new Date();
+        const coords = await getCurrentCoordinates();
 
         // 3. Upload vers le bucket Supabase sécurisé 'inspections'
+        // 4. Incruster le filigrane légal inaltérable sur l'image
+        applyInspectionWatermark(ctx, canvas.width, canvas.height, currentStep, coords, now);
+
+        // 5. Convertir en Blob JPEG
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+        if (!blob) throw new Error("Échec de la génération de l'image.");
+
+        // 6. Upload dans le bucket PRIVÉ 'inspections'
+        const timestamp = Date.now();
+        const mode = inspectionContext.mode;
+        const trailerId = inspectionContext.trailerId || 'generale';
+        const filePath = `${currentUser.id}/${trailerId}/${mode}_step${currentStep.step}_${timestamp}.jpg`;
+
         if (supabaseClient && currentUser) {
             const trailerId = currentTrailer ? currentTrailer.id : 'generale';
             const timestamp = Date.now();
@@ -1453,16 +1732,55 @@ async function takePhoto() {
                 showToast("Photo capturée (attention : " + uploadError.message + ")", "info");
             } else {
                 showToast("📸 État des lieux photographique certifié et sauvegardé !", "success");
+                console.warn("Upload inspection warning:", uploadError.message);
             }
+        }
+
+        // 7. Insérer le message dans la table messages du chat
+        const dateStr = now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const modeLabel = mode === 'departure' ? 'départ' : 'retour';
+        const content = `📸 [État des lieux de ${modeLabel}] Étape ${currentStep.step}/4 : ${currentStep.title} — Certifié le ${dateStr} à ${timeStr} (${coords.text})`;
+
+        const receiverId = inspectionContext.receiverId || activeChatPartnerId || (currentUser.id === currentTrailer?.owner_id ? null : currentTrailer?.owner_id);
+
+        if (supabaseClient && currentUser) {
+            await supabaseClient.from('messages').insert([{
+                sender_id: currentUser.id,
+                receiver_id: receiverId,
+                trailer_id: trailerId,
+                content: content,
+                image_url: filePath
+            }]);
+        }
+
+        // 8. Passage à l'étape suivante ou clôture
+        if (inspectionContext.currentStepIndex < 3) {
+            inspectionContext.currentStepIndex++;
+            showToast(`✅ Étape ${currentStep.step}/4 validée ! Passez à l'étape ${inspectionContext.currentStepIndex + 1}.`, "success");
+            updateInspectionHUD();
         } else {
             showToast("Photo capturée localement. Connectez-vous pour certifier en ligne.", "info");
+            // Toutes les 4 étapes sont validées !
+            stopCamera();
+            stopInspectionClock();
+            showToast("🎉 État des lieux complet certifié (4/4 photos enregistrées) !", "success");
+            showPage('detail-page');
+            await openChatModal();
         }
+
     } catch (err) {
         showToast("Erreur lors de la capture : " + err.message, "error");
     } finally {
         stopCamera();
         showPage('detail-page');
+        inspectionContext.isCapturing = false;
     }
+}
+
+// Alias pour compatibilité
+async function takePhoto() {
+    return takeGuidedInspectionPhoto();
 }
 
 // ==========================================
@@ -1554,23 +1872,39 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
     infoDiv.appendChild(priceEl);
 
     // Gestion de l'évaluation pour cette réservation
+    // Actions & Évaluation pour cette réservation
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'flex flex-wrap items-center gap-2 mt-3';
+
+    const chatBtn = document.createElement('button');
+    chatBtn.type = 'button';
+    chatBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
+    chatBtn.innerHTML = '<span>💬</span><span>Messagerie & État des lieux</span>';
+    chatBtn.onclick = () => openChatForBooking(booking, false);
+    actionsRow.appendChild(chatBtn);
+
     if (booking.trailers) {
         if (reviewsByBooking.has(booking.id)) {
             const rev = reviewsByBooking.get(booking.id);
             const reviewBadge = document.createElement('span');
             reviewBadge.className = 'inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 rounded-lg mt-2';
+            reviewBadge.className = 'inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 rounded-lg';
             reviewBadge.textContent = `⭐ Note ${rev.rating}/5 attribuée`;
             infoDiv.appendChild(reviewBadge);
+            actionsRow.appendChild(reviewBadge);
         } else if (todayStr > endStr) {
             // Bouton pour noter si la location est passée et non encore notée
             const reviewBtn = document.createElement('button');
             reviewBtn.type = 'button';
             reviewBtn.className = 'mt-2 text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
+            reviewBtn.className = 'text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
             reviewBtn.textContent = '⭐ Donner mon avis';
             reviewBtn.onclick = () => openReviewModal(booking.id, booking.trailers.id, booking.trailers.title);
             infoDiv.appendChild(reviewBtn);
+            actionsRow.appendChild(reviewBtn);
         }
     }
+    infoDiv.appendChild(actionsRow);
 
     const card = document.createElement('div');
     card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-5 rounded-2xl shadow-sm flex items-center gap-4';
@@ -1641,11 +1975,18 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr) {
     datesEl.className = 'text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1.5';
     datesEl.textContent = `Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')} (${diffDays} jour${diffDays > 1 ? 's' : ''})`;
 
+    const chatBtn = document.createElement('button');
+    chatBtn.type = 'button';
+    chatBtn.className = 'mt-2.5 text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
+    chatBtn.innerHTML = '<span>💬</span><span>Messagerie & État des lieux</span>';
+    chatBtn.onclick = () => openChatForBooking(booking, true);
+
     const infoDiv = document.createElement('div');
     infoDiv.className = 'flex-1 min-w-0';
     infoDiv.appendChild(titleEl);
     infoDiv.appendChild(renterRow);
     infoDiv.appendChild(datesEl);
+    infoDiv.appendChild(chatBtn);
 
     // Montant net perçu à droite
     const priceDiv = document.createElement('div');
@@ -2437,20 +2778,56 @@ function sanitizeMessage(text) {
 }
 
 /**
+ * Ouvre la modale de chat depuis une carte de réservation
+ */
+async function openChatForBooking(booking, isOwnerView = false) {
+    if (!currentUser || !booking) return;
+
+    currentBookingContext = booking;
+    currentTrailer = booking.trailers || currentTrailer;
+    activeChatPartnerId = isOwnerView ? booking.renter_id : (booking.owner_id || booking.trailers?.owner_id);
+
+    await openChatModal();
+}
+
+/**
  * Ouvre la modale de chat et charge l'historique depuis Supabase.
  */
 async function openChatModal() {
     if (!currentUser || !currentTrailer) return;
+async function openChatModal(trailer = null, partnerId = null, booking = null) {
+    if (!currentUser) {
+        showToast("Vous devez être connecté pour ouvrir la messagerie.", "error");
+        openAuthModal();
+        return;
+    }
+
+    if (trailer) currentTrailer = trailer;
+    if (partnerId) activeChatPartnerId = partnerId;
+    if (booking) currentBookingContext = booking;
+
+    if (!currentTrailer) return;
+
+    // Si le partenaire n'est pas encore défini (ex: ouvert depuis la page détail par le locataire)
+    if (!activeChatPartnerId) {
+        activeChatPartnerId = (currentUser.id === currentTrailer.owner_id) ? null : currentTrailer.owner_id;
+    }
 
     const modal = document.getElementById('chat-modal');
     if (!modal) return;
     modal.classList.remove('hidden');
 
     // Mettre à jour le sous-titre avec le nom de la remorque
+    // Mettre à jour le sous-titre avec le nom de la remorque et le rôle
     const subtitle = document.getElementById('chat-modal-subtitle');
     if (subtitle) subtitle.textContent = currentTrailer.title || 'Remorque';
+    if (subtitle) {
+        const isOwner = (currentUser.id === currentTrailer.owner_id);
+        subtitle.textContent = `${currentTrailer.title || 'Remorque'} • ${isOwner ? 'Discussion avec le locataire' : 'Discussion avec le propriétaire'}`;
+    }
 
     // Mise à jour du compteur de caractères (assignation unique oninput sans accumulation d'écouteurs)
+    // Mise à jour du compteur de caractères (assignation unique oninput)
     const input = document.getElementById('chat-input');
     if (input) {
         input.value = '';
@@ -2466,22 +2843,38 @@ async function openChatModal() {
     await loadChatMessages();
 }
 
+let currentChatMessages = [];
+
 /**
  * Charge et affiche les messages du fil de conversation
  * entre currentUser et le propriétaire de currentTrailer.
+ * entre currentUser et son interlocuteur pour currentTrailer.
  */
 async function loadChatMessages() {
     const container = document.getElementById('chat-messages');
     if (!container) return;
+    if (!container || !currentTrailer) return;
 
     container.innerHTML = '<p class="text-center text-sm text-stone-400 italic py-4">Chargement...</p>';
+    container.innerHTML = '<p class="text-center text-sm text-stone-400 italic py-4">Chargement des messages...</p>';
 
     const { data: messages, error } = await supabaseClient
+    let query = supabaseClient
         .from('messages')
         .select('id, sender_id, receiver_id, content, created_at')
         .eq('trailer_id', currentTrailer.id)
         .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
         .order('created_at', { ascending: true });
+        .select('id, sender_id, receiver_id, content, image_url, created_at')
+        .eq('trailer_id', currentTrailer.id);
+
+    if (activeChatPartnerId) {
+        query = query.or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${activeChatPartnerId}),and(sender_id.eq.${activeChatPartnerId},receiver_id.eq.${currentUser.id})`);
+    } else {
+        query = query.or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
+    }
+
+    const { data: messages, error } = await query.order('created_at', { ascending: true });
 
     if (error) {
         container.innerHTML = '<p class="text-center text-sm text-red-400 py-4">Erreur lors du chargement des messages.</p>';
@@ -2489,13 +2882,52 @@ async function loadChatMessages() {
     }
 
     renderChatMessages(messages || []);
+    currentChatMessages = messages || [];
+    await renderChatMessages(currentChatMessages);
+    updateChatInspectionBar(currentChatMessages);
 }
+
+const signedUrlCache = new Map();
 
 /**
  * Affiche les bulles de messages dans le conteneur.
  * Bulles terracotta pour les messages envoyés, stone pour les reçus.
+ * Génère ou récupère en cache l'URL signée pour une photo dans le bucket privé 'inspections'
  */
 function renderChatMessages(messages) {
+async function resolveInspectionImageUrl(filePath) {
+    if (!filePath) return null;
+    if (filePath.startsWith('http')) return filePath;
+
+    const cached = signedUrlCache.get(filePath);
+    if (cached && cached.expires > Date.now()) {
+        return cached.url;
+    }
+
+    try {
+        const { data, error } = await supabaseClient.storage
+            .from('inspections')
+            .createSignedUrl(filePath, 3600);
+
+        if (error || !data?.signedUrl) {
+            const { data: pub } = supabaseClient.storage.from('inspections').getPublicUrl(filePath);
+            return pub?.publicUrl || null;
+        }
+
+        signedUrlCache.set(filePath, {
+            url: data.signedUrl,
+            expires: Date.now() + 3500 * 1000
+        });
+        return data.signedUrl;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Affiche les bulles de messages dans le conteneur avec support des photos certifiées.
+ */
+async function renderChatMessages(messages) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
     container.innerHTML = '';
@@ -2504,26 +2936,58 @@ function renderChatMessages(messages) {
         const empty = document.createElement('p');
         empty.className = 'text-center text-sm text-stone-400 italic py-8';
         empty.textContent = 'Aucun message. Posez votre première question !';
+        empty.textContent = 'Aucun message. Posez votre première question ou lancez l\'état des lieux !';
         container.appendChild(empty);
         return;
     }
 
     messages.forEach(msg => {
+    for (const msg of messages) {
         const isMine = msg.sender_id === currentUser.id;
         const wrapper = document.createElement('div');
         wrapper.className = 'flex ' + (isMine ? 'justify-end' : 'justify-start');
 
         const bubble = document.createElement('div');
         bubble.className = 'max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ' +
+        bubble.className = 'max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ' +
             (isMine
                 ? 'bg-terracotta-500 text-white rounded-br-sm'
                 : 'bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-100 rounded-bl-sm');
 
+        // Si le message contient une photo d'état des lieux
+        if (msg.image_url) {
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'mb-2 rounded-xl overflow-hidden border border-black/15 dark:border-white/15 relative group bg-black/20';
+
+            const img = document.createElement('img');
+            img.className = 'w-full max-h-56 object-cover rounded-xl cursor-pointer hover:opacity-95 transition';
+            img.alt = "Photo d'état des lieux certifiée";
+            img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180"><rect width="100%" height="100%" fill="%23222"/><text x="50%" y="50%" fill="%23888" font-size="12" font-family="sans-serif" text-anchor="middle" dy=".3em">Chargement photo sécurisée...</text></svg>';
+
+            resolveInspectionImageUrl(msg.image_url).then(url => {
+                if (url) {
+                    img.src = url;
+                    img.onclick = () => window.open(url, '_blank');
+                }
+            });
+
+            const badge = document.createElement('div');
+            badge.className = 'absolute top-2 left-2 bg-black/75 backdrop-blur text-[10px] font-bold text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1 shadow-sm';
+            badge.innerHTML = '<span>🛡️</span><span>Preuve Certifiée</span>';
+
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(badge);
+            bubble.appendChild(imgContainer);
+        }
+
         const text = document.createElement('p');
         text.textContent = msg.content; // textContent = XSS-safe
+        text.className = 'whitespace-pre-wrap break-words';
+        text.textContent = msg.content;
 
         const time = document.createElement('p');
         time.className = 'text-[10px] mt-1 ' + (isMine ? 'text-terracotta-200 text-right' : 'text-stone-400');
+        time.className = 'text-[10px] mt-1.5 ' + (isMine ? 'text-terracotta-200 text-right' : 'text-stone-400');
         const d = new Date(msg.created_at);
         time.textContent = d.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' }) +
             ' ' + d.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
@@ -2533,9 +2997,243 @@ function renderChatMessages(messages) {
         wrapper.appendChild(bubble);
         container.appendChild(wrapper);
     });
+    }
 
     // Auto-scroll vers le bas
     container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Met à jour le bandeau asymétrique d'état des lieux dans le chat
+ */
+function updateChatInspectionBar(messages) {
+    const inspectionBar = document.getElementById('chat-inspection-bar');
+    const ownerActions = document.getElementById('chat-owner-actions');
+    const renterActions = document.getElementById('chat-renter-actions');
+    if (!inspectionBar || !ownerActions || !renterActions || !currentUser || !currentTrailer) return;
+
+    let departureCount = 0;
+    let returnCount = 0;
+
+    messages.forEach(msg => {
+        if (msg.image_url) {
+            const content = (msg.content || '').toLowerCase();
+            if (content.includes('départ') || content.includes('depart')) {
+                departureCount++;
+            } else if (content.includes('retour')) {
+                returnCount++;
+            }
+        }
+    });
+
+    departureCount = Math.min(4, departureCount);
+    returnCount = Math.min(4, returnCount);
+
+    inspectionBar.classList.remove('hidden');
+    inspectionBar.classList.add('flex');
+
+    const isOwner = (currentUser.id === currentTrailer.owner_id);
+
+    if (isOwner) {
+        ownerActions.classList.remove('hidden');
+        renterActions.classList.add('hidden');
+
+        const stepBadge = document.getElementById('chat-owner-step-badge');
+        if (stepBadge) {
+            stepBadge.textContent = `${departureCount} / 4 photo(s)`;
+            stepBadge.className = departureCount === 4
+                ? 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                : 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+        }
+
+        const unlockBtn = document.getElementById('chat-owner-unlock-btn');
+        const unlockHint = document.getElementById('chat-owner-unlock-hint');
+        const inspectionBtn = document.getElementById('chat-owner-inspection-btn');
+
+        if (inspectionBtn) {
+            inspectionBtn.innerHTML = departureCount === 4
+                ? '<span>✅ Départ validé (4/4)</span>'
+                : `<span>📸 État des lieux départ (${departureCount}/4)</span>`;
+        }
+
+        if (departureCount >= 4) {
+            if (unlockBtn) {
+                unlockBtn.disabled = false;
+                unlockBtn.className = 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition shadow-md';
+                unlockBtn.innerHTML = '<span>🔓 Déverrouiller mes fonds</span>';
+            }
+            if (unlockHint) {
+                unlockHint.textContent = '✅ État des lieux complet certifié. Vous pouvez déverrouiller vos fonds (80% net).';
+                unlockHint.className = 'text-[11px] text-emerald-600 dark:text-emerald-400 font-medium';
+            }
+        } else {
+            if (unlockBtn) {
+                unlockBtn.disabled = true;
+                unlockBtn.className = 'bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-500 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed transition shadow-sm';
+                unlockBtn.innerHTML = '<span>🔒 Déverrouiller mes fonds</span>';
+            }
+            if (unlockHint) {
+                unlockHint.textContent = `⚠️ 4 photos de départ requises pour déverrouiller vos fonds Stripe (${departureCount}/4 effectuées).`;
+                unlockHint.className = 'text-[11px] text-amber-600 dark:text-amber-400 italic';
+            }
+        }
+    } else {
+        // Mode Locataire
+        ownerActions.classList.add('hidden');
+        renterActions.classList.remove('hidden');
+
+        const stepBadge = document.getElementById('chat-renter-step-badge');
+        if (stepBadge) {
+            stepBadge.textContent = `${returnCount} / 4 photo(s)`;
+            stepBadge.className = returnCount === 4
+                ? 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                : 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+        }
+
+        const inspectionBtn = document.getElementById('chat-renter-inspection-btn');
+        if (inspectionBtn) {
+            inspectionBtn.innerHTML = returnCount === 4
+                ? '<span>✅ Retour validé (4/4)</span>'
+                : `<span>📸 État des lieux retour (${returnCount}/4)</span>`;
+        }
+
+        const closeHint = document.getElementById('chat-renter-close-hint');
+        if (closeHint) {
+            if (returnCount >= 4) {
+                closeHint.textContent = '✅ 4 photos enregistrées. Vous pouvez clôturer sereinement la location.';
+                closeHint.className = 'text-[11px] text-emerald-600 dark:text-emerald-400 font-medium';
+            } else {
+                closeHint.textContent = `⚠️ Attention : sans photos de retour (${returnCount}/4), 50 CHF de pénalité sont facturés à la clôture.`;
+                closeHint.className = 'text-[11px] text-amber-600 dark:text-amber-400';
+            }
+        }
+    }
+}
+
+function getDeparturePhotosCount() {
+    let count = 0;
+    currentChatMessages.forEach(msg => {
+        if (msg.image_url) {
+            const content = (msg.content || '').toLowerCase();
+            if (content.includes('départ') || content.includes('depart')) count++;
+        }
+    });
+    return Math.min(4, count);
+}
+
+function getReturnPhotosCount() {
+    let count = 0;
+    currentChatMessages.forEach(msg => {
+        if (msg.image_url) {
+            const content = (msg.content || '').toLowerCase();
+            if (content.includes('retour')) count++;
+        }
+    });
+    return Math.min(4, count);
+}
+
+/**
+ * Déclenche l'état des lieux de départ par le propriétaire
+ */
+function startOwnerInspection() {
+    closeChatModal();
+    startGuidedInspection('departure', currentTrailer.id, activeChatPartnerId, currentBookingContext?.id);
+}
+
+/**
+ * Déclenche l'état des lieux de retour par le locataire
+ */
+function startRenterInspection() {
+    closeChatModal();
+    startGuidedInspection('return', currentTrailer.id, activeChatPartnerId, currentBookingContext?.id);
+}
+
+/**
+ * Déverrouillage des fonds Stripe par le propriétaire (bloqué tant que 4/4 non fait)
+ */
+async function handleUnlockStripeFunds() {
+    const departureCount = getDeparturePhotosCount();
+    if (departureCount < 4) {
+        return showToast("⚠️ Vous devez réaliser l'état des lieux de départ complet (4 photos) pour déverrouiller vos fonds.", "error");
+    }
+
+    showToast("🎉 Vérification validée ! Vos fonds Stripe (80% net) sont déverrouillés.", "success");
+
+    if (supabaseClient && currentUser && currentTrailer) {
+        const receiverId = activeChatPartnerId || (currentUser.id === currentTrailer.owner_id ? null : currentTrailer.owner_id);
+        await supabaseClient.from('messages').insert([{
+            sender_id: currentUser.id,
+            receiver_id: receiverId,
+            trailer_id: currentTrailer.id,
+            content: "🔓 [Fonds Déverrouillés] Le propriétaire a certifié l'état des lieux de départ (4/4 photos). Les fonds Stripe sont débloqués."
+        }]);
+        await loadChatMessages();
+    }
+}
+
+/**
+ * Gestion de la clôture par le locataire
+ */
+function handleRenterCloseRental() {
+    const returnCount = getReturnPhotosCount();
+    if (returnCount < 4) {
+        // Afficher la modale d'avertissement stricte
+        const warningModal = document.getElementById('inspection-warning-modal');
+        if (warningModal) warningModal.classList.remove('hidden');
+    } else {
+        if (confirm("Confirmez-vous la fin de la location ? L'état des lieux de retour (4/4 photos certifiées) a bien été validé.")) {
+            finishRentalSuccessfully(false);
+        }
+    }
+}
+
+function closeInspectionWarningModal() {
+    const warningModal = document.getElementById('inspection-warning-modal');
+    if (warningModal) warningModal.classList.add('hidden');
+}
+
+function handleWarningModalBackdrop(event) {
+    if (event.target === document.getElementById('inspection-warning-modal')) {
+        closeInspectionWarningModal();
+    }
+}
+
+function startInspectionFromWarning() {
+    closeInspectionWarningModal();
+    startRenterInspection();
+}
+
+async function confirmCloseWithoutInspection() {
+    const confirmed = confirm("⚠️ DERNIÈRE CONFIRMATION :\n\nEn clôturant sans photos de retour, vous acceptez la facturation de 50 CHF de pénalité et êtes présumé responsable de tout dommage déclaré.\n\nVoulez-vous vraiment continuer ?");
+    if (!confirmed) return;
+
+    closeInspectionWarningModal();
+    showToast("Clôture effectuée avec pénalité forfaitaire de 50 CHF.", "info");
+
+    if (supabaseClient && currentUser && currentTrailer) {
+        const receiverId = activeChatPartnerId || (currentUser.id === currentTrailer.owner_id ? null : currentTrailer.owner_id);
+        await supabaseClient.from('messages').insert([{
+            sender_id: currentUser.id,
+            receiver_id: receiverId,
+            trailer_id: currentTrailer.id,
+            content: "⚠️ [Clôture sans photos] Le locataire a clôturé la location sans état des lieux de retour. Pénalité de 50 CHF appliquée."
+        }]);
+    }
+
+    finishRentalSuccessfully(true);
+}
+
+function finishRentalSuccessfully(hadPenalty = false) {
+    closeChatModal();
+    if (hadPenalty) {
+        showToast("Location clôturée (pénalité 50 CHF enregistrée). Merci de laisser un avis !", "info");
+    } else {
+        showToast("🎉 Location clôturée avec succès ! Merci de prendre soin de la communauté.", "success");
+    }
+
+    if (currentBookingContext && currentTrailer) {
+        openReviewModal(currentBookingContext.id, currentTrailer.id, currentTrailer.title);
+    }
 }
 
 /**
@@ -2557,9 +3255,12 @@ async function sendChatMessage() {
     // Désactiver temporairement pour éviter les doubles envois
     if (sendBtn) sendBtn.disabled = true;
 
+    const receiverId = activeChatPartnerId || (currentUser.id === currentTrailer.owner_id ? null : currentTrailer.owner_id);
+
     const { error } = await supabaseClient.from('messages').insert([{
         sender_id: currentUser.id,
         receiver_id: currentTrailer.owner_id,
+        receiver_id: receiverId,
         trailer_id: currentTrailer.id,
         content: sanitized
     }]);

@@ -450,9 +450,181 @@
     <div id="inspection-page" class="hidden fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
         <button onclick="stopCamera(); showPage('detail-page')" data-i18n="cancel" class="absolute top-6 left-6 text-white font-bold text-lg">Annuler</button>
         <div class="w-full max-w-sm h-[60vh] bg-stone-900 rounded-2xl overflow-hidden relative border-2 border-stone-700 mb-6 flex items-center justify-center">
+    <!-- MODULE CAMÉRA GUIDÉE & GHOSTING (ÉTAT DES LIEUX) -->
+    <div id="inspection-page" class="hidden fixed inset-0 bg-stone-950 z-50 flex flex-col items-center justify-between p-4 sm:p-6 select-none overflow-hidden">
+        <!-- Barre supérieure -->
+        <div class="w-full max-w-md flex flex-col gap-2 flex-shrink-0">
+            <div class="flex items-center justify-between">
+                <button onclick="confirmExitInspection()" class="flex items-center gap-2 text-stone-300 hover:text-white font-bold text-sm bg-stone-900/80 backdrop-blur px-3 py-1.5 rounded-full border border-stone-800 transition">
+                    <span>✕</span>
+                    <span>Quitter</span>
+                </button>
+                <span id="inspection-mode-badge" class="text-xs font-bold px-3 py-1.5 rounded-full bg-stone-900 text-terracotta-400 border border-stone-800 flex items-center gap-1.5 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-terracotta-500 animate-pulse"></span>
+                    <span id="inspection-mode-text">État des lieux de départ</span>
+                </span>
+                <button onclick="switchCamera()" class="p-2 text-stone-300 hover:text-white bg-stone-900/80 backdrop-blur rounded-full border border-stone-800 transition" title="Basculer la caméra">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Indicateur d'étape et barre de progression -->
+            <div class="mt-1">
+                <div class="flex justify-between items-center text-xs mb-1">
+                    <span id="inspection-step-title" class="font-extrabold text-stone-100 text-sm">Étape 1 sur 4 : Tête d'attelage</span>
+                    <span id="inspection-step-counter" class="text-stone-400 font-mono text-xs font-bold">1 / 4</span>
+                </div>
+                <div class="w-full h-2 bg-stone-900 rounded-full overflow-hidden border border-stone-800">
+                    <div id="inspection-progress-bar" class="h-full bg-gradient-to-r from-terracotta-500 to-amber-500 rounded-full transition-all duration-300" style="width: 25%;"></div>
+                </div>
+                <div class="flex items-center gap-2 bg-stone-900/90 backdrop-blur border border-stone-800 rounded-xl px-3 py-1.5 mt-2 text-xs text-stone-300">
+                    <span class="text-base flex-shrink-0">💡</span>
+                    <p id="inspection-step-instruction" class="truncate font-medium">Cadrez le système d'attache, la roue jockey et le câble de sécurité.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Viseur Caméra & Calques Ghosting -->
+        <div id="camera-feed-container" class="relative w-full max-w-md flex-1 my-2 bg-black rounded-3xl overflow-hidden border-2 border-stone-700 shadow-2xl flex items-center justify-center min-h-[320px]">
             <video id="camera-feed" class="w-full h-full object-cover" autoplay playsinline></video>
+
+            <!-- Badges HUD (GPS & Horloge) -->
+            <div class="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg border border-emerald-500/40 text-[11px] font-mono text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span id="camera-gps-text">📍 GPS Précis</span>
+            </div>
+            <div id="camera-clock-badge" class="absolute top-3 right-3 z-10 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg border border-stone-700 text-[11px] font-mono text-stone-300">
+                --:--:--
+            </div>
+
+            <!-- Repères de cadrage (Coins) -->
+            <div class="absolute inset-4 pointer-events-none border border-white/10 rounded-2xl flex flex-col justify-between p-2">
+                <div class="flex justify-between">
+                    <span class="w-6 h-6 border-t-2 border-l-2 border-terracotta-400 rounded-tl-lg"></span>
+                    <span class="w-6 h-6 border-t-2 border-r-2 border-terracotta-400 rounded-tr-lg"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="w-6 h-6 border-b-2 border-l-2 border-terracotta-400 rounded-bl-lg"></span>
+                    <span class="w-6 h-6 border-b-2 border-r-2 border-terracotta-400 rounded-br-lg"></span>
+                </div>
+            </div>
+
+            <!-- CALQUES GHOSTING SEMI-TRANSPARENTS (4 ÉTAPES) -->
+            <!-- Calque 1 : Tête d'attelage -->
+            <div id="ghost-overlay-1" class="ghost-overlay absolute inset-0 flex items-center justify-center pointer-events-none p-8">
+                <svg viewBox="0 0 300 300" class="w-full h-full text-terracotta-400/70" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="8,6">
+                    <!-- Boule / Tête d'attelage -->
+                    <circle cx="150" cy="90" r="32" stroke-width="3.5"/>
+                    <path d="M125 105 L110 160 L190 160 L175 105 Z" />
+                    <!-- Levier de verrouillage -->
+                    <path d="M165 75 L210 50" stroke-width="4" stroke-linecap="round"/>
+                    <circle cx="215" cy="48" r="7" fill="currentColor" fill-opacity="0.3"/>
+                    <!-- Timon en V -->
+                    <path d="M110 160 L70 270" stroke-width="4"/>
+                    <path d="M190 160 L230 270" stroke-width="4"/>
+                    <!-- Roue jockey -->
+                    <rect x="195" y="140" width="16" height="70" rx="3" stroke-width="2.5"/>
+                    <ellipse cx="203" cy="225" rx="14" ry="20" stroke-width="3"/>
+                    <line x1="203" y1="120" x2="203" y2="140" stroke-width="3.5"/>
+                    <circle cx="203" cy="115" r="7" stroke-width="2.5"/>
+                    <!-- Câble de sécurité -->
+                    <path d="M130 160 C 110 200, 130 230, 150 240" stroke-width="2.5" stroke-dasharray="4,4"/>
+                </svg>
+            </div>
+
+            <!-- Calque 2 : Avant et Côté Gauche (3/4 Avant Gauche) -->
+            <div id="ghost-overlay-2" class="ghost-overlay hidden absolute inset-0 flex items-center justify-center pointer-events-none p-6">
+                <svg viewBox="0 0 320 240" class="w-full h-full text-terracotta-400/70" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="8,6">
+                    <!-- Face avant de la remorque -->
+                    <polygon points="50,110 120,80 120,165 50,185" stroke-width="3"/>
+                    <!-- Flanc gauche en perspective -->
+                    <polygon points="120,80 280,60 280,140 120,165" stroke-width="3.5"/>
+                    <!-- Timon avant -->
+                    <line x1="50" y1="185" x2="15" y2="200" stroke-width="4"/>
+                    <line x1="120" y1="165" x2="15" y2="200" stroke-width="4"/>
+                    <circle cx="15" cy="200" r="8" stroke-width="3"/>
+                    <!-- Roue côté gauche avec garde-boue -->
+                    <path d="M175,160 Q 205,130 235,160" stroke-width="3"/>
+                    <circle cx="205" cy="170" r="28" stroke-width="3.5"/>
+                    <circle cx="205" cy="170" r="12" stroke-width="2"/>
+                    <!-- Ridelle supérieure & feux avant -->
+                    <line x1="50" y1="130" x2="120" y2="105" stroke-width="2"/>
+                    <line x1="120" y1="105" x2="280" y2="85" stroke-width="2"/>
+                    <circle cx="58" cy="120" r="4" fill="currentColor" fill-opacity="0.4"/>
+                </svg>
+            </div>
+
+            <!-- Calque 3 : Arrière et Côté Droit (3/4 Arrière Droit) -->
+            <div id="ghost-overlay-3" class="ghost-overlay hidden absolute inset-0 flex items-center justify-center pointer-events-none p-6">
+                <svg viewBox="0 0 320 240" class="w-full h-full text-terracotta-400/70" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="8,6">
+                    <!-- Flanc droit en perspective -->
+                    <polygon points="40,70 190,85 190,170 40,145" stroke-width="3.5"/>
+                    <!-- Face arrière (Hayon) -->
+                    <polygon points="190,85 270,110 270,185 190,170" stroke-width="3"/>
+                    <!-- Plaque d'immatriculation et feux arrière -->
+                    <rect x="215" y="145" width="32" height="18" rx="2" stroke-width="2.5"/>
+                    <rect x="195" y="125" width="10" height="25" rx="2" stroke-width="2.5" fill="currentColor" fill-opacity="0.3"/>
+                    <rect x="255" y="135" width="10" height="25" rx="2" stroke-width="2.5" fill="currentColor" fill-opacity="0.3"/>
+                    <!-- Roue côté droit avec garde-boue -->
+                    <path d="M85,150 Q 115,120 145,150" stroke-width="3"/>
+                    <circle cx="115" cy="160" r="28" stroke-width="3.5"/>
+                    <circle cx="115" cy="160" r="12" stroke-width="2"/>
+                </svg>
+            </div>
+
+            <!-- Calque 4 : Intérieur et Propreté (Vue en plongée du plancher) -->
+            <div id="ghost-overlay-4" class="ghost-overlay hidden absolute inset-0 flex items-center justify-center pointer-events-none p-6">
+                <svg viewBox="0 0 320 240" class="w-full h-full text-terracotta-400/70" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="8,6">
+                    <!-- Bord supérieur de la cuve/caisse -->
+                    <polygon points="30,40 290,40 250,200 70,200" stroke-width="3.5"/>
+                    <!-- Lignes de plancher intérieur en perspective -->
+                    <line x1="70" y1="200" x2="30" y2="40" stroke-width="3"/>
+                    <line x1="115" y1="200" x2="95" y2="40" stroke-width="2" stroke-dasharray="6,6"/>
+                    <line x1="160" y1="200" x2="160" y2="40" stroke-width="2" stroke-dasharray="6,6"/>
+                    <line x1="205" y1="200" x2="225" y2="40" stroke-width="2" stroke-dasharray="6,6"/>
+                    <line x1="250" y1="200" x2="290" y2="40" stroke-width="3"/>
+                    <!-- Icône balai / propreté centrale -->
+                    <circle cx="160" cy="120" r="30" stroke-width="2.5" stroke-dasharray="4,4"/>
+                    <path d="M150 115 L170 125 M170 115 L150 125" stroke-width="3"/>
+                    <text x="160" y="170" text-anchor="middle" font-size="11" font-weight="bold" fill="currentColor" stroke="none">PROPRETÉ & SOL VIDE</text>
+                </svg>
+            </div>
+
+            <!-- Effet flash à la capture -->
+            <div id="camera-flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-200 z-20"></div>
         </div>
         <button onclick="takePhoto()" class="w-20 h-20 bg-white rounded-full border-4 border-terracotta-500 shadow-2xl"></button>
+
+        <!-- Commandes inférieures -->
+        <div class="w-full max-w-md flex flex-col items-center gap-3 flex-shrink-0">
+            <!-- Pastilles d'avancement des 4 étapes -->
+            <div class="flex items-center justify-center gap-2 w-full">
+                <div id="step-pill-1" class="flex-1 py-1.5 px-2 bg-terracotta-500/20 border border-terracotta-500 text-terracotta-400 rounded-xl text-center text-xs font-bold transition">
+                    1. Attelage
+                </div>
+                <div id="step-pill-2" class="flex-1 py-1.5 px-2 bg-stone-900 border border-stone-800 text-stone-500 rounded-xl text-center text-xs font-bold transition">
+                    2. Avant G.
+                </div>
+                <div id="step-pill-3" class="flex-1 py-1.5 px-2 bg-stone-900 border border-stone-800 text-stone-500 rounded-xl text-center text-xs font-bold transition">
+                    3. Arrière D.
+                </div>
+                <div id="step-pill-4" class="flex-1 py-1.5 px-2 bg-stone-900 border border-stone-800 text-stone-500 rounded-xl text-center text-xs font-bold transition">
+                    4. Intérieur
+                </div>
+            </div>
+
+            <!-- Déclencheur ergonomique -->
+            <div class="flex items-center justify-center gap-6 mt-1">
+                <button id="camera-shutter-btn" onclick="takeGuidedInspectionPhoto()" class="w-20 h-20 rounded-full border-4 border-white bg-terracotta-500 hover:bg-terracotta-600 active:scale-90 transition-all flex items-center justify-center shadow-2xl relative">
+                    <div class="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-inner">
+                        <span class="text-2xl">📸</span>
+                    </div>
+                </button>
+            </div>
+            <p class="text-[11px] text-stone-400 font-medium">Capture horodatée et géolocalisée certifiée</p>
+        </div>
     </div>
 
     <!-- MODALE AUTHENTIFICATION -->
@@ -840,10 +1012,61 @@
 
             <!-- Avertissement anti-contournement -->
             <div class="mx-6 mt-4 flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-4 py-3 flex gap-3 items-start">
+            <div class="mx-6 mt-3 flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-3.5 py-2.5 flex gap-2.5 items-start">
                 <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                 </svg>
                 <p class="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Les coordonnées personnelles (email, téléphone) sont automatiquement masquées pour votre sécurité et celle du propriétaire.</p>
+                <p class="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">Les coordonnées personnelles (email, téléphone) sont automatiquement masquées pour votre sécurité et celle du propriétaire.</p>
+            </div>
+
+            <!-- BANDEAU TRANSACTION & ÉTAT DES LIEUX ASYMÉTRIQUE -->
+            <div id="chat-inspection-bar" class="hidden mx-6 mt-3 p-3.5 bg-stone-50 dark:bg-stone-900/90 border border-stone-200 dark:border-stone-700 rounded-2xl flex-col gap-2 flex-shrink-0">
+                <!-- Côté Propriétaire (Départ) -->
+                <div id="chat-owner-actions" class="hidden flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                            <span>🔑</span> État des lieux de départ :
+                        </span>
+                        <span id="chat-owner-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            0 / 4 photo(s)
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button id="chat-owner-inspection-btn" onclick="startOwnerInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
+                            <span>📸 Faire l'état des lieux</span>
+                        </button>
+                        <button id="chat-owner-unlock-btn" onclick="handleUnlockStripeFunds()" disabled class="bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-500 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed transition shadow-sm">
+                            <span>🔒 Déverrouiller mes fonds</span>
+                        </button>
+                    </div>
+                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                        ⚠️ 4 photos requises pour déverrouiller vos fonds Stripe (80%).
+                    </p>
+                </div>
+
+                <!-- Côté Locataire (Retour) -->
+                <div id="chat-renter-actions" class="hidden flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                            <span>🔄</span> État des lieux de retour :
+                        </span>
+                        <span id="chat-renter-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            0 / 4 photo(s)
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button id="chat-renter-inspection-btn" onclick="startRenterInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
+                            <span>📸 État des lieux retour</span>
+                        </button>
+                        <button id="chat-renter-close-btn" onclick="handleRenterCloseRental()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm">
+                            <span>🏁 Clôturer la location</span>
+                        </button>
+                    </div>
+                    <p id="chat-renter-close-hint" class="text-[11px] text-stone-500 dark:text-stone-400">
+                        Réalisez les 4 photos de retour pour attester de l'état impeccable.
+                    </p>
+                </div>
             </div>
 
             <!-- Zone de messages -->
@@ -865,6 +1088,34 @@
                     </button>
                 </div>
                 <p class="text-xs text-stone-300 dark:text-stone-600 mt-2 text-right"><span id="chat-char-count">0</span>/800</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE AVERTISSEMENT ÉTAT DES LIEUX MANQUANT (LOCATAIRE) -->
+    <div id="inspection-warning-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-70 flex items-center justify-center z-50 px-4" onclick="handleWarningModalBackdrop(event)">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md p-6 sm:p-8 relative text-center" onclick="event.stopPropagation()">
+            <div class="w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center text-3xl mx-auto mb-4 border border-red-200 dark:border-red-800">
+                ⚠️
+            </div>
+            <h3 class="text-xl font-extrabold text-stone-900 dark:text-white mb-2">
+                État des lieux de retour manquant
+            </h3>
+            <div class="bg-red-50 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-800/60 rounded-2xl p-4 text-left my-4 shadow-sm">
+                <p class="text-xs sm:text-sm font-semibold text-red-800 dark:text-red-300 leading-relaxed">
+                    Attention : Sans photos de retour, vous serez facturé de <span class="underline font-bold">50 CHF de pénalité</span> et présumé responsable de tout dommage déclaré par le propriétaire.
+                </p>
+            </div>
+            <div class="space-y-3 pt-2">
+                <button onclick="startInspectionFromWarning()" class="w-full bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg transition flex items-center justify-center gap-2 text-sm">
+                    <span>📸 Faire les 4 photos maintenant (Recommandé)</span>
+                </button>
+                <button onclick="confirmCloseWithoutInspection()" class="w-full bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-red-600 dark:text-red-400 font-bold py-3 px-6 rounded-2xl transition text-xs">
+                    Clôturer quand même sans photos (Pénalité de 50 CHF)
+                </button>
+                <button onclick="closeInspectionWarningModal()" class="text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 underline pt-1 block mx-auto">
+                    Annuler et retourner au chat
+                </button>
             </div>
         </div>
     </div>
