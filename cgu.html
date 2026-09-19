@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Renger - Conditions Générales d'Utilisation</title>
+    <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -18,6 +19,13 @@
     <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
         <!-- Logo réparé avec JavaScript -->
         <button onclick="window.location.href='index.html'" class="text-2xl font-bold text-terracotta-500 hover:text-terracotta-600 transition cursor-pointer">Renger</button>
+        <!-- Logo -->
+        <button onclick="window.location.href='index.html'" class="flex items-center gap-3 group transition cursor-pointer text-left" title="Retour à l'accueil">
+            <div class="w-10 h-10 rounded-xl bg-white shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
+                <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <span class="text-2xl sm:text-3xl font-extrabold text-terracotta-500 tracking-tight transition-colors group-hover:text-terracotta-600">Renger</span>
+        </button>
         
         <div class="flex items-center gap-4">
             <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" data-i18n-title="theme_btn" title="Changer de thème">
@@ -36,6 +44,15 @@
     <div class="max-w-4xl mx-auto bg-white dark:bg-stone-800 p-8 md:p-12 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mt-24 mx-4">
         <!-- Bouton retour réparé avec JavaScript -->
         <button onclick="window.location.href='index.html'" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-8 inline-block hover:text-terracotta-500 transition text-left">← Retour à l'accueil</button>
+        <button onclick="window.location.href='index.html'" data-i18n="back_home" class="text-terracotta-600 font-semibold mb-6 inline-block hover:text-terracotta-500 transition text-left">← Retour à l'accueil</button>
+        
+        <!-- Badge officiel Renger -->
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-white shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <span class="text-xs font-bold tracking-wider uppercase text-terracotta-500">Document Officiel Renger</span>
+        </div>
         
         <h1 data-i18n="page_title" class="text-3xl md:text-4xl font-bold mb-2 text-stone-900 dark:text-white">Conditions Générales d'Utilisation (CGU)</h1>
         <p data-i18n="last_update" class="text-stone-500 dark:text-stone-400 mb-10">Dernière mise à jour : Septembre 2026 - Droit applicable : Suisse.</p>
@@ -77,6 +94,18 @@
             En créant un compte sur Renger, l'utilisateur reconnaît avoir lu, compris et accepté sans réserve les présentes Conditions Générales d'Utilisation. For juridique exclusif : Lausanne, Canton de Vaud.
         </div>
     </div>
+
+    <!-- FOOTER LÉGAL -->
+    <footer class="w-full py-8 mt-12 border-t border-stone-200 dark:border-stone-800 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
+        <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-lg bg-white shadow-xs border border-stone-200/80 dark:border-stone-700 p-0.5 flex items-center justify-center overflow-hidden">
+                <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <span class="text-stone-400 dark:text-stone-500 font-semibold">© 2026 Renger</span>
+        </div>
+        <a href="cgu.html" class="hover:text-terracotta-500 transition font-medium">Conditions Générales d'Utilisation (CGU)</a>
+        <a href="politique-confidentialite.html" class="hover:text-terracotta-500 transition font-medium">Politique de Confidentialité</a>
+    </footer>
 
     <!-- SCRIPT LOGIQUE -->
     <script>

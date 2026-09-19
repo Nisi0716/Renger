@@ -1498,14 +1498,214 @@ function switchProfileTab(tab) {
     }
 }
 
+/**
+ * Génère une carte de réservation pour l'espace locataire.
+ */
+function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
+    const startDate = new Date(booking.start_date);
+    const endDate = new Date(booking.end_date);
+    const startStr = booking.start_date ? booking.start_date.split('T')[0] : '';
+    const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
+
+    // Badge de statut (texte statique uniquement, zéro donnée utilisateur)
+    const statusSpan = document.createElement('span');
+    statusSpan.className = 'text-xs font-bold px-2.5 py-1 rounded-md flex-shrink-0';
+    if (todayStr >= startStr && todayStr <= endStr) {
+        statusSpan.className += ' bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
+        statusSpan.textContent = '🔴 En cours';
+    } else if (todayStr < startStr) {
+        statusSpan.className += ' bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
+        statusSpan.textContent = '⏳ À venir';
+    } else {
+        statusSpan.className += ' bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300';
+        statusSpan.textContent = 'Terminé';
+    }
+
+    // Image (attribut .src assigné, pas interpolé dans innerHTML)
+    const img = document.createElement('img');
+    img.src = booking.trailers?.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop';
+    img.className = 'w-20 h-20 object-cover rounded-xl bg-stone-100 dark:bg-stone-700 flex-shrink-0';
+    img.alt = '';
+
+    // Titre de la remorque — textContent neutralise toute injection XSS
+    const titleEl = document.createElement('h4');
+    titleEl.className = 'font-bold text-stone-800 dark:text-white truncate';
+    titleEl.textContent = booking.trailers?.title || 'Remorque';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'flex justify-between items-start mb-1 gap-2';
+    titleRow.appendChild(titleEl);
+    titleRow.appendChild(statusSpan);
+
+    // Dates (toLocaleDateString retourne une chaîne sûre)
+    const datesEl = document.createElement('p');
+    datesEl.className = 'text-sm text-stone-500 dark:text-stone-400';
+    datesEl.textContent = `Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')}`;
+
+    // Prix (valeur numérique de la BDD)
+    const priceEl = document.createElement('p');
+    priceEl.className = 'text-terracotta-600 font-bold mt-2 text-sm';
+    priceEl.textContent = `${Number(booking.total_price).toFixed(2)} CHF réglés`;
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'flex-1 min-w-0';
+    infoDiv.appendChild(titleRow);
+    infoDiv.appendChild(datesEl);
+    infoDiv.appendChild(priceEl);
+
+    // Gestion de l'évaluation pour cette réservation
+    if (booking.trailers) {
+        if (reviewsByBooking.has(booking.id)) {
+            const rev = reviewsByBooking.get(booking.id);
+            const reviewBadge = document.createElement('span');
+            reviewBadge.className = 'inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 rounded-lg mt-2';
+            reviewBadge.textContent = `⭐ Note ${rev.rating}/5 attribuée`;
+            infoDiv.appendChild(reviewBadge);
+        } else if (todayStr > endStr) {
+            // Bouton pour noter si la location est passée et non encore notée
+            const reviewBtn = document.createElement('button');
+            reviewBtn.type = 'button';
+            reviewBtn.className = 'mt-2 text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
+            reviewBtn.textContent = '⭐ Donner mon avis';
+            reviewBtn.onclick = () => openReviewModal(booking.id, booking.trailers.id, booking.trailers.title);
+            infoDiv.appendChild(reviewBtn);
+        }
+    }
+
+    const card = document.createElement('div');
+    card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-5 rounded-2xl shadow-sm flex items-center gap-4';
+    card.appendChild(img);
+    card.appendChild(infoDiv);
+    return card;
+}
+
+/**
+ * Génère une carte pour l'historique des locations reçues par le propriétaire.
+ */
+function createSellerRentalHistoryCard(booking, renterProfile, todayStr) {
+    const startDate = new Date(booking.start_date);
+    const endDate = new Date(booking.end_date);
+    const startStr = booking.start_date ? booking.start_date.split('T')[0] : '';
+    const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
+
+    const diffDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const netEarnings = (Number(booking.total_price) * 0.80).toFixed(2);
+
+    // Badge statut
+    const statusSpan = document.createElement('span');
+    statusSpan.className = 'text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0';
+    if (todayStr >= startStr && todayStr <= endStr) {
+        statusSpan.className += ' bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
+        statusSpan.textContent = '🔴 En cours';
+    } else if (todayStr < startStr) {
+        statusSpan.className += ' bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
+        statusSpan.textContent = '⏳ À venir';
+    } else {
+        statusSpan.className += ' bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300';
+        statusSpan.textContent = 'Terminé';
+    }
+
+    // Image remorque
+    const img = document.createElement('img');
+    img.src = booking.trailers?.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop';
+    img.className = 'w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl bg-stone-100 dark:bg-stone-700 flex-shrink-0';
+    img.alt = '';
+
+    // Titre remorque
+    const titleEl = document.createElement('h4');
+    titleEl.className = 'font-bold text-stone-800 dark:text-white truncate text-base';
+    titleEl.textContent = booking.trailers?.title || 'Remorque';
+
+    // Locataire (Avatar + @username)
+    const renterRow = document.createElement('div');
+    renterRow.className = 'flex items-center gap-2 mt-1';
+    
+    if (renterProfile) {
+        const avatarEl = renderAvatar(renterProfile, 22);
+        const usernameBtn = document.createElement('button');
+        usernameBtn.type = 'button';
+        usernameBtn.className = 'text-xs font-semibold text-stone-600 dark:text-stone-300 hover:text-terracotta-500 dark:hover:text-terracotta-400 transition truncate max-w-[150px]';
+        usernameBtn.textContent = '@' + renterProfile.username;
+        usernameBtn.onclick = () => openPublicProfile(renterProfile.username);
+        renterRow.appendChild(avatarEl);
+        renterRow.appendChild(usernameBtn);
+    } else {
+        const locataireSpan = document.createElement('span');
+        locataireSpan.className = 'text-xs text-stone-400';
+        locataireSpan.textContent = '👤 Locataire vérifié';
+        renterRow.appendChild(locataireSpan);
+    }
+
+    // Dates & durée
+    const datesEl = document.createElement('p');
+    datesEl.className = 'text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1.5';
+    datesEl.textContent = `Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')} (${diffDays} jour${diffDays > 1 ? 's' : ''})`;
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'flex-1 min-w-0';
+    infoDiv.appendChild(titleEl);
+    infoDiv.appendChild(renterRow);
+    infoDiv.appendChild(datesEl);
+
+    // Montant net perçu à droite
+    const priceDiv = document.createElement('div');
+    priceDiv.className = 'text-right flex flex-col items-end justify-center';
+    
+    const priceAmount = document.createElement('p');
+    priceAmount.className = 'font-bold text-base sm:text-lg text-green-600 dark:text-green-400 whitespace-nowrap';
+    priceAmount.textContent = `+ ${netEarnings} CHF`;
+
+    const priceSub = document.createElement('p');
+    priceSub.className = 'text-[11px] text-stone-400 whitespace-nowrap';
+    priceSub.textContent = 'Net perçu (80%)';
+
+    priceDiv.appendChild(priceAmount);
+    priceDiv.appendChild(priceSub);
+
+    const card = document.createElement('div');
+    card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-4 sm:p-5 rounded-2xl shadow-sm flex items-center justify-between gap-4';
+    
+    const leftContent = document.createElement('div');
+    leftContent.className = 'flex items-center gap-4 min-w-0 flex-1';
+    leftContent.appendChild(img);
+    leftContent.appendChild(infoDiv);
+
+    const rightContent = document.createElement('div');
+    rightContent.className = 'flex flex-col items-end gap-2 flex-shrink-0';
+    rightContent.appendChild(statusSpan);
+    rightContent.appendChild(priceDiv);
+
+    card.appendChild(leftContent);
+    card.appendChild(rightContent);
+
+    return card;
+}
+
 async function loadProfileData() {
     if (!currentUser) return;
     const today = new Date();
     const todayStr = formatDateToLocalISO(today);
 
-    const { data: myBookings } = await supabaseClient.from('bookings').select('*, trailers(*)').eq('renter_id', currentUser.id).eq('status', 'paye');
-    const { data: myTrailers } = await supabaseClient.from('trailers').select('*').eq('owner_id', currentUser.id);
-    const { data: sellerBookings } = await supabaseClient.from('bookings').select('*').eq('owner_id', currentUser.id).eq('status', 'paye');
+    // Récupération des données
+    const { data: myBookings } = await supabaseClient
+        .from('bookings')
+        .select('*, trailers(*)')
+        .eq('renter_id', currentUser.id)
+        .eq('status', 'paye')
+        .order('start_date', { ascending: false });
+
+    const { data: myTrailers } = await supabaseClient
+        .from('trailers')
+        .select('*')
+        .eq('owner_id', currentUser.id)
+        .order('id', { ascending: false });
+
+    const { data: sellerBookings } = await supabaseClient
+        .from('bookings')
+        .select('*, trailers(*)')
+        .eq('owner_id', currentUser.id)
+        .eq('status', 'paye')
+        .order('start_date', { ascending: false });
 
     // Récupérer les avis déjà déposés par cet utilisateur
     const { data: myReviews } = await supabaseClient
@@ -1514,96 +1714,72 @@ async function loadProfileData() {
         .eq('renter_id', currentUser.id);
     const reviewsByBooking = new Map((myReviews || []).map(r => [r.booking_id, r]));
 
-    // ---- Section Locataire ----
-    const buyerList = document.getElementById('buyer-bookings-list');
-    if (buyerList) {
-        buyerList.innerHTML = '';
-        if (myBookings && myBookings.length > 0) {
-            const buyerFragment = document.createDocumentFragment();
-            myBookings.forEach(booking => {
-                const startDate = new Date(booking.start_date);
-                const endDate = new Date(booking.end_date);
-                const startStr = booking.start_date ? booking.start_date.split('T')[0] : '';
-                const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
+    // ==========================================
+    // 1. SECTION LOCATAIRE (Réservations actives vs passées)
+    // ==========================================
+    const allRenterBookings = myBookings || [];
+    const activeBookings = allRenterBookings.filter(b => {
+        const endStr = b.end_date ? b.end_date.split('T')[0] : '';
+        return todayStr <= endStr;
+    }).sort((a, b) => new Date(a.start_date) - new Date(b.start_date)); // Prochaines d'abord
 
-                // Badge de statut (texte statique uniquement, zéro donnée utilisateur)
-                const statusSpan = document.createElement('span');
-                statusSpan.className = 'text-xs font-bold px-2 py-1 rounded-md';
-                if (todayStr >= startStr && todayStr <= endStr) {
-                    statusSpan.className += ' bg-green-100 text-green-700';
-                    statusSpan.textContent = '🔴 En cours';
-                } else if (todayStr < startStr) {
-                    statusSpan.className += ' bg-blue-100 text-blue-700';
-                    statusSpan.textContent = '⏳ À venir';
-                } else {
-                    statusSpan.className += ' bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300';
-                    statusSpan.textContent = 'Terminé';
-                }
+    const pastBookings = allRenterBookings.filter(b => {
+        const endStr = b.end_date ? b.end_date.split('T')[0] : '';
+        return todayStr > endStr;
+    }); // Les plus récentes d'abord
 
-                // Image (attribut .src assigné, pas interpolé dans innerHTML)
-                const img = document.createElement('img');
-                img.src = booking.trailers.image_url || 'https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop';
-                img.className = 'w-20 h-20 object-cover rounded-xl bg-stone-100 dark:bg-stone-700';
-                img.alt = '';
+    // 1.1 Réservations actives et à venir
+    const activeCountBadge = document.getElementById('buyer-active-count');
+    if (activeCountBadge) activeCountBadge.textContent = activeBookings.length;
 
-                // Titre de la remorque — textContent neutralise toute injection XSS
-                const titleEl = document.createElement('h4');
-                titleEl.className = 'font-bold text-stone-800 dark:text-white';
-                titleEl.textContent = booking.trailers.title;
-
-                const titleRow = document.createElement('div');
-                titleRow.className = 'flex justify-between items-start mb-1';
-                titleRow.appendChild(titleEl);
-                titleRow.appendChild(statusSpan);
-
-                // Dates (toLocaleDateString retourne une chaîne sûre)
-                const datesEl = document.createElement('p');
-                datesEl.className = 'text-sm text-stone-500 dark:text-stone-400';
-                datesEl.textContent = `Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')}`;
-
-                // Prix (valeur numérique de la BDD)
-                const priceEl = document.createElement('p');
-                priceEl.className = 'text-terracotta-600 font-bold mt-2';
-                priceEl.textContent = `${Number(booking.total_price).toFixed(2)} CHF réglés`;
-
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'flex-1';
-                infoDiv.appendChild(titleRow);
-                infoDiv.appendChild(datesEl);
-                infoDiv.appendChild(priceEl);
-
-                // Gestion de l'évaluation pour cette réservation
-                if (reviewsByBooking.has(booking.id)) {
-                    const rev = reviewsByBooking.get(booking.id);
-                    const reviewBadge = document.createElement('span');
-                    reviewBadge.className = 'inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 rounded-lg mt-2';
-                    reviewBadge.textContent = `⭐ Note ${rev.rating}/5 attribuée`;
-                    infoDiv.appendChild(reviewBadge);
-                } else {
-                    const reviewBtn = document.createElement('button');
-                    reviewBtn.type = 'button';
-                    reviewBtn.className = 'mt-2 text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
-                    reviewBtn.textContent = '⭐ Donner mon avis';
-                    reviewBtn.onclick = () => openReviewModal(booking.id, booking.trailers.id, booking.trailers.title);
-                    infoDiv.appendChild(reviewBtn);
-                }
-
-                const card = document.createElement('div');
-                card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-5 rounded-2xl shadow-sm flex items-center gap-4';
-                card.appendChild(img);
-                card.appendChild(infoDiv);
-                buyerFragment.appendChild(card);
+    const activeList = document.getElementById('buyer-active-bookings-list');
+    if (activeList) {
+        activeList.innerHTML = '';
+        if (activeBookings.length > 0) {
+            const activeFragment = document.createDocumentFragment();
+            activeBookings.forEach(booking => {
+                activeFragment.appendChild(createRenterBookingCard(booking, reviewsByBooking, todayStr));
             });
-            buyerList.appendChild(buyerFragment);
+            activeList.appendChild(activeFragment);
         } else {
-            const emptyMsg = document.createElement('p');
-            emptyMsg.className = 'text-stone-400 italic';
-            emptyMsg.textContent = "Vous n'avez aucune réservation en cours.";
-            buyerList.appendChild(emptyMsg);
+            const emptyMsg = document.createElement('div');
+            emptyMsg.className = 'col-span-1 md:col-span-2 bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/60 rounded-2xl p-6 text-center';
+            emptyMsg.innerHTML = `
+                <p class="text-stone-500 dark:text-stone-400 text-sm font-medium mb-2">Vous n'avez aucune location en cours ou à venir.</p>
+                <button onclick="showPage('buyer-page')" class="text-xs font-bold text-terracotta-600 hover:text-terracotta-700 dark:text-terracotta-400 hover:underline">🔍 Trouver une remorque disponible</button>
+            `;
+            activeList.appendChild(emptyMsg);
         }
     }
 
-    // ---- Calcul des revenus mensuels ----
+    // 1.2 Historique des remorques louées (passées)
+    const pastCountBadge = document.getElementById('buyer-past-count');
+    if (pastCountBadge) pastCountBadge.textContent = pastBookings.length;
+
+    const pastList = document.getElementById('buyer-past-bookings-list');
+    if (pastList) {
+        pastList.innerHTML = '';
+        if (pastBookings.length > 0) {
+            const pastFragment = document.createDocumentFragment();
+            pastBookings.forEach(booking => {
+                pastFragment.appendChild(createRenterBookingCard(booking, reviewsByBooking, todayStr));
+            });
+            pastList.appendChild(pastFragment);
+        } else {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.className = 'col-span-1 md:col-span-2 bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/60 rounded-2xl p-6 text-center';
+            emptyMsg.innerHTML = `
+                <p class="text-stone-400 italic text-sm">Aucune location passée enregistrée pour le moment.</p>
+            `;
+            pastList.appendChild(emptyMsg);
+        }
+    }
+
+    // ==========================================
+    // 2. SECTION PROPRIÉTAIRE (Flotte + Historique des locations)
+    // ==========================================
+    
+    // 2.1 Calcul des revenus mensuels nets (80%)
     let monthlyRevenue = 0;
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
@@ -1620,7 +1796,13 @@ async function loadProfileData() {
     const revenueElement = document.getElementById('seller-monthly-revenue');
     if (revenueElement) revenueElement.textContent = monthlyRevenue.toFixed(2) + ' CHF';
 
-    // ---- Section Propriétaire ----
+    // 2.2 État de ma flotte
+    const trailersCountBadge = document.getElementById('seller-trailers-count');
+    if (trailersCountBadge) {
+        const count = myTrailers?.length || 0;
+        trailersCountBadge.textContent = `${count} remorque${count > 1 ? 's' : ''}`;
+    }
+
     const sellerList = document.getElementById('seller-trailers-list');
     if (sellerList) {
         sellerList.innerHTML = '';
@@ -1659,7 +1841,7 @@ async function loadProfileData() {
 
                 // Titre — textContent neutralise toute injection XSS
                 const titleEl = document.createElement('h4');
-                titleEl.className = 'font-bold text-lg mb-1 dark:text-white';
+                titleEl.className = 'font-bold text-lg mb-1 dark:text-white truncate';
                 titleEl.textContent = trailer.title;
 
                 // Prix (valeur numérique de la BDD)
@@ -1680,10 +1862,52 @@ async function loadProfileData() {
             });
             sellerList.appendChild(sellerFragment);
         } else {
-            const emptyMsg = document.createElement('p');
-            emptyMsg.className = 'text-stone-400 italic';
-            emptyMsg.textContent = "Vous n'avez pas encore publié de remorque.";
+            const emptyMsg = document.createElement('div');
+            emptyMsg.className = 'col-span-1 md:col-span-2 bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/60 rounded-2xl p-6 text-center';
+            emptyMsg.innerHTML = `
+                <p class="text-stone-500 dark:text-stone-400 text-sm font-medium mb-2">Vous n'avez pas encore publié d'annonce.</p>
+                <button onclick="showPage('seller-page')" class="text-xs font-bold text-terracotta-600 hover:text-terracotta-700 dark:text-terracotta-400 hover:underline">➕ Publier ma première remorque</button>
+            `;
             sellerList.appendChild(emptyMsg);
+        }
+    }
+
+    // 2.3 Historique des locations reçues par le propriétaire
+    const historyCountBadge = document.getElementById('seller-history-count');
+    if (historyCountBadge) {
+        const hCount = sellerBookings?.length || 0;
+        historyCountBadge.textContent = `${hCount} location${hCount > 1 ? 's' : ''}`;
+    }
+
+    const historyList = document.getElementById('seller-history-list');
+    if (historyList) {
+        historyList.innerHTML = '';
+        if (sellerBookings && sellerBookings.length > 0) {
+            // Récupérer les profils des locataires pour afficher leur @username et avatar
+            const renterIds = [...new Set(sellerBookings.map(b => b.renter_id).filter(Boolean))];
+            let renterProfilesMap = new Map();
+            if (renterIds.length > 0) {
+                const { data: renterProfiles } = await supabaseClient
+                    .from('profiles')
+                    .select('id, username, avatar_url')
+                    .in('id', renterIds);
+                renterProfilesMap = new Map((renterProfiles || []).map(p => [p.id, p]));
+            }
+
+            const historyFragment = document.createDocumentFragment();
+            sellerBookings.forEach(booking => {
+                const renterProfile = renterProfilesMap.get(booking.renter_id) || null;
+                historyFragment.appendChild(createSellerRentalHistoryCard(booking, renterProfile, todayStr));
+            });
+            historyList.appendChild(historyFragment);
+        } else {
+            const emptyHistoryMsg = document.createElement('div');
+            emptyHistoryMsg.className = 'bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/60 rounded-2xl p-8 text-center';
+            emptyHistoryMsg.innerHTML = `
+                <p class="text-stone-500 dark:text-stone-300 font-semibold mb-1">Aucune location effectuée pour l'instant</p>
+                <p class="text-xs text-stone-400">Dès qu'un client réservera une de vos remorques, l'historique détaillé et les revenus nets apparaîtront ici.</p>
+            `;
+            historyList.appendChild(emptyHistoryMsg);
         }
     }
 }
@@ -2051,6 +2275,46 @@ async function handleAvatarUpload(event) {
     showToast("✅ Photo de profil mise à jour !", "success");
 }
 
+// Mise à jour du mot de passe de l'utilisateur connecté
+async function handleChangePassword(event) {
+    if (event) event.preventDefault();
+    if (!supabaseClient || !currentUser) return showToast("Vous devez être connecté pour modifier votre mot de passe.", "error");
+
+    const newPasswordInput = document.getElementById('settings-new-password');
+    const confirmPasswordInput = document.getElementById('settings-confirm-password');
+    const submitBtn = document.getElementById('settings-change-password-btn');
+
+    const newPassword = newPasswordInput ? newPasswordInput.value : '';
+    const confirmPassword = confirmPasswordInput ? confirmPasswordInput.value : '';
+
+    if (!newPassword || newPassword.length < 8) {
+        return showToast("Le nouveau mot de passe doit comporter au moins 8 caractères.", "error");
+    }
+
+    if (newPassword !== confirmPassword) {
+        return showToast("Les deux mots de passe saisis ne correspondent pas.", "error");
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const { error } = await supabaseClient.auth.updateUser({
+            password: newPassword
+        });
+
+        if (error) {
+            showToast("Erreur : " + error.message, "error");
+        } else {
+            showToast("🔒 Mot de passe modifié avec succès !", "success");
+            if (newPasswordInput) newPasswordInput.value = '';
+            if (confirmPasswordInput) confirmPasswordInput.value = '';
+        }
+    } catch (err) {
+        showToast("Erreur : " + err.message, "error");
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
 
 // ==========================================
 // 9. SYSTÈME DE CHAT PRÉ-RÉSERVATION

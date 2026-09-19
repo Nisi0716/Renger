@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Renger - Location de remorques</title>
+    <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg">
     
     <!-- Sécurité : Politique de Sécurité du Contenu (CSP) & Contrôle de Référant -->
     <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -52,7 +53,12 @@
     <!-- HEADER & AUTHENTIFICATION -->
     <header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
         <!-- Logo -->
-        <div class="text-2xl font-bold text-terracotta-500 cursor-pointer" onclick="showWelcomeScreen()">Renger</div>
+        <div class="flex items-center gap-3 cursor-pointer group" onclick="showWelcomeScreen()" title="Renger - Accueil">
+            <div class="w-10 h-10 rounded-xl bg-white shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
+                <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <span class="text-2xl sm:text-3xl font-extrabold text-terracotta-500 tracking-tight transition-colors group-hover:text-terracotta-600">Renger</span>
+        </div>
         
         <!-- Menu Droit -->
         <div class="flex items-center gap-4">
@@ -86,6 +92,13 @@
 
     <!-- 1. ÉCRAN D'ACCUEIL -->
     <div id="welcome-screen" class="min-h-screen flex flex-col items-center justify-center p-6 pt-20">
+        <!-- Emblème Logo Hero -->
+        <div class="mb-5 relative flex items-center justify-center group">
+            <div class="absolute -inset-2 bg-gradient-to-r from-terracotta-500/25 to-terracotta-600/10 rounded-3xl blur-xl opacity-70 group-hover:opacity-100 transition duration-500"></div>
+            <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white shadow-xl border border-stone-200/80 dark:border-stone-700 p-3 flex items-center justify-center overflow-hidden transform group-hover:scale-105 transition-all duration-300">
+                <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+        </div>
         <h1 class="text-5xl md:text-6xl font-bold mb-4 text-terracotta-500 tracking-tight text-center">Renger</h1>
         <p data-i18n="subtitle" class="text-lg text-stone-600 dark:text-stone-400 mb-10 text-center max-w-lg">La plateforme de location de remorques entre particuliers. Trouvez la remorque parfaite ou rentabilisez la vôtre.</p>
         <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
@@ -273,7 +286,12 @@
     <div id="seller-page" class="hidden min-h-screen p-6 pt-24 max-w-2xl mx-auto mb-24 md:mb-0">
         <button onclick="showWelcomeScreen()" data-i18n="back" class="text-terracotta-600 font-semibold mb-6 hover:text-terracotta-500 transition">← Retour</button>
         
-        <h2 data-i18n="publish_title" class="text-3xl font-bold mb-2 text-stone-800 dark:text-white">Louer ma remorque</h2>
+        <div class="flex items-center gap-3.5 mb-2">
+            <div class="w-10 h-10 rounded-2xl bg-white shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <h2 data-i18n="publish_title" class="text-3xl font-bold text-stone-800 dark:text-white leading-tight">Louer ma remorque</h2>
+        </div>
         <p class="text-stone-500 dark:text-stone-400 mb-8" data-i18n="publish_subtitle">Gagnez de l'argent en toute sécurité avec votre équipement.</p>
         
         <!-- CORRECTION : Ajout de l'ID et modification du onsubmit -->
@@ -444,6 +462,11 @@
 
             <!-- Panneau Connexion -->
             <div id="auth-panel-login">
+                <div class="flex justify-center mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-white shadow-md border border-stone-200/80 dark:border-stone-600 p-2 flex items-center justify-center overflow-hidden">
+                        <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+                    </div>
+                </div>
                 <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 dark:text-white text-center">Rejoindre Renger</h2>
 
                 <!-- Bouton Google -->
@@ -503,8 +526,13 @@
 
             <!-- Panneau Mot de passe oublié -->
             <div id="auth-panel-reset" class="hidden">
-                <button onclick="showLoginPanel()" class="text-terracotta-500 font-semibold mb-6 flex items-center gap-1 hover:underline">← Retour</button>
-                <h2 class="text-2xl font-bold mb-3 text-stone-800 dark:text-white">Réinitialiser le mot de passe</h2>
+                <button onclick="showLoginPanel()" class="text-terracotta-500 font-semibold mb-4 flex items-center gap-1 hover:underline">← Retour</button>
+                <div class="flex justify-center mb-3">
+                    <div class="w-12 h-12 rounded-2xl bg-white shadow-md border border-stone-200/80 dark:border-stone-600 p-2 flex items-center justify-center overflow-hidden">
+                        <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+                    </div>
+                </div>
+                <h2 class="text-2xl font-bold mb-3 text-stone-800 dark:text-white text-center">Réinitialiser le mot de passe</h2>
                 <p class="text-stone-500 dark:text-stone-400 text-sm mb-6">Entrez votre email. Nous vous enverrons un lien pour créer un nouveau mot de passe.</p>
                 <input type="email" id="reset-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
                 <button onclick="handleResetPassword()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Envoyer le lien de réinitialisation</button>
@@ -515,16 +543,43 @@
     
     <!-- PAGE PROFIL / TABLEAU DE BORD -->
     <div id="profile-page" class="hidden min-h-screen p-6 pt-24 max-w-5xl mx-auto">
-        <h2 class="text-3xl font-bold mb-8 text-stone-900 dark:text-white">Mon Espace Renger</h2>
+        <div class="flex items-center gap-3.5 mb-8">
+            <div class="w-11 h-11 rounded-2xl bg-white shadow-sm border border-stone-200/80 dark:border-stone-700 p-1.5 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <div>
+                <h2 class="text-3xl font-bold text-stone-900 dark:text-white leading-tight">Mon Espace Renger</h2>
+                <p class="text-xs text-stone-400 dark:text-stone-500">Gestion de vos locations et de votre parc de remorques</p>
+            </div>
+        </div>
         
         <div class="flex gap-6 mb-8 border-b border-stone-200 dark:border-stone-700">
             <button id="tab-buyer" onclick="switchProfileTab('buyer')" class="text-terracotta-600 font-bold border-b-2 border-terracotta-600 pb-3 text-lg transition">Mes locations (Client)</button>
             <button id="tab-seller" onclick="switchProfileTab('seller')" class="text-stone-400 font-bold hover:text-stone-700 dark:hover:text-stone-300 pb-3 text-lg transition">Mon parc (Propriétaire)</button>
         </div>
 
-        <div id="profile-buyer-section" class="space-y-6">
-            <p class="text-stone-500 dark:text-stone-400 mb-4">Vos réservations à venir et en cours.</p>
-            <div id="buyer-bookings-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        <div id="profile-buyer-section" class="space-y-8">
+            <!-- Sous-section 1 : Réservations actives et à venir -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-stone-800 dark:text-white flex items-center gap-2">
+                        <span>⏳ Réservations en cours et à venir</span>
+                        <span id="buyer-active-count" class="text-xs font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-0.5 rounded-full">0</span>
+                    </h3>
+                </div>
+                <div id="buyer-active-bookings-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            </div>
+
+            <!-- Sous-section 2 : Historique des remorques louées -->
+            <div class="pt-6 border-t border-stone-200 dark:border-stone-700">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-stone-800 dark:text-white flex items-center gap-2">
+                        <span>📋 Historique des remorques louées</span>
+                        <span id="buyer-past-count" class="text-xs font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-0.5 rounded-full">0</span>
+                    </h3>
+                </div>
+                <div id="buyer-past-bookings-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            </div>
         </div>
 
         <div id="profile-seller-section" class="hidden">
@@ -535,8 +590,27 @@
                 </div>
                 <div class="text-5xl">📈</div>
             </div>
-            <h3 class="text-2xl font-bold text-stone-800 dark:text-white mb-6">État de ma flotte</h3>
-            <div id="seller-trailers-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            
+            <!-- État de ma flotte -->
+            <div class="mb-12">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-bold text-stone-800 dark:text-white">État de ma flotte</h3>
+                    <span id="seller-trailers-count" class="text-xs font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full">0 remorque</span>
+                </div>
+                <div id="seller-trailers-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            </div>
+
+            <!-- Historique des locations reçues -->
+            <div class="pt-8 border-t border-stone-200 dark:border-stone-700">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-stone-800 dark:text-white">Historique de mes locations</h3>
+                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-0.5">Toutes les réservations passées, en cours et à venir pour vos remorques.</p>
+                    </div>
+                    <span id="seller-history-count" class="text-xs font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-3 py-1 rounded-full">0 location</span>
+                </div>
+                <div id="seller-history-list" class="space-y-4"></div>
+            </div>
         </div>
     </div>
 
@@ -545,7 +619,12 @@
         <button onclick="showWelcomeScreen()" class="text-terracotta-600 font-semibold mb-8 hover:text-terracotta-500 transition">← Retour à l'accueil</button>
         
         <div class="mb-10">
-            <h2 class="text-4xl font-bold mb-3 text-stone-800 dark:text-white tracking-tight">Paramètres du compte</h2>
+            <div class="flex items-center gap-3.5 mb-3">
+                <div class="w-11 h-11 rounded-2xl bg-white shadow-sm border border-stone-200/80 dark:border-stone-700 p-1.5 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+                </div>
+                <h2 class="text-4xl font-bold text-stone-800 dark:text-white tracking-tight">Paramètres du compte</h2>
+            </div>
             <p class="text-stone-500 dark:text-stone-400 text-lg">Connecté avec : <span id="settings-email" class="font-bold text-stone-800 dark:text-white"></span></p>
         </div>
 
@@ -577,6 +656,28 @@
                     </button>
                 </div>
             </div>
+        </div>
+
+        <!-- SECTION SÉCURITÉ & MOT DE PASSE -->
+        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
+            <h3 class="text-2xl font-bold text-stone-800 dark:text-white mb-2">Sécurité & Mot de passe</h3>
+            <p class="text-stone-500 dark:text-stone-400 text-sm mb-6">Mettez à jour le mot de passe associé à votre compte Renger.</p>
+            
+            <form onsubmit="handleChangePassword(event)" class="space-y-4 max-w-lg">
+                <div>
+                    <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Nouveau mot de passe</label>
+                    <input type="password" id="settings-new-password" placeholder="8 caractères minimum" minlength="8" autocomplete="new-password" required
+                        class="w-full px-4 py-3 border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl focus:border-terracotta-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Confirmer le nouveau mot de passe</label>
+                    <input type="password" id="settings-confirm-password" placeholder="Retapez le mot de passe" minlength="8" autocomplete="new-password" required
+                        class="w-full px-4 py-3 border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl focus:border-terracotta-500 focus:outline-none transition">
+                </div>
+                <button type="submit" id="settings-change-password-btn" class="bg-stone-800 hover:bg-stone-900 dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-3 px-6 rounded-xl transition">
+                    Mettre à jour le mot de passe
+                </button>
+            </form>
         </div>
 
         <div class="bg-gradient-to-br from-white to-stone-50 dark:from-stone-800 dark:to-stone-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8 relative overflow-hidden">
@@ -652,7 +753,12 @@
     <!-- FOOTER LÉGAL -->
 
     <footer class="w-full py-8 mt-16 border-t border-stone-200 dark:border-stone-800 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
-        <span class="text-stone-300 dark:text-stone-600 hidden md:inline">© 2026 Renger</span>
+        <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-lg bg-white shadow-xs border border-stone-200/80 dark:border-stone-700 p-0.5 flex items-center justify-center overflow-hidden">
+                <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <span class="text-stone-400 dark:text-stone-500 font-semibold">© 2026 Renger</span>
+        </div>
         <a href="cgu.html" class="hover:text-terracotta-500 transition font-medium">Conditions Générales d'Utilisation (CGU)</a>
         <a href="politique-confidentialite.html" class="hover:text-terracotta-500 transition font-medium">Politique de Confidentialité</a>
     </footer>
@@ -717,9 +823,14 @@
         <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md flex flex-col" style="max-height: 85vh;" onclick="event.stopPropagation()">
             <!-- En-tête -->
             <div class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-700 flex-shrink-0">
-                <div>
-                    <h3 class="font-bold text-stone-900 dark:text-white text-lg">Question au propriétaire</h3>
-                    <p id="chat-modal-subtitle" class="text-xs text-stone-400 mt-0.5">Posez vos questions sur la remorque</p>
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-stone-900 dark:text-white text-lg leading-tight">Question au propriétaire</h3>
+                        <p id="chat-modal-subtitle" class="text-xs text-stone-400 mt-0.5">Posez vos questions sur la remorque</p>
+                    </div>
                 </div>
                 <button onclick="closeChatModal()" class="w-9 h-9 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-600 transition text-xl font-bold leading-none">&times;</button>
             </div>
@@ -760,9 +871,14 @@
         <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col" onclick="event.stopPropagation()">
             <!-- En-tête -->
             <div class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-700 flex-shrink-0">
-                <div>
-                    <h3 class="font-bold text-stone-900 dark:text-white text-lg">Évaluer votre location</h3>
-                    <p id="review-modal-subtitle" class="text-xs text-stone-400 mt-0.5 truncate max-w-[260px]"></p>
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <img src="Renger_Logo_SVG.svg" alt="Renger Logo" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-stone-900 dark:text-white text-lg leading-tight">Évaluer votre location</h3>
+                        <p id="review-modal-subtitle" class="text-xs text-stone-400 mt-0.5 truncate max-w-[240px]"></p>
+                    </div>
                 </div>
                 <button onclick="closeReviewModal()" class="w-9 h-9 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-600 transition text-xl font-bold leading-none">&times;</button>
             </div>
