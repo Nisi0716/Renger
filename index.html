@@ -254,20 +254,67 @@
                     <input type="text" id="booking-dates" placeholder="Date de départ - Date de retour" class="w-full border-2 border-stone-200 dark:border-stone-700 rounded-2xl p-4 bg-stone-50 dark:bg-stone-900 dark:text-white focus:bg-white focus:border-terracotta-500 outline-none transition cursor-pointer font-medium" readonly>
                 </div>
 
-                <div id="booking-summary" class="hidden border-t border-stone-200 dark:border-stone-700 pt-6 mb-6">
-                    <div class="flex justify-between text-stone-600 dark:text-stone-400 mb-2">
-                        <span><span id="total-days">0</span> jour(s) de location</span>
+                <div id="booking-summary" class="hidden border-t border-stone-200 dark:border-stone-700 pt-5 mb-5 space-y-3">
+                    <!-- Détail séparé location -->
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-stone-600 dark:text-stone-300">
+                            Location (<span id="total-days">0</span> jour<span id="total-days-plural">s</span>)
+                        </span>
+                        <span id="total-rental-price" class="font-semibold text-stone-900 dark:text-white">0 CHF</span>
                     </div>
-                    <div class="flex justify-between font-bold text-xl text-stone-900 dark:text-white mt-4">
-                        <span>Total</span>
-                        <span id="total-price">0 CHF</span>
+
+                    <!-- Frais de traitement Renger (5%, min 4.90 CHF) -->
+                    <div class="flex justify-between items-center text-sm">
+                        <div>
+                            <span class="text-stone-600 dark:text-stone-300">Frais de traitement Renger</span>
+                            <span class="text-[10px] text-stone-400 block font-normal">Service & protection (5%, min. 4.90 CHF)</span>
+                        </div>
+                        <span id="service-fee-price" class="font-semibold text-stone-900 dark:text-white">4.90 CHF</span>
+                    </div>
+
+                    <!-- Détail séparé caution -->
+                    <div class="flex justify-between items-center text-sm bg-emerald-50/70 dark:bg-emerald-950/30 p-2.5 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40">
+                        <div>
+                            <span class="font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-1">
+                                <span>🛡️</span> Caution de garantie
+                            </span>
+                            <span class="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium block">Empreinte bancaire Stripe</span>
+                        </div>
+                        <div class="text-right">
+                            <span id="caution-amount" class="font-bold text-emerald-950 dark:text-emerald-200">200 CHF</span>
+                            <span class="block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">Non débitée</span>
+                        </div>
+                    </div>
+
+                    <!-- Total prélevé aujourd'hui -->
+                    <div class="border-t border-stone-200 dark:border-stone-700 pt-3 flex justify-between items-baseline">
+                        <div>
+                            <span class="font-bold text-base text-stone-900 dark:text-white">Total à payer</span>
+                            <span class="block text-[11px] text-stone-400">Montant débité aujourd'hui</span>
+                        </div>
+                        <span id="total-price" class="font-extrabold text-2xl text-terracotta-500">0 CHF</span>
                     </div>
                 </div>
 
-                <button id="action-btn" onclick="submitBooking()" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-4">
+                <!-- CARTE DE RÉASSURANCE CAUTION -->
+                <div class="bg-stone-50 dark:bg-stone-900/80 border border-stone-200/80 dark:border-stone-700 rounded-2xl p-3.5 mb-4 text-xs">
+                    <div class="flex items-center justify-between font-bold text-stone-800 dark:text-stone-200 mb-1">
+                        <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                            <span>🛡️</span>
+                            <span>Caution non débitée (0 CHF)</span>
+                        </span>
+                        <button type="button" onclick="openCautionInfoModal()" class="text-terracotta-600 dark:text-terracotta-400 hover:underline text-[11px] font-semibold cursor-pointer">
+                            En savoir plus
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+                        Une simple empreinte temporaire de <strong id="caution-explain-amount" class="text-stone-700 dark:text-stone-300 font-bold">200 CHF</strong> est demandée. <strong class="text-stone-700 dark:text-stone-300 font-bold">0 CHF prélevé</strong> de votre compte. Elle est automatiquement libérée à la restitution.
+                    </p>
+                </div>
+
+                <button id="action-btn" onclick="submitBooking()" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-3">
                     Réserver
                 </button>
-                <p class="text-center text-xs text-stone-400">Une caution par empreinte bancaire vous sera demandée à l'étape suivante.</p>
 
                 <!-- Bouton chat pré-réservation -->
                 <button id="chat-btn" onclick="openChatModal()" disabled
@@ -1005,41 +1052,190 @@
         </button>
     </nav>
 
-    <!-- MODALE CONFIRMATION DE RÉSERVATION -->
+    <!-- MODALE CONFIRMATION DE RÉSERVATION & CHECKOUT STRIPE -->
     <div id="booking-confirm-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleBookingConfirmModalBackdrop(event)">
         <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" onclick="event.stopPropagation()">
-            <!-- Image de la remorque -->
-            <div class="h-44 bg-stone-200 dark:bg-stone-700 relative">
+            <!-- Image de la remorque avec badge de sécurité -->
+            <div class="h-40 bg-stone-200 dark:bg-stone-700 relative">
                 <img id="confirm-img" src="" alt="" class="w-full h-full object-cover">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                <button onclick="closeBookingConfirmModal()" class="absolute top-4 right-4 bg-white/20 backdrop-blur-sm text-white rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold hover:bg-white/40 transition">&times;</button>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                <div class="absolute top-3.5 left-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-semibold">
+                    <span>🔒</span> <span>Paiement sécurisé Stripe</span>
+                </div>
+                <button onclick="closeBookingConfirmModal()" class="absolute top-3.5 right-4 bg-white/20 backdrop-blur-sm text-white rounded-full w-8 h-8 flex items-center justify-center text-xl font-bold hover:bg-white/40 transition cursor-pointer">&times;</button>
+                <div class="absolute bottom-3 left-4 right-4 text-white">
+                    <h3 id="confirm-title" class="text-lg font-bold truncate leading-tight drop-shadow-sm"></h3>
+                    <p class="text-xs text-stone-200 flex items-center gap-1.5 mt-0.5">
+                        <span>📅</span> <span id="confirm-dates"></span> (<span id="confirm-days"></span>)
+                    </p>
+                </div>
             </div>
-            <!-- Contenu -->
+
+            <!-- Contenu & Décomposition financière détaillée -->
             <div class="p-6">
-                <h3 id="confirm-title" class="text-xl font-bold text-stone-900 dark:text-white mb-1"></h3>
-                <p class="text-stone-400 text-sm mb-5">📍 Vaud</p>
+                <!-- Détail séparé : Location vs Caution -->
+                <div class="bg-stone-50 dark:bg-stone-900 rounded-2xl p-4 mb-4 space-y-2.5 border border-stone-200/60 dark:border-stone-700">
+                    <!-- Ligne 1 : Frais de location -->
+                    <div class="flex justify-between items-center text-sm">
+                        <div>
+                            <span class="font-semibold text-stone-800 dark:text-stone-200">Frais de location</span>
+                            <span id="confirm-rental-calc" class="block text-[11px] text-stone-400"></span>
+                        </div>
+                        <div class="text-right">
+                            <span id="confirm-rental-price" class="font-bold text-stone-900 dark:text-white"></span>
+                            <span class="block text-[10px] text-stone-400 font-medium">Débité aujourd'hui</span>
+                        </div>
+                    </div>
 
-                <div class="bg-stone-50 dark:bg-stone-900 rounded-2xl p-4 mb-5 space-y-3">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-stone-500 dark:text-stone-400">Dates</span>
-                        <span id="confirm-dates" class="font-semibold text-stone-800 dark:text-white"></span>
+                    <!-- Ligne 2 : Frais de traitement Renger -->
+                    <div class="flex justify-between items-center text-sm pt-2 border-t border-stone-200/60 dark:border-stone-700">
+                        <div>
+                            <span class="font-semibold text-stone-800 dark:text-stone-200">Frais de traitement Renger</span>
+                            <span class="block text-[11px] text-stone-400">Service & protection (5%, min. 4.90 CHF)</span>
+                        </div>
+                        <div class="text-right">
+                            <span id="confirm-service-fee" class="font-bold text-stone-900 dark:text-white">4.90 CHF</span>
+                            <span class="block text-[10px] text-stone-400 font-medium">Plateforme</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-stone-500 dark:text-stone-400">Durée</span>
-                        <span id="confirm-days" class="font-semibold text-stone-800 dark:text-white"></span>
+
+                    <!-- Ligne 3 : Caution de garantie SÉPARÉE -->
+                    <div class="flex justify-between items-center text-sm pt-2.5 border-t border-stone-200/60 dark:border-stone-700">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-semibold text-stone-800 dark:text-stone-200">Caution de garantie</span>
+                                <span class="text-xs cursor-pointer text-stone-400 hover:text-stone-600" onclick="openCautionInfoModal()" title="En savoir plus sur la caution">ℹ️</span>
+                            </div>
+                            <span class="block text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Empreinte bancaire Stripe</span>
+                        </div>
+                        <div class="text-right">
+                            <span id="confirm-caution-price" class="font-bold text-stone-900 dark:text-white"></span>
+                            <span class="inline-block bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                0 CHF prélevé
+                            </span>
+                        </div>
                     </div>
-                    <div class="border-t border-stone-200 dark:border-stone-700 pt-3 flex justify-between">
-                        <span class="font-bold text-stone-800 dark:text-white">Total estimé</span>
-                        <span id="confirm-price" class="font-bold text-xl text-terracotta-500"></span>
+
+                    <!-- Ligne 4 : Total débité aujourd'hui -->
+                    <div class="border-t-2 border-dashed border-stone-200 dark:border-stone-700 pt-3 mt-1 flex justify-between items-baseline">
+                        <div>
+                            <span class="font-bold text-base text-stone-900 dark:text-white">Total débité aujourd'hui</span>
+                            <span class="block text-[10px] text-stone-400">Location + Frais de traitement</span>
+                        </div>
+                        <span id="confirm-price" class="font-black text-2xl text-terracotta-500"></span>
                     </div>
                 </div>
 
-                <p class="text-xs text-stone-400 mb-5 text-center">Le prix final est calculé et confirmé par notre serveur sécurisé. Une caution par empreinte bancaire vous sera demandée.</p>
+                <!-- ENCADRÉ PÉDAGOGIQUE OBLIGATOIRE : LA CAUTION N'EST PAS DÉBITÉE -->
+                <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-3.5 mb-5">
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-xs">
+                            ✓
+                        </div>
+                        <div class="flex-1 text-xs">
+                            <p class="font-bold text-emerald-900 dark:text-emerald-200 text-xs leading-tight mb-1">
+                                La caution n'est JAMAIS débitée de votre compte
+                            </p>
+                            <ul class="space-y-1 text-emerald-800 dark:text-emerald-300 text-[11px] leading-relaxed">
+                                <li class="flex items-start gap-1.5">
+                                    <span class="text-emerald-600 font-bold">•</span>
+                                    <span><strong>Simple empreinte bancaire :</strong> Stripe effectue une pré-autorisation temporaire. Votre solde disponible reste intact.</span>
+                                </li>
+                                <li class="flex items-start gap-1.5">
+                                    <span class="text-emerald-600 font-bold">•</span>
+                                    <span><strong>0 CHF prélevé :</strong> Aucun montant de caution ne quitte votre banque si le matériel est restitué en ordre.</span>
+                                </li>
+                                <li class="flex items-start gap-1.5">
+                                    <span class="text-emerald-600 font-bold">•</span>
+                                    <span><strong>Libération automatique :</strong> L'empreinte est immédiatement annulée dès l'état des lieux de retour validé.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Boutons d'action -->
                 <div class="flex gap-3">
-                    <button onclick="closeBookingConfirmModal()" class="flex-1 border-2 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 font-semibold py-3 rounded-2xl hover:bg-stone-50 dark:hover:bg-stone-700 transition">Annuler</button>
-                    <button onclick="processBooking()" class="flex-1 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 rounded-2xl shadow-lg transition active:scale-95">Confirmer et payer →</button>
+                    <button type="button" onclick="closeBookingConfirmModal()" class="w-1/3 border-2 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 font-semibold py-3 rounded-2xl hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer text-sm">
+                        Annuler
+                    </button>
+                    <button type="button" onclick="processBooking()" class="w-2/3 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 rounded-2xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 text-sm cursor-pointer">
+                        <span>Payer <span id="confirm-pay-amount"></span> CHF sur Stripe →</span>
+                    </button>
                 </div>
+
+                <p class="text-[10px] text-stone-400 mt-2.5 text-center flex items-center justify-center gap-1">
+                    <span>🔒</span>
+                    <span>Paiement chiffré SSL • Caution <span id="confirm-btn-caution">200</span> CHF réservée sans débit</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE PÉDAGOGIQUE : TOUT COMPRENDRE SUR LA CAUTION -->
+    <div id="caution-info-modal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center z-50 px-4" onclick="closeCautionInfoModal()">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-stone-100 dark:border-stone-700" onclick="event.stopPropagation()">
+            <!-- En-tête -->
+            <div class="p-5 border-b border-stone-100 dark:border-stone-700 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl flex-shrink-0">
+                        🛡️
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-stone-900 dark:text-white leading-tight">La caution sur Renger</h3>
+                        <p class="text-xs text-stone-400">Empreinte bancaire sécurisée sans débit</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCautionInfoModal()" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 flex items-center justify-center text-stone-500 dark:text-stone-300 font-bold transition cursor-pointer">&times;</button>
+            </div>
+
+            <!-- Contenu explicatif -->
+            <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto text-sm">
+                <!-- Règle d'or en surbrillance -->
+                <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-3.5 flex gap-3 items-start">
+                    <span class="text-2xl flex-shrink-0">💳</span>
+                    <div>
+                        <p class="font-bold text-emerald-900 dark:text-emerald-200 text-xs uppercase tracking-wide">Règle essentielle</p>
+                        <p class="text-xs font-bold text-emerald-800 dark:text-emerald-300 mt-0.5">Votre compte bancaire N'EST PAS débité.</p>
+                        <p class="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 leading-relaxed">
+                            La caution n'est pas un prélèvement. Il s'agit d'une simple <strong>autorisation temporaire</strong> (empreinte) enregistrée via Stripe.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Questions / Réponses claires -->
+                <div class="space-y-3 text-stone-600 dark:text-stone-300 text-xs">
+                    <div class="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-700/60">
+                        <p class="font-bold text-stone-800 dark:text-white mb-1 flex items-center gap-1.5">
+                            <span>1️⃣</span> <span>À quoi sert la caution ?</span>
+                        </p>
+                        <p class="text-stone-500 dark:text-stone-400 leading-relaxed">
+                            Elle protège le propriétaire contre les dégâts majeurs non déclarés ou le vol. C'est la garantie de confiance qui permet aux particuliers de proposer leurs remorques en toute sérénité.
+                        </p>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-700/60">
+                        <p class="font-bold text-stone-800 dark:text-white mb-1 flex items-center gap-1.5">
+                            <span>2️⃣</span> <span>Quand la caution est-elle annulée ?</span>
+                        </p>
+                        <p class="text-stone-500 dark:text-stone-400 leading-relaxed">
+                            Elle est automatiquement et intégralement libérée à la fin de la location dès que l'état des lieux de retour guidé par caméra (4 photos) est validé sans dégât.
+                        </p>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-700/60">
+                        <p class="font-bold text-stone-800 dark:text-white mb-1 flex items-center gap-1.5">
+                            <span>3️⃣</span> <span>Un propriétaire peut-il garder la caution ?</span>
+                        </p>
+                        <p class="text-stone-500 dark:text-stone-400 leading-relaxed">
+                            Non. Le propriétaire ne peut rien prélever unilatéralement. Renger compare les photos certifiées d'inspection (horodatées et géolocalisées) avant toute décision.
+                        </p>
+                    </div>
+                </div>
+
+                <button type="button" onclick="closeCautionInfoModal()" class="w-full bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-3 rounded-2xl transition cursor-pointer text-sm">
+                    J'ai compris
+                </button>
             </div>
         </div>
     </div>

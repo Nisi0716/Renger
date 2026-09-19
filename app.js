@@ -1568,8 +1568,15 @@ async function openTrailerDetail(trailer) {
         priceHeader.classList.remove('hidden');
         actionBtn.innerText = "Réserver";
         actionBtn.onclick = submitBooking;
-        actionBtn.className = "w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-4";
+        actionBtn.className = "w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-3";
     }
+
+    // Initialisation immédiate des montants de caution pour cette remorque
+    const initialCaution = getTrailerCaution(trailer);
+    const cautionAmountEl = document.getElementById('caution-amount');
+    if (cautionAmountEl) cautionAmountEl.innerText = `${initialCaution} CHF`;
+    const cautionExplainEl = document.getElementById('caution-explain-amount');
+    if (cautionExplainEl) cautionExplainEl.innerText = `${initialCaution} CHF`;
 
     if (bookingCalendar) bookingCalendar.destroy();
     
@@ -1585,10 +1592,31 @@ async function openTrailerDetail(trailer) {
                 
                 const diffTime = Math.abs(selectedEndDate - selectedStartDate);
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
-                const total = diffDays * currentTrailer.price;
+                const rentalPrice = diffDays * currentTrailer.price;
+                const serviceFee = calculateRengerServiceFee(rentalPrice);
+                const totalWithFee = rentalPrice + serviceFee;
+                const caution = getTrailerCaution(currentTrailer);
                 
-                document.getElementById('total-days').innerText = diffDays;
-                document.getElementById('total-price').innerText = isOwner ? "0 CHF" : total + " CHF";
+                const daysEl = document.getElementById('total-days');
+                if (daysEl) daysEl.innerText = diffDays;
+                const pluralEl = document.getElementById('total-days-plural');
+                if (pluralEl) pluralEl.innerText = diffDays > 1 ? 's' : '';
+
+                const rentalPriceEl = document.getElementById('total-rental-price');
+                if (rentalPriceEl) rentalPriceEl.innerText = `${rentalPrice} CHF`;
+
+                const serviceFeeEl = document.getElementById('service-fee-price');
+                if (serviceFeeEl) serviceFeeEl.innerText = `${serviceFee.toFixed(2)} CHF`;
+
+                const cautionEl = document.getElementById('caution-amount');
+                if (cautionEl) cautionEl.innerText = `${caution} CHF`;
+
+                const cautionExpEl = document.getElementById('caution-explain-amount');
+                if (cautionExpEl) cautionExpEl.innerText = `${caution} CHF`;
+
+                const totalPriceEl = document.getElementById('total-price');
+                if (totalPriceEl) totalPriceEl.innerText = isOwner ? "0 CHF" : `${totalWithFee.toFixed(2)} CHF`;
+
                 document.getElementById('booking-summary').classList.remove('hidden');
                 updateChatButtonState();
             } else {
@@ -1687,7 +1715,58 @@ async function blockOwnerDates() {
     }
 }
 
-// Ouvre la modale de confirmation avec un résumé avant de payer
+// ==========================================
+// GESTION DE LA CAUTION & PÉDAGOGIE BANCAIRE
+// ==========================================
+
+/**
+ * Calcule le montant de la caution selon la catégorie et le gabarit de la remorque
+ * (ou utilise le montant personnalisé défini sur la remorque).
+ */
+function getTrailerCaution(trailer) {
+    if (!trailer) return 200;
+    if (trailer.caution && !isNaN(parseInt(trailer.caution, 10)) && parseInt(trailer.caution, 10) > 0) {
+        return parseInt(trailer.caution, 10);
+    }
+    if (trailer.deposit && !isNaN(parseInt(trailer.deposit, 10)) && parseInt(trailer.deposit, 10) > 0) {
+        return parseInt(trailer.deposit, 10);
+    }
+    
+    // Barème standard suisse
+    const cat = trailer.category || 'utilitaire';
+    const payload = parseInt(trailer.payload, 10) || 500;
+
+    if (cat === 'cheval' || cat === 'voiture' || cat === 'refrigere' || payload > 1200) {
+        return 400; // Remorques lourdes / vans / porte-voitures
+    }
+    if (cat === 'moto' || payload > 750) {
+        return 300; // Remorques moyennes
+    }
+    return 200; // Utilitaires standards & porte-vélos
+}
+
+/**
+ * Calcule les frais de traitement Renger sur l'acheteur :
+ * 5% du montant de la location avec un minimum garanti de 4.90 CHF.
+ */
+function calculateRengerServiceFee(rentalPrice) {
+    if (!rentalPrice || rentalPrice <= 0) return 4.90;
+    const rawFee = rentalPrice * 0.05;
+    const fee = Math.max(4.90, Math.round(rawFee * 20) / 20); // Arrondi suisse aux 5 centimes
+    return parseFloat(fee.toFixed(2));
+}
+
+function openCautionInfoModal() {
+    const modal = document.getElementById('caution-info-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeCautionInfoModal() {
+    const modal = document.getElementById('caution-info-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// Ouvre la modale de confirmation avec un résumé détaillé et séparé avant de payer
 function submitBooking() {
     if (!currentUser) {
         showToast("Vous devez être connecté pour réserver.", "error");
@@ -1698,19 +1777,50 @@ function submitBooking() {
         return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
     }
 
-    // Calculer les infos pour la modale
+    // Calculer les montants détaillés pour la modale
     const diffTime = Math.abs(selectedEndDate - selectedStartDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const totalEstim = diffDays * currentTrailer.price;
+    const rentalPrice = diffDays * currentTrailer.price;
+    const serviceFee = calculateRengerServiceFee(rentalPrice);
+    const totalToPay = rentalPrice + serviceFee;
+    const cautionAmount = getTrailerCaution(currentTrailer);
 
     const fmtDate = (d) => d.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' });
 
     // Remplir la modale avec textContent (XSS-safe)
-    document.getElementById('confirm-img').src = currentTrailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
-    document.getElementById('confirm-title').textContent = currentTrailer.title;
-    document.getElementById('confirm-dates').textContent = `${fmtDate(selectedStartDate)} → ${fmtDate(selectedEndDate)}`;
-    document.getElementById('confirm-days').textContent = `${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-    document.getElementById('confirm-price').textContent = `${totalEstim} CHF`;
+    const imgEl = document.getElementById('confirm-img');
+    if (imgEl) imgEl.src = currentTrailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
+    
+    const titleEl = document.getElementById('confirm-title');
+    if (titleEl) titleEl.textContent = currentTrailer.title;
+    
+    const datesEl = document.getElementById('confirm-dates');
+    if (datesEl) datesEl.textContent = `${fmtDate(selectedStartDate)} → ${fmtDate(selectedEndDate)}`;
+    
+    const daysEl = document.getElementById('confirm-days');
+    if (daysEl) daysEl.textContent = `${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+
+    // Lignes séparées : Location, Frais Renger, Caution
+    const rentalCalcEl = document.getElementById('confirm-rental-calc');
+    if (rentalCalcEl) rentalCalcEl.textContent = `${diffDays} jour${diffDays > 1 ? 's' : ''} × ${currentTrailer.price} CHF / jour`;
+
+    const rentalPriceEl = document.getElementById('confirm-rental-price');
+    if (rentalPriceEl) rentalPriceEl.textContent = `${rentalPrice} CHF`;
+
+    const serviceFeeEl = document.getElementById('confirm-service-fee');
+    if (serviceFeeEl) serviceFeeEl.textContent = `${serviceFee.toFixed(2)} CHF`;
+
+    const cautionPriceEl = document.getElementById('confirm-caution-price');
+    if (cautionPriceEl) cautionPriceEl.textContent = `${cautionAmount} CHF`;
+
+    const confirmPriceEl = document.getElementById('confirm-price');
+    if (confirmPriceEl) confirmPriceEl.textContent = `${totalToPay.toFixed(2)} CHF`;
+
+    const payAmountEl = document.getElementById('confirm-pay-amount');
+    if (payAmountEl) payAmountEl.textContent = `${totalToPay.toFixed(2)}`;
+
+    const btnCautionEl = document.getElementById('confirm-btn-caution');
+    if (btnCautionEl) btnCautionEl.textContent = `${cautionAmount}`;
 
     // Afficher la modale
     document.getElementById('booking-confirm-modal').classList.remove('hidden');
@@ -1732,10 +1842,12 @@ async function processBooking() {
     showToast("Création de votre réservation sécurisée via Stripe...", "info");
 
     try {
+        const cautionAmount = getTrailerCaution(currentTrailer);
         const stripeData = await callEdgeFunction('stripe-checkout', {
             trailerId: currentTrailer.id,
             startDate: formatDateToLocalISO(selectedStartDate),
-            endDate: formatDateToLocalISO(selectedEndDate)
+            endDate: formatDateToLocalISO(selectedEndDate),
+            cautionAmount: cautionAmount
         });
         
         if (stripeData.bookingId) {
@@ -2296,7 +2408,8 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr) {
     const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
 
     const diffDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-    const netEarnings = (Number(booking.total_price) * 0.80).toFixed(2);
+    const baseRental = (booking.trailers && booking.trailers.price) ? (diffDays * Number(booking.trailers.price)) : Number(booking.total_price);
+    const netEarnings = (baseRental * 0.80).toFixed(2);
 
     // Badge statut
     const statusSpan = document.createElement('span');
@@ -2502,7 +2615,11 @@ async function loadProfileData() {
         sellerBookings.forEach(booking => {
             const bDate = new Date(booking.start_date);
             if (bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear) {
-                monthlyRevenue += (booking.total_price * 0.80);
+                const sDate = new Date(booking.start_date);
+                const eDate = new Date(booking.end_date);
+                const days = Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24)) + 1;
+                const baseRental = (booking.trailers && booking.trailers.price) ? (days * Number(booking.trailers.price)) : Number(booking.total_price);
+                monthlyRevenue += (baseRental * 0.80);
             }
         });
     }
