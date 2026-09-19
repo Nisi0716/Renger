@@ -1403,10 +1403,8 @@ async function checkPaymentStatus() {
 }
 
 // ==========================================
-// 6. MODULE CAMÉRA (ÉTAT DES LIEUX)
 // 6. MODULE CAMÉRA GUIDÉE & GHOSTING (ÉTAT DES LIEUX)
 // ==========================================
-async function startCamera() {
 
 const INSPECTION_STEPS = [
     {
@@ -1586,7 +1584,6 @@ async function updateGPSStatusBadge() {
 async function startCamera(facing = 'environment') {
     stopCamera();
     try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         videoStream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: facing,
@@ -1596,15 +1593,12 @@ async function startCamera(facing = 'environment') {
         });
         const feed = document.getElementById('camera-feed');
         if (feed) feed.srcObject = videoStream;
-    } catch (err) { showToast("Erreur caméra.", "error"); showPage('detail-page'); }
     } catch (err) {
         console.warn("Erreur caméra :", err.message);
         showToast("Impossible d'accéder à la caméra.", "error");
     }
 }
 
-function stopCamera() { 
-    if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; } 
 function stopCamera() {
     if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
@@ -1612,7 +1606,6 @@ function stopCamera() {
     }
     stopInspectionClock();
 }
-async function takePhoto() {
 
 async function switchCamera() {
     inspectionContext.facingMode = inspectionContext.facingMode === 'environment' ? 'user' : 'environment';
@@ -1664,8 +1657,6 @@ async function takeGuidedInspectionPhoto() {
     if (inspectionContext.isCapturing) return;
     const feed = document.getElementById('camera-feed');
     if (!feed || !videoStream) {
-        showToast("Caméra indisponible.", "error");
-        return;
         return showToast("La caméra n'est pas active.", "error");
     }
 
@@ -1684,9 +1675,6 @@ async function takeGuidedInspectionPhoto() {
     showToast(`📸 Certification de l'étape ${currentStep.step}/4 en cours...`, "info");
 
     try {
-        showToast("Capture et certification de l'état des lieux...", "info");
-
-        // 1. Création d'un canvas pour extraire l'image instantanée du flux vidéo
         // 2. Extraire la photo sur canvas
         const canvas = document.createElement('canvas');
         canvas.width = feed.videoWidth || 1280;
@@ -1694,14 +1682,10 @@ async function takeGuidedInspectionPhoto() {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(feed, 0, 0, canvas.width, canvas.height);
 
-        // 2. Conversion en Blob image/jpeg
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
-        if (!blob) throw new Error("Échec de la conversion de l'image.");
         // 3. Obtenir géolocalisation et horodatage précis
         const now = new Date();
         const coords = await getCurrentCoordinates();
 
-        // 3. Upload vers le bucket Supabase sécurisé 'inspections'
         // 4. Incruster le filigrane légal inaltérable sur l'image
         applyInspectionWatermark(ctx, canvas.width, canvas.height, currentStep, coords, now);
 
@@ -1716,10 +1700,6 @@ async function takeGuidedInspectionPhoto() {
         const filePath = `${currentUser.id}/${trailerId}/${mode}_step${currentStep.step}_${timestamp}.jpg`;
 
         if (supabaseClient && currentUser) {
-            const trailerId = currentTrailer ? currentTrailer.id : 'generale';
-            const timestamp = Date.now();
-            const filePath = `${currentUser.id}/${trailerId}_${timestamp}.jpg`;
-
             const { error: uploadError } = await supabaseClient.storage
                 .from('inspections')
                 .upload(filePath, blob, {
@@ -1728,10 +1708,6 @@ async function takeGuidedInspectionPhoto() {
                 });
 
             if (uploadError) {
-                console.warn("Avertissement stockage inspection :", uploadError.message);
-                showToast("Photo capturée (attention : " + uploadError.message + ")", "info");
-            } else {
-                showToast("📸 État des lieux photographique certifié et sauvegardé !", "success");
                 console.warn("Upload inspection warning:", uploadError.message);
             }
         }
@@ -1760,7 +1736,6 @@ async function takeGuidedInspectionPhoto() {
             showToast(`✅ Étape ${currentStep.step}/4 validée ! Passez à l'étape ${inspectionContext.currentStepIndex + 1}.`, "success");
             updateInspectionHUD();
         } else {
-            showToast("Photo capturée localement. Connectez-vous pour certifier en ligne.", "info");
             // Toutes les 4 étapes sont validées !
             stopCamera();
             stopInspectionClock();
@@ -1772,8 +1747,6 @@ async function takeGuidedInspectionPhoto() {
     } catch (err) {
         showToast("Erreur lors de la capture : " + err.message, "error");
     } finally {
-        stopCamera();
-        showPage('detail-page');
         inspectionContext.isCapturing = false;
     }
 }
@@ -1871,7 +1844,6 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
     infoDiv.appendChild(datesEl);
     infoDiv.appendChild(priceEl);
 
-    // Gestion de l'évaluation pour cette réservation
     // Actions & Évaluation pour cette réservation
     const actionsRow = document.createElement('div');
     actionsRow.className = 'flex flex-wrap items-center gap-2 mt-3';
@@ -1887,20 +1859,16 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
         if (reviewsByBooking.has(booking.id)) {
             const rev = reviewsByBooking.get(booking.id);
             const reviewBadge = document.createElement('span');
-            reviewBadge.className = 'inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 rounded-lg mt-2';
             reviewBadge.className = 'inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2.5 py-1 rounded-lg';
             reviewBadge.textContent = `⭐ Note ${rev.rating}/5 attribuée`;
-            infoDiv.appendChild(reviewBadge);
             actionsRow.appendChild(reviewBadge);
         } else if (todayStr > endStr) {
             // Bouton pour noter si la location est passée et non encore notée
             const reviewBtn = document.createElement('button');
             reviewBtn.type = 'button';
-            reviewBtn.className = 'mt-2 text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
             reviewBtn.className = 'text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
             reviewBtn.textContent = '⭐ Donner mon avis';
             reviewBtn.onclick = () => openReviewModal(booking.id, booking.trailers.id, booking.trailers.title);
-            infoDiv.appendChild(reviewBtn);
             actionsRow.appendChild(reviewBtn);
         }
     }
@@ -2793,8 +2761,6 @@ async function openChatForBooking(booking, isOwnerView = false) {
 /**
  * Ouvre la modale de chat et charge l'historique depuis Supabase.
  */
-async function openChatModal() {
-    if (!currentUser || !currentTrailer) return;
 async function openChatModal(trailer = null, partnerId = null, booking = null) {
     if (!currentUser) {
         showToast("Vous devez être connecté pour ouvrir la messagerie.", "error");
@@ -2817,16 +2783,13 @@ async function openChatModal(trailer = null, partnerId = null, booking = null) {
     if (!modal) return;
     modal.classList.remove('hidden');
 
-    // Mettre à jour le sous-titre avec le nom de la remorque
     // Mettre à jour le sous-titre avec le nom de la remorque et le rôle
     const subtitle = document.getElementById('chat-modal-subtitle');
-    if (subtitle) subtitle.textContent = currentTrailer.title || 'Remorque';
     if (subtitle) {
         const isOwner = (currentUser.id === currentTrailer.owner_id);
         subtitle.textContent = `${currentTrailer.title || 'Remorque'} • ${isOwner ? 'Discussion avec le locataire' : 'Discussion avec le propriétaire'}`;
     }
 
-    // Mise à jour du compteur de caractères (assignation unique oninput sans accumulation d'écouteurs)
     // Mise à jour du compteur de caractères (assignation unique oninput)
     const input = document.getElementById('chat-input');
     if (input) {
@@ -2835,7 +2798,6 @@ async function openChatModal(trailer = null, partnerId = null, booking = null) {
             const counter = document.getElementById('chat-char-count');
             if (counter) counter.textContent = input.value.length;
         };
-        // Réinitialiser le compteur
         const counter = document.getElementById('chat-char-count');
         if (counter) counter.textContent = '0';
     }
@@ -2847,24 +2809,16 @@ let currentChatMessages = [];
 
 /**
  * Charge et affiche les messages du fil de conversation
- * entre currentUser et le propriétaire de currentTrailer.
  * entre currentUser et son interlocuteur pour currentTrailer.
  */
 async function loadChatMessages() {
     const container = document.getElementById('chat-messages');
-    if (!container) return;
     if (!container || !currentTrailer) return;
 
-    container.innerHTML = '<p class="text-center text-sm text-stone-400 italic py-4">Chargement...</p>';
     container.innerHTML = '<p class="text-center text-sm text-stone-400 italic py-4">Chargement des messages...</p>';
 
-    const { data: messages, error } = await supabaseClient
     let query = supabaseClient
         .from('messages')
-        .select('id, sender_id, receiver_id, content, created_at')
-        .eq('trailer_id', currentTrailer.id)
-        .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
-        .order('created_at', { ascending: true });
         .select('id, sender_id, receiver_id, content, image_url, created_at')
         .eq('trailer_id', currentTrailer.id);
 
@@ -2881,7 +2835,6 @@ async function loadChatMessages() {
         return;
     }
 
-    renderChatMessages(messages || []);
     currentChatMessages = messages || [];
     await renderChatMessages(currentChatMessages);
     updateChatInspectionBar(currentChatMessages);
@@ -2890,11 +2843,8 @@ async function loadChatMessages() {
 const signedUrlCache = new Map();
 
 /**
- * Affiche les bulles de messages dans le conteneur.
- * Bulles terracotta pour les messages envoyés, stone pour les reçus.
  * Génère ou récupère en cache l'URL signée pour une photo dans le bucket privé 'inspections'
  */
-function renderChatMessages(messages) {
 async function resolveInspectionImageUrl(filePath) {
     if (!filePath) return null;
     if (filePath.startsWith('http')) return filePath;
@@ -2935,20 +2885,17 @@ async function renderChatMessages(messages) {
     if (messages.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'text-center text-sm text-stone-400 italic py-8';
-        empty.textContent = 'Aucun message. Posez votre première question !';
         empty.textContent = 'Aucun message. Posez votre première question ou lancez l\'état des lieux !';
         container.appendChild(empty);
         return;
     }
 
-    messages.forEach(msg => {
     for (const msg of messages) {
         const isMine = msg.sender_id === currentUser.id;
         const wrapper = document.createElement('div');
         wrapper.className = 'flex ' + (isMine ? 'justify-end' : 'justify-start');
 
         const bubble = document.createElement('div');
-        bubble.className = 'max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ' +
         bubble.className = 'max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ' +
             (isMine
                 ? 'bg-terracotta-500 text-white rounded-br-sm'
@@ -2981,12 +2928,10 @@ async function renderChatMessages(messages) {
         }
 
         const text = document.createElement('p');
-        text.textContent = msg.content; // textContent = XSS-safe
         text.className = 'whitespace-pre-wrap break-words';
         text.textContent = msg.content;
 
         const time = document.createElement('p');
-        time.className = 'text-[10px] mt-1 ' + (isMine ? 'text-terracotta-200 text-right' : 'text-stone-400');
         time.className = 'text-[10px] mt-1.5 ' + (isMine ? 'text-terracotta-200 text-right' : 'text-stone-400');
         const d = new Date(msg.created_at);
         time.textContent = d.toLocaleDateString('fr-CH', { day: 'numeric', month: 'short' }) +
@@ -2996,10 +2941,8 @@ async function renderChatMessages(messages) {
         bubble.appendChild(time);
         wrapper.appendChild(bubble);
         container.appendChild(wrapper);
-    });
     }
 
-    // Auto-scroll vers le bas
     container.scrollTop = container.scrollHeight;
 }
 
@@ -3251,15 +3194,12 @@ async function sendChatMessage() {
 
     const sanitized = sanitizeMessage(rawText);
     const sendBtn = document.getElementById('chat-send-btn');
-
-    // Désactiver temporairement pour éviter les doubles envois
     if (sendBtn) sendBtn.disabled = true;
 
     const receiverId = activeChatPartnerId || (currentUser.id === currentTrailer.owner_id ? null : currentTrailer.owner_id);
 
     const { error } = await supabaseClient.from('messages').insert([{
         sender_id: currentUser.id,
-        receiver_id: currentTrailer.owner_id,
         receiver_id: receiverId,
         trailer_id: currentTrailer.id,
         content: sanitized
@@ -3276,7 +3216,6 @@ async function sendChatMessage() {
     const counter = document.getElementById('chat-char-count');
     if (counter) counter.textContent = '0';
 
-    // Rechargement de la conversation
     await loadChatMessages();
 }
 
