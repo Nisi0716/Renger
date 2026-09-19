@@ -42,6 +42,20 @@ let selectedStartDate = null;
 let selectedEndDate = null;
 let videoStream = null;
 let currentFilter = 'all'; // Filtre actif sur la page des annonces
+let toastTimer = null; // Timer d'annulation pour éviter la collision des notifications toast
+
+/**
+ * Formate un objet Date en chaîne SQL standard YYYY-MM-DD
+ * en préservant le fuseau horaire local (évite le décalage UTC).
+ */
+function formatDateToLocalISO(date) {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 const translations = {
     fr: {
@@ -114,6 +128,12 @@ function showToast(message, type = 'success') {
         return;
     }
 
+    // Réinitialise le timer actif pour éviter les collisions visuelles
+    if (toastTimer) {
+        clearTimeout(toastTimer);
+        toastTimer = null;
+    }
+
     text.innerText = message;
     
     if (type === 'success') {
@@ -127,9 +147,10 @@ function showToast(message, type = 'success') {
         icon.innerText = "⏳";
     }
 
-    setTimeout(() => {
+    toastTimer = setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
         toast.classList.add('-translate-y-24', 'opacity-0');
+        toastTimer = null;
     }, 3500);
 }
 
@@ -139,6 +160,11 @@ function showToast(message, type = 'success') {
 const pages = ['welcome-screen', 'buyer-page', 'seller-page', 'detail-page', 'inspection-page', 'profile-page', 'settings-page', 'public-profile-page'];
 
 function showPage(pageId) {
+    // Extinction propre de la caméra dès qu'on quitte la page d'inspection (évite la fuite matérielle)
+    if (pageId !== 'inspection-page' && videoStream) {
+        stopCamera();
+    }
+
     pages.forEach(p => {
         const el = document.getElementById(p);
         if (el) el.classList.add('hidden');
@@ -147,21 +173,73 @@ function showPage(pageId) {
     if (target) target.classList.remove('hidden');
     window.scrollTo(0, 0);
     
-    if(pageId === 'inspection-page' && typeof startCamera === 'function') { 
+    if (pageId === 'inspection-page' && typeof startCamera === 'function') { 
         startCamera(); 
     }
+
+    // Synchronisation de l'onglet actif dans la navigation mobile
+    updateMobileNavState(pageId);
+}
+
+function updateMobileNavState(pageId) {
+    const navExplore = document.getElementById('mobile-nav-explore');
+    const navBookings = document.getElementById('mobile-nav-bookings');
+    const navSettings = document.getElementById('mobile-nav-settings');
+    if (!navExplore || !navBookings || !navSettings) return;
+
+    const inactiveClass = "mobile-nav-btn flex flex-col items-center gap-1 w-20 text-stone-400 hover:text-terracotta-500 transition-transform active:scale-95";
+    const activeClass = "mobile-nav-btn flex flex-col items-center gap-1 w-20 text-terracotta-500 transition-transform active:scale-95";
+
+    navExplore.className = (pageId === 'buyer-page' || pageId === 'welcome-screen' || pageId === 'detail-page' || pageId === 'seller-page') ? activeClass : inactiveClass;
+    navBookings.className = (pageId === 'profile-page') ? activeClass : inactiveClass;
+    navSettings.className = (pageId === 'settings-page' || pageId === 'public-profile-page') ? activeClass : inactiveClass;
 }
 
 function showWelcomeScreen() { showPage('welcome-screen'); }
+
 function openAuthModal() { 
     const modal = document.getElementById('auth-modal');
     if (modal) modal.classList.remove('hidden');
     showLoginPanel(); // Toujours ouvrir sur le panneau connexion
 }
+
 function closeAuthModal() { 
     const modal = document.getElementById('auth-modal');
     if (modal) modal.classList.add('hidden'); 
 }
+
+function handleAuthModalBackdrop(event) {
+    if (event.target === document.getElementById('auth-modal')) {
+        closeAuthModal();
+    }
+}
+
+function handleBookingConfirmModalBackdrop(event) {
+    if (event.target === document.getElementById('booking-confirm-modal')) {
+        closeBookingConfirmModal();
+    }
+}
+
+// Écouteur global pour fermer la modale active avec la touche Échap
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+
+    const modals = [
+        { id: 'review-modal', close: closeReviewModal },
+        { id: 'chat-modal', close: closeChatModal },
+        { id: 'booking-confirm-modal', close: closeBookingConfirmModal },
+        { id: 'auth-modal', close: closeAuthModal }
+    ];
+
+    for (const m of modals) {
+        const el = document.getElementById(m.id);
+        if (el && !el.classList.contains('hidden')) {
+            m.close();
+            break;
+        }
+    }
+});
+
 function showResetPanel() {
     document.getElementById('auth-panel-login').classList.add('hidden');
     document.getElementById('auth-panel-reset').classList.remove('hidden');
@@ -169,26 +247,50 @@ function showResetPanel() {
     const loginEmail = document.getElementById('login-email').value;
     if (loginEmail) document.getElementById('reset-email').value = loginEmail;
 }
+
 function showLoginPanel() {
     document.getElementById('auth-panel-reset').classList.add('hidden');
     document.getElementById('auth-panel-login').classList.remove('hidden');
 }
+
 async function handleResetPassword() {
     if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
     const email = document.getElementById('reset-email').value.trim();
     if (!email) return showToast("Veuillez saisir votre email.", "error");
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin
-    });
-    if (error) {
-        showToast("Erreur : " + error.message, "error");
-    } else {
-        showToast("✉️ Lien envoyé ! Vérifiez votre boîte mail.", "success");
-        closeAuthModal();
+
+    const resetBtn = document.querySelector('#auth-panel-reset button[onclick="handleResetPassword()"]');
+    if (resetBtn) resetBtn.disabled = true;
+
+    try {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin
+        });
+        if (error) {
+            showToast("Erreur : " + error.message, "error");
+        } else {
+            showToast("✉️ Lien envoyé ! Vérifiez votre boîte mail.", "success");
+            closeAuthModal();
+        }
+    } finally {
+        if (resetBtn) resetBtn.disabled = false;
     }
 }
+
+// Gestion et persistance du mode sombre/clair
+function initTheme() {
+    const savedTheme = localStorage.getItem('renger_theme');
+    if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+    } else if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+    }
+}
+
 function toggleTheme() {
-    document.documentElement.classList.toggle('dark');
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('renger_theme', isDark ? 'dark' : 'light');
 }
 
 // ==========================================
@@ -349,23 +451,30 @@ async function handleSignup() {
     if (!username) return showToast("Veuillez choisir un nom d'utilisateur.", "error");
     if (!validateUsernameFormat(username)) return showToast("Format du nom d'utilisateur invalide.", "error");
 
-    // Vérifier unicité une dernière fois avant d'inscrire
-    const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', username).maybeSingle();
-    if (existing) return showToast("Ce nom d'utilisateur est déjà pris.", "error");
+    const signupBtn = document.querySelector('#auth-panel-login button[onclick="handleSignup()"]');
+    if (signupBtn) signupBtn.disabled = true;
 
-    const { data: signupData, error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) return showToast("Erreur d'inscription : " + error.message, "error");
+    try {
+        // Vérifier unicité une dernière fois avant d'inscrire
+        const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', username).maybeSingle();
+        if (existing) return showToast("Ce nom d'utilisateur est déjà pris.", "error");
 
-    // Créer le profil avec le username choisi
-    if (signupData?.user) {
-        await supabaseClient.from('profiles').insert({
-            id: signupData.user.id,
-            username: username
-        });
+        const { data: signupData, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) return showToast("Erreur d'inscription : " + error.message, "error");
+
+        // Créer le profil avec le username choisi
+        if (signupData?.user) {
+            await supabaseClient.from('profiles').insert({
+                id: signupData.user.id,
+                username: username
+            });
+        }
+        showToast("Inscription réussie ! Bienvenue @" + username, "success");
+        closeAuthModal();
+        checkUser();
+    } finally {
+        if (signupBtn) signupBtn.disabled = false;
     }
-    showToast("Inscription réussie ! Bienvenue @" + username, "success");
-    closeAuthModal();
-    checkUser();
 }
 
 // Connexion via Google OAuth
@@ -385,13 +494,13 @@ async function handleGoogleLogin() {
 async function ensureProfileExists(user) {
     if (!user || !supabaseClient) return;
 
-    const { data: existing } = await supabaseClient
+    const { data: existing, error: fetchErr } = await supabaseClient
         .from('profiles')
         .select('id')
         .eq('id', user.id)
         .maybeSingle();
 
-    if (existing) return; // Profil déjà présent
+    if (existing || fetchErr) return; // Profil déjà présent ou erreur de requête
 
     // Générer un username depuis l'email Google ou via l'UUID
     let base = (user.email || '').split('@')[0]
@@ -400,10 +509,10 @@ async function ensureProfileExists(user) {
         .substring(0, 16);
     if (!base || base.length < 1) base = 'user';
 
-    // Vérifier disponibilité et ajouter un suffixe si nécessaire
+    // Vérifier disponibilité et ajouter un suffixe si nécessaire (max 20 essais)
     let username = base;
     let suffix = 1;
-    while (true) {
+    while (suffix <= 20) {
         const { data: taken } = await supabaseClient
             .from('profiles')
             .select('id')
@@ -412,7 +521,9 @@ async function ensureProfileExists(user) {
         if (!taken) break;
         username = base.substring(0, 14) + '_' + suffix;
         suffix++;
-        if (suffix > 99) { username = 'user_' + user.id.replace(/-/g, '').substring(0, 8); break; }
+    }
+    if (suffix > 20) {
+        username = 'user_' + user.id.replace(/-/g, '').substring(0, 8);
     }
 
     await supabaseClient.from('profiles').insert({ id: user.id, username });
@@ -423,11 +534,20 @@ async function handleLogin() {
     if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) showToast("Erreur de connexion : " + error.message, "error");
-    else {
-        closeAuthModal();
-        checkUser();
+
+    const loginBtn = document.querySelector('#auth-panel-login button[onclick="handleLogin()"]');
+    if (loginBtn) loginBtn.disabled = true;
+
+    try {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) {
+            showToast("Erreur de connexion : " + error.message, "error");
+        } else {
+            closeAuthModal();
+            checkUser();
+        }
+    } finally {
+        if (loginBtn) loginBtn.disabled = false;
     }
 }
 
@@ -552,6 +672,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         return;
     }
 
+    const fragment = document.createDocumentFragment();
     trailers.forEach(trailer => {
         const card = document.createElement('div');
         card.className = "bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden hover:shadow-md cursor-pointer transition";
@@ -589,8 +710,9 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
             ratingBadgeSlot.appendChild(renderRatingBadge(trailer.rating_avg, trailer.rating_count, false));
         }
 
-        grid.appendChild(card);
+        fragment.appendChild(card);
     });
+    grid.appendChild(fragment);
 }
 
 // Gestion des boutons de filtre (état visuel actif + rechargement)
@@ -617,11 +739,12 @@ function setFilter(category) {
 }
 
 // Tableau en mémoire des fichiers photo en attente de publication
-let pendingPhotos = []; // Array de { file: File, dataUrl: string }
+let pendingPhotos = []; // Array de { file: File, objectUrl: string }
 
 /**
  * Appelée quand l'utilisateur sélectionne des fichiers depuis le picker.
  * Ajoute les nouveaux fichiers à pendingPhotos[] dans la limite de 10.
+ * Utilise URL.createObjectURL pour un affichage instantané sans surcharger la mémoire en base64.
  */
 function handleMultiPhotoSelect(event) {
     const files = Array.from(event.target.files);
@@ -632,24 +755,18 @@ function handleMultiPhotoSelect(event) {
     }
 
     const toAdd = files.slice(0, remaining);
-    let loaded = 0;
 
     toAdd.forEach(file => {
         // Vérification taille (max 5 Mo par photo)
         if (file.size > 5 * 1024 * 1024) {
             showToast(`"${file.name}" dépasse 5 Mo et a été ignorée.`, 'error');
-            loaded++;
-            if (loaded === toAdd.length) renderPhotoGrid();
             return;
         }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            pendingPhotos.push({ file, dataUrl: e.target.result });
-            loaded++;
-            if (loaded === toAdd.length) renderPhotoGrid();
-        };
-        reader.readAsDataURL(file);
+        const objectUrl = URL.createObjectURL(file);
+        pendingPhotos.push({ file, objectUrl });
     });
+
+    renderPhotoGrid();
 
     // Reset l'input pour permettre de sélectionner les mêmes fichiers à nouveau
     event.target.value = '';
@@ -671,7 +788,7 @@ function renderPhotoGrid() {
         tile.className = 'relative aspect-square rounded-2xl overflow-hidden bg-stone-200 dark:bg-stone-700 group';
 
         const img = document.createElement('img');
-        img.src = photo.dataUrl;
+        img.src = photo.objectUrl;
         img.className = 'w-full h-full object-cover';
         img.alt = `Photo ${index + 1}`;
 
@@ -721,9 +838,12 @@ function renderPhotoGrid() {
 }
 
 /**
- * Retire une photo de pendingPhotos[] par son index et re-render la grille.
+ * Retire une photo de pendingPhotos[] par son index et libère l'URL d'objet Blob.
  */
 function removePhoto(index) {
+    if (pendingPhotos[index]?.objectUrl) {
+        URL.revokeObjectURL(pendingPhotos[index].objectUrl);
+    }
     pendingPhotos.splice(index, 1);
     renderPhotoGrid();
 }
@@ -736,77 +856,197 @@ async function handlePublish(event) {
         return;
     }
 
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.7';
+    }
+
     const PLACEHOLDER = "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
     let imageUrls = [];
 
     if (pendingPhotos.length === 0) {
         showToast("Ajoutez au moins une photo pour publier votre annonce.", "error");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
         return;
     }
 
     showToast("Upload des photos en cours…", "info");
 
-    // Upload séquentiel de toutes les photos dans le bucket trailers-images
-    for (let i = 0; i < pendingPhotos.length; i++) {
-        const { file } = pendingPhotos[i];
-        const fileExt = file.name.split('.').pop().toLowerCase();
-        const fileName = `${currentUser.id}/${Date.now()}_${i}.${fileExt}`;
+    try {
+        // Upload séquentiel de toutes les photos dans le bucket trailers-images
+        for (let i = 0; i < pendingPhotos.length; i++) {
+            const { file } = pendingPhotos[i];
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            const fileName = `${currentUser.id}/${Date.now()}_${i}.${fileExt}`;
 
-        const { error: uploadError } = await supabaseClient.storage
-            .from('trailers-images')
-            .upload(fileName, file, { upsert: false });
+            const { error: uploadError } = await supabaseClient.storage
+                .from('trailers-images')
+                .upload(fileName, file, { upsert: false });
 
-        if (uploadError) {
-            showToast(`Erreur upload photo ${i + 1} : ${uploadError.message}`, "error");
-            return;
+            if (uploadError) {
+                showToast(`Erreur upload photo ${i + 1} : ${uploadError.message}`, "error");
+                return;
+            }
+
+            const { data: urlData } = supabaseClient.storage
+                .from('trailers-images')
+                .getPublicUrl(fileName);
+
+            imageUrls.push(urlData.publicUrl);
         }
 
-        const { data: urlData } = supabaseClient.storage
-            .from('trailers-images')
-            .getPublicUrl(fileName);
+        // Récupération des équipements
+        const equipmentCheckboxes = document.querySelectorAll('input[name="equipments"]:checked');
+        const equipments = Array.from(equipmentCheckboxes).map(cb => cb.value);
 
-        imageUrls.push(urlData.publicUrl);
-    }
+        // Récupération des upsells
+        const upsellCheckboxes = document.querySelectorAll('input[name="upsell"]:checked');
+        const upsells = Array.from(upsellCheckboxes).map(cb => cb.value);
 
-    // Récupération des équipements
-    const equipmentCheckboxes = document.querySelectorAll('input[name="equipments"]:checked');
-    const equipments = Array.from(equipmentCheckboxes).map(cb => cb.value);
+        // Récupération de la catégorie (type de remorque)
+        const categoryInput = document.querySelector('input[name="category"]:checked');
+        const category = categoryInput ? categoryInput.value : 'utilitaire';
 
-    // Récupération des upsells
-    const upsellCheckboxes = document.querySelectorAll('input[name="upsell"]:checked');
-    const upsells = Array.from(upsellCheckboxes).map(cb => cb.value);
+        const priceVal = parseInt(document.getElementById('ad-price').value, 10);
+        const payloadVal = parseInt(document.getElementById('ad-payload').value, 10);
 
-    // Récupération de la catégorie (type de remorque)
-    const categoryInput = document.querySelector('input[name="category"]:checked');
-    const category = categoryInput ? categoryInput.value : 'utilitaire';
+        const newTrailer = {
+            title: (document.getElementById('ad-title')?.value || '').trim(),
+            description: (document.getElementById('ad-desc')?.value || '').trim(),
+            price: isNaN(priceVal) || priceVal < 0 ? 0 : priceVal,
+            payload: isNaN(payloadVal) || payloadVal < 0 ? 0 : payloadVal,
+            socket: document.querySelector('input[name="prise"]:checked')?.value || '7 broches',
+            owner_id: currentUser.id,
+            image_url: imageUrls[0] || PLACEHOLDER,  // Photo de couverture (rétrocompatibilité)
+            images: imageUrls,                         // Toutes les photos (nouveau champ)
+            equipments: equipments,
+            upsells: upsells,
+            category: category
+        };
 
-    const newTrailer = {
-        title: document.getElementById('ad-title').value,
-        description: document.getElementById('ad-desc').value,
-        price: parseInt(document.getElementById('ad-price').value),
-        payload: parseInt(document.getElementById('ad-payload').value),
-        socket: document.querySelector('input[name="prise"]:checked').value,
-        owner_id: currentUser.id,
-        image_url: imageUrls[0] || PLACEHOLDER,  // Photo de couverture (rétrocompatibilité)
-        images: imageUrls,                         // Toutes les photos (nouveau champ)
-        equipments: equipments,
-        upsells: upsells,
-        category: category
-    };
-
-    const { error } = await supabaseClient.from('trailers').insert([newTrailer]);
-    if (error) {
-        showToast("Erreur BDD : " + error.message, "error");
-    } else {
-        showToast("✅ Annonce publiée !", "success");
-        document.getElementById('add-trailer-form').reset();
-        // Reset photos
-        pendingPhotos = [];
-        renderPhotoGrid();
-        showPage('buyer-page');
-        loadTrailers();
+        const { error } = await supabaseClient.from('trailers').insert([newTrailer]);
+        if (error) {
+            showToast("Erreur BDD : " + error.message, "error");
+        } else {
+            showToast("✅ Annonce publiée !", "success");
+            document.getElementById('add-trailer-form').reset();
+            // Nettoyage des Blob URLs
+            pendingPhotos.forEach(p => {
+                if (p.objectUrl) URL.revokeObjectURL(p.objectUrl);
+            });
+            pendingPhotos = [];
+            renderPhotoGrid();
+            showPage('buyer-page');
+            loadTrailers();
+        }
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+        }
     }
 }
+
+// ==========================================
+// CAROUSEL DE LA PAGE DÉTAIL
+// ==========================================
+let detailCarouselPhotos = [];
+let currentCarouselIndex = 0;
+
+function initDetailCarousel(photos) {
+    detailCarouselPhotos = (Array.isArray(photos) && photos.length > 0)
+        ? photos
+        : ["https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop"];
+    currentCarouselIndex = 0;
+
+    const img = document.getElementById('detail-img');
+    const prevBtn = document.getElementById('carousel-prev');
+    const nextBtn = document.getElementById('carousel-next');
+    const dotsContainer = document.getElementById('carousel-dots');
+    const counter = document.getElementById('carousel-counter');
+
+    if (img) img.src = detailCarouselPhotos[0];
+
+    const hasMultiple = detailCarouselPhotos.length > 1;
+
+    if (prevBtn) prevBtn.classList.toggle('hidden', !hasMultiple);
+    if (nextBtn) nextBtn.classList.toggle('hidden', !hasMultiple);
+    if (counter) {
+        counter.classList.toggle('hidden', !hasMultiple);
+        counter.textContent = `1 / ${detailCarouselPhotos.length}`;
+    }
+
+    if (dotsContainer) {
+        dotsContainer.classList.toggle('hidden', !hasMultiple);
+        dotsContainer.innerHTML = '';
+        if (hasMultiple) {
+            detailCarouselPhotos.forEach((_, idx) => {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.className = `h-2.5 rounded-full transition-all duration-200 ${
+                    idx === 0 ? 'w-6 bg-white' : 'w-2.5 bg-white/50 hover:bg-white/80'
+                }`;
+                dot.onclick = (e) => {
+                    e.stopPropagation();
+                    goToCarouselSlide(idx);
+                };
+                dotsContainer.appendChild(dot);
+            });
+        }
+    }
+}
+
+function changeCarouselSlide(direction) {
+    if (detailCarouselPhotos.length <= 1) return;
+    let newIndex = currentCarouselIndex + direction;
+    if (newIndex < 0) {
+        newIndex = detailCarouselPhotos.length - 1;
+    } else if (newIndex >= detailCarouselPhotos.length) {
+        newIndex = 0;
+    }
+    goToCarouselSlide(newIndex);
+}
+
+function goToCarouselSlide(index) {
+    if (index < 0 || index >= detailCarouselPhotos.length) return;
+    currentCarouselIndex = index;
+
+    const img = document.getElementById('detail-img');
+    if (img) {
+        img.src = detailCarouselPhotos[currentCarouselIndex];
+    }
+
+    const counter = document.getElementById('carousel-counter');
+    if (counter) {
+        counter.textContent = `${currentCarouselIndex + 1} / ${detailCarouselPhotos.length}`;
+    }
+
+    const dotsContainer = document.getElementById('carousel-dots');
+    if (dotsContainer) {
+        const dots = dotsContainer.children;
+        for (let i = 0; i < dots.length; i++) {
+            if (i === currentCarouselIndex) {
+                dots[i].className = 'w-6 h-2.5 rounded-full transition-all duration-200 bg-white';
+            } else {
+                dots[i].className = 'w-2.5 h-2.5 rounded-full transition-all duration-200 bg-white/50 hover:bg-white/80';
+            }
+        }
+    }
+}
+
+// Navigation clavier pour le carousel
+document.addEventListener('keydown', (e) => {
+    const detailPage = document.getElementById('detail-page');
+    if (!detailPage || detailPage.classList.contains('hidden')) return;
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+
+    if (e.key === 'ArrowLeft') {
+        changeCarouselSlide(-1);
+    } else if (e.key === 'ArrowRight') {
+        changeCarouselSlide(1);
+    }
+});
 
 // ==========================================
 // 5. RÉSERVATION, BLOCAGE DATES & PAIEMENT
@@ -1012,29 +1252,31 @@ async function blockOwnerDates() {
     }
     if (!selectedStartDate || !selectedEndDate) return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
 
-    const formatSQLDate = (date) => {
-        const tzOffset = date.getTimezoneOffset() * 60000;
-        return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
-    };
+    const actionBtn = document.getElementById('action-btn');
+    if (actionBtn) actionBtn.disabled = true;
 
     const newBooking = {
         trailer_id: currentTrailer.id,
         renter_id: currentUser.id,
         owner_id: currentTrailer.owner_id,
-        start_date: formatSQLDate(selectedStartDate),
-        end_date: formatSQLDate(selectedEndDate),
+        start_date: formatDateToLocalISO(selectedStartDate),
+        end_date: formatDateToLocalISO(selectedEndDate),
         total_price: 0,
         status: 'indisponible' // Statut spécial pour bloquer sans payer
     };
 
-    const { error } = await supabaseClient.from('bookings').insert([newBooking]);
-    
-    if (error) {
-        showToast("Erreur lors du blocage : " + error.message, "error");
-    } else {
-        showToast("Dates bloquées avec succès !", "success");
-        // On recharge la page pour griser les dates instantanément
-        openTrailerDetail(currentTrailer); 
+    try {
+        const { error } = await supabaseClient.from('bookings').insert([newBooking]);
+        
+        if (error) {
+            showToast("Erreur lors du blocage : " + error.message, "error");
+        } else {
+            showToast("Dates bloquées avec succès !", "success");
+            // On recharge la page pour griser les dates instantanément
+            openTrailerDetail(currentTrailer); 
+        }
+    } finally {
+        if (actionBtn) actionBtn.disabled = false;
     }
 }
 
@@ -1071,22 +1313,22 @@ function closeBookingConfirmModal() {
     document.getElementById('booking-confirm-modal').classList.add('hidden');
 }
 
+// Verrou d'exécution pour éviter les doubles réservations Stripe
+let isProcessingBooking = false;
+
 // Lance la vraie transaction Stripe (appelée depuis le bouton "Confirmer et payer")
 async function processBooking() {
+    if (isProcessingBooking) return;
+    isProcessingBooking = true;
+
     closeBookingConfirmModal();
-
     showToast("Création de votre réservation sécurisée via Stripe...", "info");
-
-    const formatSQLDate = (date) => {
-        const tzOffset = date.getTimezoneOffset() * 60000;
-        return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
-    };
 
     try {
         const stripeData = await callEdgeFunction('stripe-checkout', {
             trailerId: currentTrailer.id,
-            startDate: formatSQLDate(selectedStartDate),
-            endDate: formatSQLDate(selectedEndDate)
+            startDate: formatDateToLocalISO(selectedStartDate),
+            endDate: formatDateToLocalISO(selectedEndDate)
         });
         
         if (stripeData.bookingId) {
@@ -1100,6 +1342,8 @@ async function processBooking() {
         }
     } catch (err) {
         showToast("Erreur de réservation : " + err.message, "error");
+    } finally {
+        isProcessingBooking = false;
     }
 }
 
@@ -1257,6 +1501,7 @@ function switchProfileTab(tab) {
 async function loadProfileData() {
     if (!currentUser) return;
     const today = new Date();
+    const todayStr = formatDateToLocalISO(today);
 
     const { data: myBookings } = await supabaseClient.from('bookings').select('*, trailers(*)').eq('renter_id', currentUser.id).eq('status', 'paye');
     const { data: myTrailers } = await supabaseClient.from('trailers').select('*').eq('owner_id', currentUser.id);
@@ -1274,17 +1519,20 @@ async function loadProfileData() {
     if (buyerList) {
         buyerList.innerHTML = '';
         if (myBookings && myBookings.length > 0) {
+            const buyerFragment = document.createDocumentFragment();
             myBookings.forEach(booking => {
                 const startDate = new Date(booking.start_date);
                 const endDate = new Date(booking.end_date);
+                const startStr = booking.start_date ? booking.start_date.split('T')[0] : '';
+                const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
 
                 // Badge de statut (texte statique uniquement, zéro donnée utilisateur)
                 const statusSpan = document.createElement('span');
                 statusSpan.className = 'text-xs font-bold px-2 py-1 rounded-md';
-                if (today >= startDate && today <= endDate) {
+                if (todayStr >= startStr && todayStr <= endStr) {
                     statusSpan.className += ' bg-green-100 text-green-700';
                     statusSpan.textContent = '🔴 En cours';
-                } else if (today < startDate) {
+                } else if (todayStr < startStr) {
                     statusSpan.className += ' bg-blue-100 text-blue-700';
                     statusSpan.textContent = '⏳ À venir';
                 } else {
@@ -1344,8 +1592,9 @@ async function loadProfileData() {
                 card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 p-5 rounded-2xl shadow-sm flex items-center gap-4';
                 card.appendChild(img);
                 card.appendChild(infoDiv);
-                buyerList.appendChild(card);
+                buyerFragment.appendChild(card);
             });
+            buyerList.appendChild(buyerFragment);
         } else {
             const emptyMsg = document.createElement('p');
             emptyMsg.className = 'text-stone-400 italic';
@@ -1376,9 +1625,14 @@ async function loadProfileData() {
     if (sellerList) {
         sellerList.innerHTML = '';
         if (myTrailers && myTrailers.length > 0) {
+            const sellerFragment = document.createDocumentFragment();
             myTrailers.forEach(trailer => {
                 const isRentedNow = sellerBookings
-                    ? sellerBookings.some(b => b.trailer_id === trailer.id && today >= new Date(b.start_date) && today <= new Date(b.end_date))
+                    ? sellerBookings.some(b => {
+                        const bStart = b.start_date ? b.start_date.split('T')[0] : '';
+                        const bEnd = b.end_date ? b.end_date.split('T')[0] : '';
+                        return b.trailer_id === trailer.id && todayStr >= bStart && todayStr <= bEnd;
+                    })
                     : false;
 
                 // Badge de statut (texte statique uniquement)
@@ -1422,8 +1676,9 @@ async function loadProfileData() {
                 card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative';
                 card.appendChild(imgWrapper);
                 card.appendChild(infoDiv);
-                sellerList.appendChild(card);
+                sellerFragment.appendChild(card);
             });
+            sellerList.appendChild(sellerFragment);
         } else {
             const emptyMsg = document.createElement('p');
             emptyMsg.className = 'text-stone-400 italic';
@@ -1443,8 +1698,10 @@ function openSettings() {
     loadProfileSettings(); // Charger le profil dans le formulaire
 }
 
+let isSettingUpStripe = false;
 async function setupStripePayouts() {
-    if (!currentUser) return;
+    if (!currentUser || isSettingUpStripe) return;
+    isSettingUpStripe = true;
     showToast("Génération du lien sécurisé Stripe...", "info");
     
     try {
@@ -1456,14 +1713,18 @@ async function setupStripePayouts() {
         }
     } catch (err) {
         showToast("Erreur Stripe : " + err.message, "error");
+    } finally {
+        isSettingUpStripe = false;
     }
 }
 
+let isDeletingAccount = false;
 async function deleteAccount() {
-    if (!currentUser) return;
+    if (!currentUser || isDeletingAccount) return;
     const confirmDelete = confirm("⚠️ ATTENTION : Voulez-vous vraiment supprimer définitivement votre compte et toutes vos annonces ? Cette action est irréversible.");
     if (!confirmDelete) return;
 
+    isDeletingAccount = true;
     showToast("Suppression en cours...", "info");
     
     try {
@@ -1476,6 +1737,8 @@ async function deleteAccount() {
         }
     } catch (err) {
         showToast("Erreur de suppression : " + err.message, "error");
+    } finally {
+        isDeletingAccount = false;
     }
 }
 
@@ -1483,6 +1746,9 @@ async function deleteAccount() {
 // 9. DÉMARRAGE DU SITE
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
+    // Restaure le thème sombre/clair sauvegardé
+    initTheme();
+
     // Restaure la langue sélectionnée
     const savedLang = localStorage.getItem('renger_lang') || 'fr';
     const langSelector = document.getElementById('lang-selector');
@@ -1622,6 +1888,7 @@ async function openPublicProfile(username) {
         return;
     }
 
+    const fragment = document.createDocumentFragment();
     trailers.forEach(trailer => {
         const card = document.createElement('div');
         card.className = 'bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden hover:shadow-md cursor-pointer transition';
@@ -1652,8 +1919,9 @@ async function openPublicProfile(username) {
             ratingBadgeSlot.appendChild(renderRatingBadge(trailer.rating_avg, trailer.rating_count, false));
         }
 
-        grid.appendChild(card);
+        fragment.appendChild(card);
     });
+    grid.appendChild(fragment);
 
     // Mettre à jour l'URL sans recharger la page (pour le partage de lien)
     const newUrl = new URL(window.location.href);
@@ -1713,31 +1981,38 @@ async function handleSaveProfile() {
     if (!newUsername) return showToast("Le nom d'utilisateur ne peut pas être vide.", "error");
     if (!validateUsernameFormat(newUsername)) return showToast("Format du nom d'utilisateur invalide.", "error");
 
-    // Récupérer le profil actuel pour vérifier le cooldown
-    const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+    const saveBtn = document.querySelector('button[onclick="handleSaveProfile()"]');
+    if (saveBtn) saveBtn.disabled = true;
 
-    if (profile?.last_username_change) {
-        const lastChange = new Date(profile.last_username_change);
-        const nextAllowed = new Date(lastChange.getTime() + 30 * 24 * 60 * 60 * 1000);
-        if (new Date() < nextAllowed) {
-            return showToast("Vous ne pouvez changer votre username qu'une fois par mois.", "error");
+    try {
+        // Récupérer le profil actuel pour vérifier le cooldown
+        const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+
+        if (profile?.last_username_change) {
+            const lastChange = new Date(profile.last_username_change);
+            const nextAllowed = new Date(lastChange.getTime() + 30 * 24 * 60 * 60 * 1000);
+            if (new Date() < nextAllowed) {
+                return showToast("Vous ne pouvez changer votre username qu'une fois par mois.", "error");
+            }
         }
+
+        // Vérifier unicité si username a changé
+        if (newUsername !== profile?.username) {
+            const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', newUsername).maybeSingle();
+            if (existing) return showToast("Ce nom d'utilisateur est déjà pris.", "error");
+        }
+
+        const updateData = { username: newUsername };
+        if (newUsername !== profile?.username) updateData.last_username_change = new Date().toISOString();
+
+        const { error } = await supabaseClient.from('profiles').update(updateData).eq('id', currentUser.id);
+        if (error) return showToast("Erreur : " + error.message, "error");
+
+        showToast("✅ Profil sauvegardé !", "success");
+        loadProfileSettings(); // Rafraîchir l'affichage
+    } finally {
+        if (saveBtn) saveBtn.disabled = false;
     }
-
-    // Vérifier unicité si username a changé
-    if (newUsername !== profile?.username) {
-        const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', newUsername).maybeSingle();
-        if (existing) return showToast("Ce nom d'utilisateur est déjà pris.", "error");
-    }
-
-    const updateData = { username: newUsername };
-    if (newUsername !== profile?.username) updateData.last_username_change = new Date().toISOString();
-
-    const { error } = await supabaseClient.from('profiles').update(updateData).eq('id', currentUser.id);
-    if (error) return showToast("Erreur : " + error.message, "error");
-
-    showToast("✅ Profil sauvegardé !", "success");
-    loadProfileSettings(); // Rafraîchir l'affichage
 }
 
 // Upload de l'avatar vers Supabase Storage
@@ -1846,14 +2121,14 @@ async function openChatModal() {
     const subtitle = document.getElementById('chat-modal-subtitle');
     if (subtitle) subtitle.textContent = currentTrailer.title || 'Remorque';
 
-    // Mise à jour du compteur de caractères
+    // Mise à jour du compteur de caractères (assignation unique oninput sans accumulation d'écouteurs)
     const input = document.getElementById('chat-input');
     if (input) {
         input.value = '';
-        input.addEventListener('input', () => {
+        input.oninput = () => {
             const counter = document.getElementById('chat-char-count');
             if (counter) counter.textContent = input.value.length;
-        }, { once: false });
+        };
         // Réinitialiser le compteur
         const counter = document.getElementById('chat-char-count');
         if (counter) counter.textContent = '0';
@@ -2147,6 +2422,7 @@ async function loadTrailerReviews(trailerId) {
     const profilesMap = new Map((profiles || []).map(p => [p.id, p]));
 
     list.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     reviews.forEach(rev => {
         const profile = profilesMap.get(rev.renter_id) || { username: 'Locataire', avatar_url: null };
         const card = document.createElement('div');
@@ -2190,8 +2466,9 @@ async function loadTrailerReviews(trailerId) {
             card.appendChild(commentEl);
         }
 
-        list.appendChild(card);
+        fragment.appendChild(card);
     });
+    list.appendChild(fragment);
 }
 
 /**
@@ -2305,44 +2582,46 @@ async function submitReview() {
     const submitBtn = document.getElementById('review-submit-btn');
     if (submitBtn) submitBtn.disabled = true;
 
-    const { error } = await supabaseClient.from('reviews').insert([{
-        trailer_id: currentReviewTrailerId,
-        renter_id: currentUser.id,
-        booking_id: currentReviewBookingId,
-        rating: selectedModalRating,
-        comment: comment || null
-    }]);
+    try {
+        const { error } = await supabaseClient.from('reviews').insert([{
+            trailer_id: currentReviewTrailerId,
+            renter_id: currentUser.id,
+            booking_id: currentReviewBookingId,
+            rating: selectedModalRating,
+            comment: comment || null
+        }]);
 
-    if (submitBtn) submitBtn.disabled = false;
-
-    if (error) {
-        showToast("Erreur lors de la publication : " + error.message, "error");
-        return;
-    }
-
-    showToast("🎉 Merci pour votre évaluation !", "success");
-    const trailerIdToRefresh = currentReviewTrailerId;
-    closeReviewModal();
-
-    // Rafraîchir les données de la remorque et la vue
-    const detailPage = document.getElementById('detail-page');
-    if (detailPage && !detailPage.classList.contains('hidden') && currentTrailer && currentTrailer.id === trailerIdToRefresh) {
-        const { data: updatedTrailer } = await supabaseClient
-            .from('trailers')
-            .select('*')
-            .eq('id', trailerIdToRefresh)
-            .single();
-        if (updatedTrailer) {
-            currentTrailer = updatedTrailer;
-            openTrailerDetail(updatedTrailer);
+        if (error) {
+            showToast("Erreur lors de la publication : " + error.message, "error");
+            return;
         }
-    }
 
-    const profilePage = document.getElementById('profile-page');
-    if (profilePage && !profilePage.classList.contains('hidden')) {
-        loadProfileData();
-    }
+        showToast("🎉 Merci pour votre évaluation !", "success");
+        const trailerIdToRefresh = currentReviewTrailerId;
+        closeReviewModal();
 
-    // Recharger le catalogue en arrière-plan
-    loadTrailers();
+        // Rafraîchir les données de la remorque et la vue
+        const detailPage = document.getElementById('detail-page');
+        if (detailPage && !detailPage.classList.contains('hidden') && currentTrailer && currentTrailer.id === trailerIdToRefresh) {
+            const { data: updatedTrailer } = await supabaseClient
+                .from('trailers')
+                .select('*')
+                .eq('id', trailerIdToRefresh)
+                .single();
+            if (updatedTrailer) {
+                currentTrailer = updatedTrailer;
+                openTrailerDetail(updatedTrailer);
+            }
+        }
+
+        const profilePage = document.getElementById('profile-page');
+        if (profilePage && !profilePage.classList.contains('hidden')) {
+            loadProfileData();
+        }
+
+        // Recharger le catalogue en arrière-plan
+        loadTrailers();
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
 }
