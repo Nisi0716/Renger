@@ -446,10 +446,6 @@
         </form>
     </div>
 
-    <!-- MODULE CAMÉRA -->
-    <div id="inspection-page" class="hidden fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
-        <button onclick="stopCamera(); showPage('detail-page')" data-i18n="cancel" class="absolute top-6 left-6 text-white font-bold text-lg">Annuler</button>
-        <div class="w-full max-w-sm h-[60vh] bg-stone-900 rounded-2xl overflow-hidden relative border-2 border-stone-700 mb-6 flex items-center justify-center">
     <!-- MODULE CAMÉRA GUIDÉE & GHOSTING (ÉTAT DES LIEUX) -->
     <div id="inspection-page" class="hidden fixed inset-0 bg-stone-950 z-50 flex flex-col items-center justify-between p-4 sm:p-6 select-none overflow-hidden">
         <!-- Barre supérieure -->
@@ -595,7 +591,6 @@
             <!-- Effet flash à la capture -->
             <div id="camera-flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-200 z-20"></div>
         </div>
-        <button onclick="takePhoto()" class="w-20 h-20 bg-white rounded-full border-4 border-terracotta-500 shadow-2xl"></button>
 
         <!-- Commandes inférieures -->
         <div class="w-full max-w-md flex flex-col items-center gap-3 flex-shrink-0">
@@ -1011,12 +1006,10 @@
             </div>
 
             <!-- Avertissement anti-contournement -->
-            <div class="mx-6 mt-4 flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-4 py-3 flex gap-3 items-start">
             <div class="mx-6 mt-3 flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-3.5 py-2.5 flex gap-2.5 items-start">
                 <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                 </svg>
-                <p class="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">Les coordonnées personnelles (email, téléphone) sont automatiquement masquées pour votre sécurité et celle du propriétaire.</p>
                 <p class="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">Les coordonnées personnelles (email, téléphone) sont automatiquement masquées pour votre sécurité et celle du propriétaire.</p>
             </div>
 
