@@ -607,24 +607,116 @@ function setFilter(category) {
     loadTrailers(category, '');
 }
 
-function previewImage(event) {
-    const file = event.target.files[0];
-    if (file) {
+// Tableau en mémoire des fichiers photo en attente de publication
+let pendingPhotos = []; // Array de { file: File, dataUrl: string }
+
+/**
+ * Appelée quand l'utilisateur sélectionne des fichiers depuis le picker.
+ * Ajoute les nouveaux fichiers à pendingPhotos[] dans la limite de 10.
+ */
+function handleMultiPhotoSelect(event) {
+    const files = Array.from(event.target.files);
+    const remaining = 10 - pendingPhotos.length;
+
+    if (files.length > remaining) {
+        showToast(`Maximum 10 photos. Vous pouvez encore en ajouter ${remaining}.`, 'error');
+    }
+
+    const toAdd = files.slice(0, remaining);
+    let loaded = 0;
+
+    toAdd.forEach(file => {
+        // Vérification taille (max 5 Mo par photo)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast(`"${file.name}" dépasse 5 Mo et a été ignorée.`, 'error');
+            loaded++;
+            if (loaded === toAdd.length) renderPhotoGrid();
+            return;
+        }
         const reader = new FileReader();
         reader.onload = (e) => {
-            const container = document.getElementById('photo-preview-container');
-            if (container) {
-                container.innerHTML = '';
-                const img = document.createElement('img');
-                // Le dataURL (base64) est assigné via .src, pas injecté dans innerHTML
-                img.src = e.target.result;
-                img.className = 'w-full h-full object-cover rounded-3xl absolute inset-0';
-                img.alt = 'Aperçu de la photo';
-                container.appendChild(img);
-            }
+            pendingPhotos.push({ file, dataUrl: e.target.result });
+            loaded++;
+            if (loaded === toAdd.length) renderPhotoGrid();
         };
         reader.readAsDataURL(file);
+    });
+
+    // Reset l'input pour permettre de sélectionner les mêmes fichiers à nouveau
+    event.target.value = '';
+}
+
+/**
+ * Reconstruit la grille de vignettes avec les photos en attente.
+ */
+function renderPhotoGrid() {
+    const grid = document.getElementById('photo-grid');
+    const badge = document.getElementById('photo-count-badge');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    // Vignettes des photos déjà sélectionnées
+    pendingPhotos.forEach((photo, index) => {
+        const tile = document.createElement('div');
+        tile.className = 'relative aspect-square rounded-2xl overflow-hidden bg-stone-200 dark:bg-stone-700 group';
+
+        const img = document.createElement('img');
+        img.src = photo.dataUrl;
+        img.className = 'w-full h-full object-cover';
+        img.alt = `Photo ${index + 1}`;
+
+        // Bouton supprimer
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'absolute top-1.5 right-1.5 w-7 h-7 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-bold transition opacity-0 group-hover:opacity-100';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => removePhoto(index);
+
+        // Badge "Photo principale" sur la 1ère
+        if (index === 0) {
+            const badge0 = document.createElement('div');
+            badge0.className = 'absolute bottom-1.5 left-1.5 bg-terracotta-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full';
+            badge0.textContent = 'Couverture';
+            tile.appendChild(badge0);
+        }
+
+        tile.appendChild(img);
+        tile.appendChild(removeBtn);
+        grid.appendChild(tile);
+    });
+
+    // Tuile d'ajout (seulement si < 10 photos)
+    if (pendingPhotos.length < 10) {
+        const addTile = document.createElement('button');
+        addTile.type = 'button';
+        addTile.id = 'add-photo-tile';
+        addTile.className = 'aspect-square rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-600 flex flex-col items-center justify-center gap-1 hover:bg-stone-50 dark:hover:bg-stone-700 transition text-stone-400 hover:text-terracotta-500 hover:border-terracotta-400';
+        addTile.onclick = () => document.getElementById('file-upload').click();
+        addTile.innerHTML = `
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span class="text-xs font-semibold">Ajouter</span>
+        `;
+        grid.appendChild(addTile);
     }
+
+    // Mise à jour du compteur
+    if (badge) {
+        badge.textContent = `${pendingPhotos.length} / 10`;
+        badge.className = pendingPhotos.length > 0
+            ? 'text-xs font-bold text-terracotta-600 bg-terracotta-50 dark:bg-stone-700 px-3 py-1 rounded-full'
+            : 'text-xs font-bold text-stone-400 bg-stone-100 dark:bg-stone-700 px-3 py-1 rounded-full';
+    }
+}
+
+/**
+ * Retire une photo de pendingPhotos[] par son index et re-render la grille.
+ */
+function removePhoto(index) {
+    pendingPhotos.splice(index, 1);
+    renderPhotoGrid();
 }
 
 async function handlePublish(event) {
@@ -635,20 +727,38 @@ async function handlePublish(event) {
         return;
     }
 
-    const fileInput = document.getElementById('file-upload');
-    const file = fileInput ? fileInput.files[0] : null;
-    let finalImageUrl = "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
+    const PLACEHOLDER = "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
+    let imageUrls = [];
 
-    if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabaseClient.storage.from('trailers-images').upload(fileName, file);
-        if (uploadError) return showToast("Erreur photo : " + uploadError.message, "error");
-        
-        const { data: publicUrlData } = supabaseClient.storage.from('trailers-images').getPublicUrl(fileName);
-        finalImageUrl = publicUrlData.publicUrl;
+    if (pendingPhotos.length === 0) {
+        showToast("Ajoutez au moins une photo pour publier votre annonce.", "error");
+        return;
     }
-    
+
+    showToast("Upload des photos en cours…", "info");
+
+    // Upload séquentiel de toutes les photos dans le bucket trailers-images
+    for (let i = 0; i < pendingPhotos.length; i++) {
+        const { file } = pendingPhotos[i];
+        const fileExt = file.name.split('.').pop().toLowerCase();
+        const fileName = `${currentUser.id}/${Date.now()}_${i}.${fileExt}`;
+
+        const { error: uploadError } = await supabaseClient.storage
+            .from('trailers-images')
+            .upload(fileName, file, { upsert: false });
+
+        if (uploadError) {
+            showToast(`Erreur upload photo ${i + 1} : ${uploadError.message}`, "error");
+            return;
+        }
+
+        const { data: urlData } = supabaseClient.storage
+            .from('trailers-images')
+            .getPublicUrl(fileName);
+
+        imageUrls.push(urlData.publicUrl);
+    }
+
     // Récupération des équipements
     const equipmentCheckboxes = document.querySelectorAll('input[name="equipments"]:checked');
     const equipments = Array.from(equipmentCheckboxes).map(cb => cb.value);
@@ -660,7 +770,7 @@ async function handlePublish(event) {
     // Récupération de la catégorie (type de remorque)
     const categoryInput = document.querySelector('input[name="category"]:checked');
     const category = categoryInput ? categoryInput.value : 'utilitaire';
-    
+
     const newTrailer = {
         title: document.getElementById('ad-title').value,
         description: document.getElementById('ad-desc').value,
@@ -668,28 +778,22 @@ async function handlePublish(event) {
         payload: parseInt(document.getElementById('ad-payload').value),
         socket: document.querySelector('input[name="prise"]:checked').value,
         owner_id: currentUser.id,
-        image_url: finalImageUrl,
+        image_url: imageUrls[0] || PLACEHOLDER,  // Photo de couverture (rétrocompatibilité)
+        images: imageUrls,                         // Toutes les photos (nouveau champ)
         equipments: equipments,
         upsells: upsells,
-        category: category  // Lié aux filtres de la page catalogue
+        category: category
     };
 
-    
     const { error } = await supabaseClient.from('trailers').insert([newTrailer]);
-    if (error) showToast("Erreur BDD : " + error.message, "error");
-    else {
-        showToast("Annonce sauvegardée !", "success");
+    if (error) {
+        showToast("Erreur BDD : " + error.message, "error");
+    } else {
+        showToast("✅ Annonce publiée !", "success");
         document.getElementById('add-trailer-form').reset();
-        
-        // Reset preview
-        const container = document.getElementById('photo-preview-container');
-        if(container) {
-            container.innerHTML = `
-                <span class="text-5xl mb-4">📸</span>
-                <span class="font-bold text-stone-700 dark:text-stone-300">Cliquez pour ajouter une photo</span>
-            `;
-        }
-
+        // Reset photos
+        pendingPhotos = [];
+        renderPhotoGrid();
         showPage('buyer-page');
         loadTrailers();
     }
@@ -707,8 +811,13 @@ async function openTrailerDetail(trailer) {
     document.getElementById('detail-price').innerText = trailer.price;
     document.getElementById('detail-socket').innerText = trailer.socket;
     document.getElementById('detail-payload').innerText = trailer.payload + " kg";
-    document.getElementById('detail-img').src = trailer.image_url || "https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop";
-    
+
+    // Initialisation du carousel (1 ou plusieurs photos)
+    const photos = (trailer.images && trailer.images.length > 0)
+        ? trailer.images
+        : [trailer.image_url || "https://images.unsplash.com/photo-1594054972175-39db43232140?q=80&w=600&auto=format&fit=crop"];
+    initDetailCarousel(photos);
+
     // On affiche la description de la BDD, ou un texte par défaut si elle est vide
     const defaultDesc = translations[localStorage.getItem('renger_lang') || 'fr'].detail_desc;
     document.getElementById('detail-desc').innerText = trailer.description || defaultDesc;
