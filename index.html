@@ -324,24 +324,80 @@
             </div>
 
             <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
-                <div class="mb-4">
+                <div class="mb-5">
                     <label data-i18n="form_title" class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Titre de l'annonce</label>
                     <input type="text" id="ad-title" placeholder="Ex: Van à chevaux 2 places" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition" required>
                 </div>
-                <!-- CORRECTION : Ajout du champ Description -->
-                <div class="mb-4">
-                    <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Description</label>
-                    <textarea id="ad-desc" placeholder="Décrivez votre remorque, son état, ses particularités..." class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition h-32 resize-none" required></textarea>
-                </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                    <!-- Champ Prix avec Moteur Smart Pricing -->
                     <div>
-                        <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2" data-i18n="price_label">Prix / Jour (CHF)</label>
-                        <input type="number" id="ad-price" placeholder="70" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-lg focus:border-terracotta-500 focus:outline-none transition" required>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300" data-i18n="price_label">Prix / Jour (CHF)</label>
+                            <span id="price-suggested-tag" class="text-[11px] font-bold text-terracotta-600 dark:text-terracotta-400 bg-terracotta-50 dark:bg-stone-700/60 px-2 py-0.5 rounded-full cursor-pointer hover:underline transition" onclick="applySuggestedPrice()" title="Cliquer pour appliquer le prix optimal">Conseillé : 50 CHF</span>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="ad-price" placeholder="50" min="5" max="999" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-lg focus:border-terracotta-500 focus:outline-none transition pr-12" required>
+                            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm pointer-events-none">CHF</span>
+                        </div>
+
+                        <!-- JAUGE VISUELLE SMART PRICING -->
+                        <div id="smart-pricing-widget" class="mt-2.5 space-y-2">
+                            <!-- Barre segmentée -->
+                            <div class="h-2 w-full bg-stone-100 dark:bg-stone-700/60 rounded-full overflow-hidden flex gap-1 p-0.5 border border-stone-200/50 dark:border-stone-600/50">
+                                <div id="gauge-low" class="h-full w-1/4 rounded-l-full bg-stone-200 dark:bg-stone-700 transition-all duration-300" title="Prix économique"></div>
+                                <div id="gauge-optimal" class="h-full w-2/4 bg-stone-200 dark:bg-stone-700 transition-all duration-300" title="Zone optimale (3x plus de demandes)"></div>
+                                <div id="gauge-high" class="h-full w-1/4 rounded-r-full bg-stone-200 dark:bg-stone-700 transition-all duration-300" title="Prix supérieur"></div>
+                            </div>
+                            <!-- Message d'aide et statut dynamique -->
+                            <div id="pricing-feedback-box" class="p-2.5 rounded-xl text-xs flex items-start gap-2 bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-700 transition-all duration-200">
+                                <span id="pricing-feedback-icon" class="text-sm flex-shrink-0 mt-0.5">💡</span>
+                                <div class="flex-1">
+                                    <p id="pricing-feedback-text" class="text-stone-600 dark:text-stone-300 font-medium leading-snug">
+                                        Indiquez votre prix. La fourchette recommandée s'adapte en temps réel à votre remorque.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Champ Charge Utile avec Pédagogie Permis directe -->
                     <div>
                         <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2" data-i18n="payload_input">Charge Utile (kg)</label>
-                        <input type="number" id="ad-payload" placeholder="500" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-lg focus:border-terracotta-500 focus:outline-none transition" required>
+                        <div class="relative">
+                            <input type="number" id="ad-payload" placeholder="500" min="50" max="3500" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-lg focus:border-terracotta-500 focus:outline-none transition pr-12" required>
+                            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm pointer-events-none">kg</span>
+                        </div>
+                        
+                        <!-- Indicateur de permis en temps réel selon la charge -->
+                        <div id="payload-permit-indicator" class="mt-2.5 p-2.5 rounded-xl text-xs flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 transition-all">
+                            <span id="permit-icon" class="text-base flex-shrink-0">🚗</span>
+                            <span id="permit-label" class="font-bold">Permis B suffisant</span>
+                            <span id="permit-sublabel" class="text-[10px] text-emerald-600 dark:text-emerald-400 ml-auto font-medium">(Charge ≤ 750 kg)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GÉNÉRATEUR AUTOMATIQUE DE DESCRIPTION -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">Description de l'annonce</label>
+                            <span class="text-[11px] text-stone-400 dark:text-stone-500 hidden sm:inline">• Automatique & personnalisable</span>
+                        </div>
+                        <button type="button" onclick="generateAutoDescription(true)" class="text-xs font-bold text-terracotta-600 dark:text-terracotta-400 hover:text-terracotta-700 flex items-center gap-1.5 py-1 px-3 rounded-lg bg-terracotta-50 dark:bg-stone-700 hover:bg-terracotta-100 dark:hover:bg-stone-600 transition shadow-xs active:scale-95 cursor-pointer">
+                            <span>✨ Générer la description</span>
+                        </button>
+                    </div>
+                    <textarea id="ad-desc" placeholder="Décrivez votre remorque ou cliquez sur 'Générer la description' pour assembler automatiquement un texte complet..." class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3.5 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition h-36 resize-y text-sm leading-relaxed" required></textarea>
+                    
+                    <!-- Pédagogie Légale sous la description -->
+                    <div id="desc-legal-footer" class="mt-2 flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1">
+                        <span class="flex items-center gap-1.5">
+                            <span>⚖️</span>
+                            <span id="desc-legal-mention">Mention légale incluse : <strong class="text-emerald-600 dark:text-emerald-400 font-bold">Permis B suffisant</strong></span>
+                        </span>
+                        <span class="text-[11px] text-stone-400">Réglementation suisse LCR / OAC</span>
                     </div>
                 </div>
             </div>
@@ -351,13 +407,13 @@
                 <div class="grid grid-cols-2 gap-3">
                     <label class="cursor-pointer relative">
                         <input type="radio" name="prise" value="7 broches" class="peer sr-only" required checked>
-                        <div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-4 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-4 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
                             <span class="block font-bold mb-1">7 broches</span>
                         </div>
                     </label>
                     <label class="cursor-pointer relative">
                         <input type="radio" name="prise" value="13 broches" class="peer sr-only">
-                        <div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-4 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-4 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
                             <span class="block font-bold mb-1">13 broches</span>
                         </div>
                     </label>
@@ -417,10 +473,10 @@
             <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
                 <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3" data-i18n="equip_label">Équipements inclus</label>
                 <div class="grid grid-cols-2 gap-3">
-                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="sangles" class="peer sr-only"><div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">🔗 Sangles</div></label>
-                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="bache" class="peer sr-only"><div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⛺ Bâche</div></label>
-                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="treuil" class="peer sr-only"><div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⚙️ Treuil</div></label>
-                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="rames" class="peer sr-only"><div class="rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⚓ Rames</div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="sangles" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">🔗 Sangles</div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="bache" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⛺ Bâche</div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="treuil" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⚙️ Treuil</div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="rames" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⚓ Rames</div></label>
                 </div>
             </div>
 

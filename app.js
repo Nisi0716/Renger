@@ -179,6 +179,10 @@ function showPage(pageId) {
         startCamera(); 
     }
 
+    if (pageId === 'seller-page' && typeof initSellerPageDynamicTools === 'function') {
+        initSellerPageDynamicTools();
+    }
+
     // Synchronisation de l'onglet actif dans la navigation mobile
     updateMobileNavState(pageId);
 }
@@ -850,6 +854,395 @@ function removePhoto(index) {
     renderPhotoGrid();
 }
 
+// ==========================================
+// OUTILS DYNAMIQUES DE VENTE (SMART PRICING & GÉNÉRATEUR)
+// ==========================================
+
+let hasUserEditedDescription = false;
+let sellerDynamicToolsInitialized = false;
+
+/**
+ * Calcule la fourchette de prix optimale recommandée (en CHF)
+ * selon la catégorie et la charge utile de la remorque.
+ */
+function getSmartPricingRange() {
+    const category = document.querySelector('input[name="category"]:checked')?.value || 'utilitaire';
+    const payload = parseInt(document.getElementById('ad-payload')?.value, 10) || 500;
+    
+    let minOptimal = 40;
+    let maxOptimal = 60;
+    let suggested = 50;
+
+    switch (category) {
+        case 'cheval':
+            minOptimal = 110;
+            maxOptimal = 160;
+            suggested = 135;
+            break;
+        case 'voiture':
+            minOptimal = 90;
+            maxOptimal = 140;
+            suggested = 115;
+            break;
+        case 'refrigere':
+            minOptimal = 100;
+            maxOptimal = 160;
+            suggested = 130;
+            break;
+        case 'moto':
+            minOptimal = 45;
+            maxOptimal = 70;
+            suggested = 55;
+            break;
+        case 'porte-velo':
+            minOptimal = 30;
+            maxOptimal = 50;
+            suggested = 40;
+            break;
+        case 'utilitaire':
+        default:
+            if (payload <= 500) {
+                minOptimal = 35;
+                maxOptimal = 50;
+                suggested = 40;
+            } else if (payload <= 750) {
+                minOptimal = 45;
+                maxOptimal = 65;
+                suggested = 50;
+            } else if (payload <= 1300) {
+                minOptimal = 60;
+                maxOptimal = 85;
+                suggested = 70;
+            } else {
+                minOptimal = 75;
+                maxOptimal = 110;
+                suggested = 85;
+            }
+            break;
+    }
+
+    return { minOptimal, maxOptimal, suggested, category, payload };
+}
+
+/**
+ * Met à jour dynamiquement la jauge visuelle à 3 segments et les conseils de prix.
+ */
+function updateSmartPricingFeedback() {
+    const priceInput = document.getElementById('ad-price');
+    const tag = document.getElementById('price-suggested-tag');
+    const gaugeLow = document.getElementById('gauge-low');
+    const gaugeOpt = document.getElementById('gauge-optimal');
+    const gaugeHigh = document.getElementById('gauge-high');
+    const box = document.getElementById('pricing-feedback-box');
+    const icon = document.getElementById('pricing-feedback-icon');
+    const text = document.getElementById('pricing-feedback-text');
+
+    if (!gaugeLow || !gaugeOpt || !gaugeHigh || !box || !text) return;
+
+    const range = getSmartPricingRange();
+    if (tag) {
+        tag.textContent = `Conseillé : ${range.suggested} CHF`;
+    }
+
+    const rawVal = priceInput?.value;
+    const price = parseInt(rawVal, 10);
+
+    const lowBase = "h-full w-1/4 rounded-l-full transition-all duration-300";
+    const optBase = "h-full w-2/4 transition-all duration-300";
+    const highBase = "h-full w-1/4 rounded-r-full transition-all duration-300";
+
+    if (isNaN(price) || price <= 0 || !rawVal) {
+        // État neutre par défaut
+        gaugeLow.className = `${lowBase} bg-stone-200 dark:bg-stone-700`;
+        gaugeOpt.className = `${optBase} bg-stone-200 dark:bg-stone-700`;
+        gaugeHigh.className = `${highBase} bg-stone-200 dark:bg-stone-700`;
+        box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-700 transition-all duration-200 text-stone-600 dark:text-stone-300";
+        if (icon) icon.textContent = "💡";
+        text.innerHTML = `Fourchette recommandée : <strong class="font-bold text-stone-800 dark:text-white">${range.minOptimal} à ${range.maxOptimal} CHF / jour</strong> (optimal : <strong class="text-terracotta-600 dark:text-terracotta-400 font-bold">${range.suggested} CHF</strong>).`;
+        return;
+    }
+
+    if (price < range.minOptimal) {
+        // Prix en-dessous : Zone économique attractive
+        gaugeLow.className = `${lowBase} bg-amber-400 dark:bg-amber-500 shadow-xs`;
+        gaugeOpt.className = `${optBase} bg-stone-200 dark:bg-stone-700`;
+        gaugeHigh.className = `${highBase} bg-stone-200 dark:bg-stone-700`;
+        box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 transition-all duration-200";
+        if (icon) icon.textContent = "📉";
+        text.innerHTML = `<strong>Prix attractif (${price} CHF) :</strong> Vous trouverez preneur très vite ! Vous pourriez monter jusqu'à <strong>${range.minOptimal}-${range.maxOptimal} CHF</strong> pour maximiser vos gains.`;
+    } else if (price <= range.maxOptimal) {
+        // Zone optimale : VERT
+        gaugeLow.className = `${lowBase} bg-stone-200 dark:bg-stone-700`;
+        gaugeOpt.className = `${optBase} bg-emerald-500 shadow-sm animate-pulse`;
+        gaugeHigh.className = `${highBase} bg-stone-200 dark:bg-stone-700`;
+        box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-200 transition-all duration-200";
+        if (icon) icon.textContent = "🎯";
+        text.innerHTML = `<strong>Prix optimal (${price} CHF) !</strong> Les annonces dans la zone verte reçoivent <strong>3x plus de demandes</strong> et maximisent votre rentabilité.`;
+    } else if (price <= range.maxOptimal * 1.35) {
+        // Au-dessus : ORANGE
+        gaugeLow.className = `${lowBase} bg-stone-200 dark:bg-stone-700`;
+        gaugeOpt.className = `${optBase} bg-stone-200 dark:bg-stone-700`;
+        gaugeHigh.className = `${highBase} bg-orange-400 dark:bg-orange-500 shadow-xs`;
+        box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 text-orange-900 dark:text-orange-200 transition-all duration-200";
+        if (icon) icon.textContent = "⚠️";
+        text.innerHTML = `<strong>Prix supérieur à la moyenne (${price} CHF) :</strong> Cela peut freiner les demandes. Une fourchette entre <strong>${range.minOptimal} et ${range.maxOptimal} CHF</strong> favorise une location rapide.`;
+    } else {
+        // Très au-dessus : ROUGE
+        gaugeLow.className = `${lowBase} bg-stone-200 dark:bg-stone-700`;
+        gaugeOpt.className = `${optBase} bg-stone-200 dark:bg-stone-700`;
+        gaugeHigh.className = `${highBase} bg-rose-500 dark:bg-rose-600 shadow-xs`;
+        box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-rose-900 dark:text-rose-200 transition-all duration-200";
+        if (icon) icon.textContent = "🛑";
+        text.innerHTML = `<strong>Prix très élevé (${price} CHF) :</strong> Risque important de peu ou pas de demandes. Un tarif conseillé se situe autour de <strong>${range.suggested} CHF / jour</strong>.`;
+    }
+}
+
+/**
+ * Applique directement le prix conseillé dans le champ de saisie
+ */
+function applySuggestedPrice() {
+    const range = getSmartPricingRange();
+    const priceInput = document.getElementById('ad-price');
+    if (priceInput) {
+        priceInput.value = range.suggested;
+        updateSmartPricingFeedback();
+    }
+}
+
+/**
+ * Pédagogie Légale (Réglementation suisse LCR / OAC)
+ * Détermine si le permis B est suffisant ou si le permis BE est requis
+ * selon la charge utile et le type d'équipement.
+ */
+function updateLegalPermitBadge() {
+    const payload = parseInt(document.getElementById('ad-payload')?.value, 10) || 0;
+    const category = document.querySelector('input[name="category"]:checked')?.value || 'utilitaire';
+    
+    const indicator = document.getElementById('payload-permit-indicator');
+    const icon = document.getElementById('permit-icon');
+    const label = document.getElementById('permit-label');
+    const sublabel = document.getElementById('permit-sublabel');
+    const descLegalMention = document.getElementById('desc-legal-mention');
+
+    // Règle LCR / OAC suisse :
+    // PTAC / charge utile > 750 kg OU remorque lourde spécifique (van à chevaux, porte-voiture) => Permis BE requis
+    const isHeavy = (payload > 750) || category === 'cheval' || category === 'voiture';
+
+    if (indicator && label) {
+        if (isHeavy) {
+            indicator.className = "mt-2.5 p-2.5 rounded-xl text-xs flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 transition-all";
+            if (icon) icon.textContent = "🪪";
+            label.textContent = "Permis BE requis";
+            if (sublabel) {
+                sublabel.className = "text-[10px] text-amber-600 dark:text-amber-400 ml-auto font-medium";
+                sublabel.textContent = (category === 'cheval' || category === 'voiture')
+                    ? "(Équipement lourd > 750 kg)"
+                    : "(Charge > 750 kg • Remorque lourde)";
+            }
+        } else {
+            indicator.className = "mt-2.5 p-2.5 rounded-xl text-xs flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 transition-all";
+            if (icon) icon.textContent = "🚗";
+            label.textContent = "Permis B suffisant";
+            if (sublabel) {
+                sublabel.className = "text-[10px] text-emerald-600 dark:text-emerald-400 ml-auto font-medium";
+                sublabel.textContent = "(Charge ≤ 750 kg • Tout conducteur)";
+            }
+        }
+    }
+
+    if (descLegalMention) {
+        if (isHeavy) {
+            descLegalMention.innerHTML = `Mention légale requise : <strong class="text-amber-600 dark:text-amber-400 font-bold">Permis BE requis</strong>`;
+        } else {
+            descLegalMention.innerHTML = `Mention légale incluse : <strong class="text-emerald-600 dark:text-emerald-400 font-bold">Permis B suffisant</strong>`;
+        }
+    }
+}
+
+/**
+ * Générateur de description automatique et pédagogie légale intégrée
+ */
+function generateAutoDescription(force = false) {
+    const descTextarea = document.getElementById('ad-desc');
+    if (!descTextarea) return;
+
+    if (!force && hasUserEditedDescription && descTextarea.value.trim() !== '') {
+        return;
+    }
+
+    const title = (document.getElementById('ad-title')?.value || '').trim();
+    const category = document.querySelector('input[name="category"]:checked')?.value || 'utilitaire';
+    const payload = parseInt(document.getElementById('ad-payload')?.value, 10);
+    const prise = document.querySelector('input[name="prise"]:checked')?.value || '7 broches';
+    
+    const equipmentCheckboxes = document.querySelectorAll('input[name="equipments"]:checked');
+    const equipments = Array.from(equipmentCheckboxes).map(cb => cb.value);
+
+    const upsellCheckboxes = document.querySelectorAll('input[name="upsell"]:checked');
+    const upsells = Array.from(upsellCheckboxes).map(cb => cb.value);
+
+    // 1. Phrasing catégorie & introduction
+    const categoryNames = {
+        'utilitaire': 'remorque utilitaire polyvalente',
+        'cheval': 'van à chevaux spacieux et sécurisé',
+        'voiture': 'remorque porte-voiture robuste',
+        'moto': 'remorque porte-moto équipée',
+        'refrigere': 'remorque frigorifique sous température dirigée',
+        'porte-velo': 'remorque bagagère / porte-vélo pratique'
+    };
+    const catLabel = categoryNames[category] || 'remorque';
+
+    let intro = title ? `${title}.` : `À louer : superbe ${catLabel}, propre et parfaitement entretenue.`;
+
+    // 2. Charge utile
+    let payloadSentence = '';
+    if (payload && !isNaN(payload) && payload > 0) {
+        payloadSentence = `Cette remorque offre une charge utile de ${payload} kg, idéale pour vos transports et déménagements.`;
+    } else {
+        payloadSentence = `Idéale pour vos transports, déménagements et trajets en toute sérénité.`;
+    }
+
+    // 3. Prise électrique
+    let socketSentence = prise === '13 broches'
+        ? "Équipée d'une prise électrique 13 broches (feux de recul et alimentation permanente inclus)."
+        : "Équipée d'une prise électrique standard 7 broches compatible avec tous les véhicules légers.";
+
+    // 4. Équipements inclus
+    const equipLabels = {
+        'sangles': "sangles d'arrimage professionnelles",
+        'bache': "bâche de protection étanche",
+        'treuil': "treuil mécanique renforcé",
+        'rames': "rampes de chargement aluminium"
+    };
+    let equipSentence = '';
+    if (equipments.length > 0) {
+        const readableEquips = equipments.map(e => equipLabels[e] || e);
+        if (readableEquips.length === 1) {
+            equipSentence = `Équipement inclus sans supplément : ${readableEquips[0]}.`;
+        } else {
+            const last = readableEquips.pop();
+            equipSentence = `Équipements inclus sans supplément : ${readableEquips.join(', ')} et ${last}.`;
+        }
+    } else {
+        equipSentence = "Matériel révisé régulièrement et prêt à prendre la route immédiatement.";
+    }
+
+    // 5. Options facultatives (upsells)
+    const upsellLabels = {
+        'diable': 'diable de manutention',
+        'sangles-pro': 'kit sangles à cliquet pro',
+        'antivol': 'antivol de timon haute sécurité',
+        'adaptateur': 'adaptateur 7/13 broches'
+    };
+    let upsellSentence = '';
+    if (upsells.length > 0) {
+        const readableUpsells = upsells.map(u => upsellLabels[u] || u);
+        upsellSentence = `Options disponibles sur demande : ${readableUpsells.join(', ')}.`;
+    }
+
+    // 6. Mention Légale Suisse (LCR / OAC)
+    const isHeavy = (payload && payload > 750) || category === 'cheval' || category === 'voiture';
+    const legalNotice = isHeavy
+        ? "⚖️ Réglementation suisse : **Permis BE requis** pour tracter cette remorque (charge utile > 750 kg ou véhicule spécialisé)."
+        : "⚖️ Réglementation suisse : **Permis B suffisant** pour tracter cette remorque avec tout véhicule de tourisme (charge utile ≤ 750 kg).";
+
+    // Assemblage final fluide
+    const paragraphs = [
+        intro,
+        [payloadSentence, socketSentence, equipSentence, upsellSentence].filter(Boolean).join(' '),
+        legalNotice
+    ];
+
+    descTextarea.value = paragraphs.join('\n\n');
+
+    if (force) {
+        hasUserEditedDescription = false;
+        if (typeof showToast === 'function') {
+            showToast("✨ Description automatique générée !", "info");
+        }
+    }
+}
+
+/**
+ * Initialise tous les écouteurs d'événements dynamiques du formulaire vendeur.
+ */
+function initSellerPageDynamicTools() {
+    const priceInput = document.getElementById('ad-price');
+    const payloadInput = document.getElementById('ad-payload');
+    const titleInput = document.getElementById('ad-title');
+    const descInput = document.getElementById('ad-desc');
+
+    if (!priceInput || !payloadInput) return;
+
+    // Mise à jour immédiate de la jauge et du permis
+    updateSmartPricingFeedback();
+    updateLegalPermitBadge();
+
+    // Si la description est vide, pré-remplir automatiquement
+    if (descInput && (!descInput.value || descInput.value.trim() === '')) {
+        generateAutoDescription(false);
+    }
+
+    if (sellerDynamicToolsInitialized) return;
+    sellerDynamicToolsInitialized = true;
+
+    // Écouteurs sur le prix
+    priceInput.addEventListener('input', () => {
+        updateSmartPricingFeedback();
+    });
+
+    // Écouteurs sur la charge utile
+    payloadInput.addEventListener('input', () => {
+        updateSmartPricingFeedback();
+        updateLegalPermitBadge();
+        generateAutoDescription(false);
+    });
+
+    // Écouteurs sur le titre
+    if (titleInput) {
+        titleInput.addEventListener('input', () => {
+            generateAutoDescription(false);
+        });
+    }
+
+    // Détection de modification manuelle de la description
+    if (descInput) {
+        descInput.addEventListener('input', () => {
+            hasUserEditedDescription = true;
+        });
+    }
+
+    // Écouteurs sur les catégories (radio)
+    document.querySelectorAll('input[name="category"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            updateSmartPricingFeedback();
+            updateLegalPermitBadge();
+            generateAutoDescription(false);
+        });
+    });
+
+    // Écouteurs sur la prise électrique (radio)
+    document.querySelectorAll('input[name="prise"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            generateAutoDescription(false);
+        });
+    });
+
+    // Écouteurs sur les équipements (checkbox)
+    document.querySelectorAll('input[name="equipments"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            generateAutoDescription(false);
+        });
+    });
+
+    // Écouteurs sur les upsells (checkbox)
+    document.querySelectorAll('input[name="upsell"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            generateAutoDescription(false);
+        });
+    });
+}
+
 async function handlePublish(event) {
     event.preventDefault();
     if (!currentUser) {
@@ -913,9 +1306,18 @@ async function handlePublish(event) {
         const priceVal = parseInt(document.getElementById('ad-price').value, 10);
         const payloadVal = parseInt(document.getElementById('ad-payload').value, 10);
 
+        let finalDesc = (document.getElementById('ad-desc')?.value || '').trim();
+        const isHeavy = (payloadVal > 750) || category === 'cheval' || category === 'voiture';
+        const permitMention = isHeavy ? "**Permis BE requis**" : "**Permis B suffisant**";
+
+        // Garantie légale suisse (LCR / OAC) : la mention doit impérativement figurer dans l'annonce
+        if (!finalDesc.includes("Permis B suffisant") && !finalDesc.includes("Permis BE requis")) {
+            finalDesc += `\n\n⚖️ Réglementation suisse : ${permitMention}`;
+        }
+
         const newTrailer = {
             title: (document.getElementById('ad-title')?.value || '').trim(),
-            description: (document.getElementById('ad-desc')?.value || '').trim(),
+            description: finalDesc,
             price: isNaN(priceVal) || priceVal < 0 ? 0 : priceVal,
             payload: isNaN(payloadVal) || payloadVal < 0 ? 0 : payloadVal,
             socket: document.querySelector('input[name="prise"]:checked')?.value || '7 broches',
@@ -933,6 +1335,9 @@ async function handlePublish(event) {
         } else {
             showToast("✅ Annonce publiée !", "success");
             document.getElementById('add-trailer-form').reset();
+            hasUserEditedDescription = false;
+            updateSmartPricingFeedback();
+            updateLegalPermitBadge();
             // Nettoyage des Blob URLs
             pendingPhotos.forEach(p => {
                 if (p.objectUrl) URL.revokeObjectURL(p.objectUrl);
@@ -2333,6 +2738,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadTrailers();
     await checkPaymentStatus();
     await checkStripeConnectStatus();
+    if (typeof initSellerPageDynamicTools === 'function') {
+        initSellerPageDynamicTools();
+    }
 
     // Routing : si l'URL contient ?user=username, ouvrir le profil public
     const urlParams = new URLSearchParams(window.location.search);
