@@ -8,7 +8,7 @@
     
     <!-- Sécurité : Politique de Sécurité du Contenu (CSP) & Contrôle de Référant -->
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'self';">
     
     <!-- Moteur du calendrier professionnel (Flatpickr) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -543,6 +543,27 @@
                 </div>
             </div>
 
+            <!-- Sélection Mode Standard / Mode PRO -->
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">Choisissez votre modèle de monétisation</label>
+                <div class="space-y-3">
+                    <label class="flex items-start gap-3 p-4 border border-stone-200 dark:border-stone-700 rounded-xl cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-900 transition">
+                        <input type="radio" name="monetization_mode" value="standard" class="mt-1 w-5 h-5 text-terracotta-500 rounded-full" checked>
+                        <div>
+                            <span class="block font-bold text-stone-800 dark:text-white">Mode Standard</span>
+                            <span class="block text-sm text-stone-500 dark:text-stone-400">Je cède 20% de mes gains à la plateforme (gratuit)</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-3 p-4 border border-terracotta-200 dark:border-terracotta-900/50 bg-terracotta-50/50 dark:bg-terracotta-900/10 rounded-xl cursor-pointer hover:bg-terracotta-50 dark:hover:bg-terracotta-900/20 transition relative overflow-hidden">
+                        <input type="radio" name="monetization_mode" value="pro" class="mt-1 w-5 h-5 text-terracotta-500 rounded-full">
+                        <div>
+                            <span class="block font-bold text-terracotta-700 dark:text-terracotta-400">Mode PRO 👑</span>
+                            <span class="block text-sm text-stone-600 dark:text-stone-300">Je garde 100% de mes revenus (39 CHF/mois)</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             <button type="submit" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-xl mt-4 shadow-lg flex flex-col items-center justify-center transition active:scale-95">
                 <span data-i18n="form_submit">Publier et lier mon compte bancaire</span>
             </button>
@@ -853,6 +874,17 @@
         </div>
 
         <div id="profile-seller-section" class="hidden">
+            <!-- Bannière Renger PRO -->
+            <div id="pro-banner-container" class="mb-6 bg-gradient-to-r from-stone-900 to-terracotta-900 rounded-3xl p-6 text-white shadow-lg border border-terracotta-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 hidden">
+                <div>
+                    <h3 class="text-xl font-bold flex items-center gap-2"><span>👑</span> Renger PRO</h3>
+                    <p class="text-sm text-stone-300 mt-1">Vous avez payé <span id="lost-commission-amount" class="font-bold text-terracotta-300">0 CHF</span> de commission depuis votre inscription. Avec Renger PRO, conservez 100% de vos gains pour seulement 39 CHF/mois.</p>
+                </div>
+                <button onclick="handleSubscribePro()" class="flex-shrink-0 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 px-6 rounded-xl shadow-md transition active:scale-95 whitespace-nowrap">
+                    Passer PRO
+                </button>
+            </div>
+
             <div class="bg-stone-900 rounded-3xl p-8 text-white mb-10 flex justify-between items-center shadow-lg">
                 <div>
                     <p class="text-stone-400 font-medium mb-1">Revenus nets générés ce mois-ci</p>
@@ -1420,6 +1452,42 @@
                 <button onclick="submitReview()" id="review-submit-btn"
                     class="w-full bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-bold py-3.5 rounded-2xl shadow-lg transition">
                     Publier mon évaluation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE BOOST D'ANNONCE -->
+    <div id="boost-modal" class="hidden fixed inset-0 bg-stone-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-stone-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-stone-200 dark:border-stone-800 flex justify-between items-start">
+                <div>
+                    <h3 class="font-bold text-stone-900 dark:text-white text-xl flex items-center gap-2"><span>🚀</span> Booster l'annonce</h3>
+                    <p id="boost-modal-pitch" class="text-sm text-stone-500 dark:text-stone-400 mt-2">Apparaissez en tête des recherches à <span id="boost-modal-city" class="font-bold text-terracotta-500">[VILLE]</span> et multipliez vos demandes de location par 3.</p>
+                </div>
+                <button onclick="closeBoostModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700 transition font-bold">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <label class="flex items-start justify-between p-4 border border-stone-200 dark:border-stone-700 rounded-2xl cursor-pointer hover:border-terracotta-300 dark:hover:border-terracotta-700 transition group relative">
+                    <input type="radio" name="boost_plan" value="weekend" class="mt-1 w-5 h-5 text-terracotta-500" checked>
+                    <div class="flex-1 ml-3">
+                        <span class="block font-bold text-stone-900 dark:text-white">Boost Week-end</span>
+                        <span class="block text-sm text-stone-500 dark:text-stone-400">Visibilité max vendredi au dimanche</span>
+                    </div>
+                    <span class="font-bold text-terracotta-600 dark:text-terracotta-400">5.90 CHF</span>
+                </label>
+                <label class="flex items-start justify-between p-4 border border-terracotta-200 dark:border-terracotta-900/50 bg-terracotta-50/50 dark:bg-terracotta-900/10 rounded-2xl cursor-pointer hover:border-terracotta-400 transition group relative">
+                    <div class="absolute -top-3 left-4 bg-terracotta-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">Populaire</div>
+                    <input type="radio" name="boost_plan" value="week" class="mt-1 w-5 h-5 text-terracotta-500">
+                    <div class="flex-1 ml-3">
+                        <span class="block font-bold text-stone-900 dark:text-white">Boost 7 Jours</span>
+                        <span class="block text-sm text-stone-500 dark:text-stone-400">Tête de liste pendant une semaine</span>
+                    </div>
+                    <span class="font-bold text-terracotta-600 dark:text-terracotta-400">9.90 CHF</span>
+                </label>
+                
+                <button onclick="handlePurchaseBoost()" id="purchase-boost-btn" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-xl mt-2 shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
+                    Payer et Booster 🚀
                 </button>
             </div>
         </div>

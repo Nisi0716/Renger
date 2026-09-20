@@ -1365,6 +1365,13 @@ async function handlePublish(event) {
         if (error) {
             showToast("Erreur BDD : " + error.message, "error");
         } else {
+            const modeElement = document.querySelector('input[name="monetization_mode"]:checked');
+            if (modeElement && modeElement.value === 'pro') {
+                showToast("✅ Annonce publiée ! Redirection vers Renger PRO...", "success");
+                await handleSubscribePro();
+                return; // On arrête l'exécution pour la redirection
+            }
+
             showToast("✅ Annonce publiée !", "success");
             document.getElementById('add-trailer-form').reset();
             hasUserEditedDescription = false;
@@ -2637,20 +2644,44 @@ async function loadProfileData() {
     // 2. SECTION PROPRIÉTAIRE (Flotte + Historique des locations)
     // ==========================================
     
-    // 2.1 Calcul des revenus mensuels nets (80%)
+    // 2.1 Calcul des revenus mensuels nets et des commissions perdues historiquement
     let monthlyRevenue = 0;
+    let totalLostCommission = 0;
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
     if (sellerBookings) {
         sellerBookings.forEach(booking => {
-            const bDate = new Date(booking.start_date);
-            if (bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear) {
-                const sDate = new Date(booking.start_date);
-                const eDate = new Date(booking.end_date);
-                const days = Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24)) + 1;
-                const baseRental = (booking.trailers && booking.trailers.price) ? (days * Number(booking.trailers.price)) : Number(booking.total_price);
+            const sDate = new Date(booking.start_date);
+            const eDate = new Date(booking.end_date);
+            const days = Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24)) + 1;
+            const baseRental = (booking.trailers && booking.trailers.price) ? (days * Number(booking.trailers.price)) : Number(booking.total_price);
+            
+            // Calculer la commission historique uniquement sur les locations terminées (20%)
+            const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
+            if (todayStr > endStr) {
+                totalLostCommission += (baseRental * 0.20);
+            }
+
+            // Revenu mensuel
+            if (sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear) {
                 monthlyRevenue += (baseRental * 0.80);
+            }
+        });
+    }
+
+    // Affichage de la bannière PRO si l'utilisateur n'est pas PRO (on assume que la table profiles a un champ is_pro, ou que par défaut ils ne le sont pas)
+    const proBanner = document.getElementById('pro-banner-container');
+    const lostCommEl = document.getElementById('lost-commission-amount');
+    
+    // Pour simplifier l'accès, on vérifie dynamiquement si l'user est pro via une requête rapide
+    if (proBanner && lostCommEl && currentUser) {
+        supabaseClient.from('profiles').select('is_pro').eq('id', currentUser.id).maybeSingle().then(({ data }) => {
+            if (data && data.is_pro) {
+                proBanner.classList.add('hidden');
+            } else {
+                lostCommEl.textContent = totalLostCommission.toFixed(2) + ' CHF';
+                proBanner.classList.remove('hidden');
             }
         });
     }
@@ -2708,13 +2739,24 @@ async function loadProfileData() {
 
                 // Prix (valeur numérique de la BDD)
                 const priceEl = document.createElement('p');
-                priceEl.className = 'text-stone-500 dark:text-stone-400 text-sm mb-3';
+                priceEl.className = 'text-stone-500 dark:text-stone-400 text-sm mb-4';
                 priceEl.textContent = `Génère ${Number(trailer.price).toFixed(2)} CHF / jour`;
 
+                // Bouton Boost
+                const boostBtn = document.createElement('button');
+                boostBtn.className = 'w-full bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-800 dark:text-white font-bold py-2 rounded-xl transition flex items-center justify-center gap-2 border border-stone-200 dark:border-stone-600 active:scale-95';
+                boostBtn.innerHTML = '🚀 Booster';
+                // Extraction de la ville, ou défaut "votre région"
+                const city = (trailer.location && trailer.location.includes(',')) ? trailer.location.split(',')[0] : (trailer.location || 'votre région');
+                boostBtn.onclick = () => openBoostModal(trailer.id, city);
+
                 const infoDiv = document.createElement('div');
-                infoDiv.className = 'p-4';
-                infoDiv.appendChild(titleEl);
-                infoDiv.appendChild(priceEl);
+                infoDiv.className = 'p-4 flex flex-col justify-between h-full';
+                const textDiv = document.createElement('div');
+                textDiv.appendChild(titleEl);
+                textDiv.appendChild(priceEl);
+                infoDiv.appendChild(textDiv);
+                infoDiv.appendChild(boostBtn);
 
                 const card = document.createElement('div');
                 card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative';
@@ -4156,5 +4198,74 @@ async function submitReview() {
         loadTrailers();
     } finally {
         if (submitBtn) submitBtn.disabled = false;
+    }
+}
+// ==========================================
+// Renger PRO & BOOST
+// ==========================================
+
+let currentBoostTrailerId = null;
+
+function openBoostModal(trailerId, city) {
+    currentBoostTrailerId = trailerId;
+    const modal = document.getElementById('boost-modal');
+    const cityEl = document.getElementById('boost-modal-city');
+    if (cityEl) cityEl.textContent = city;
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeBoostModal() {
+    currentBoostTrailerId = null;
+    const modal = document.getElementById('boost-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function handlePurchaseBoost() {
+    if (!currentUser) return;
+    if (!currentBoostTrailerId) return;
+    const planEl = document.querySelector('input[name="boost_plan"]:checked');
+    if (!planEl) return;
+
+    const btn = document.getElementById('purchase-boost-btn');
+    if (btn) btn.disabled = true;
+
+    try {
+        showToast("Création du paiement...", "info");
+        const { data, error } = await supabaseClient.functions.invoke('stripe-boost-checkout', {
+            body: { trailer_id: currentBoostTrailerId, plan: planEl.value }
+        });
+        
+        if (error) throw error;
+        if (data && data.url) {
+            window.location.href = data.url;
+        } else {
+            showToast("Erreur lors de l'initialisation du paiement.", "error");
+        }
+    } catch (err) {
+        showToast(err.message, "error");
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function handleSubscribePro() {
+    if (!currentUser) {
+        showToast("Vous devez être connecté.", "error");
+        return;
+    }
+    try {
+        showToast("Redirection vers Stripe...", "info");
+        const { data, error } = await supabaseClient.functions.invoke('stripe-pro-checkout', {
+            body: { user_id: currentUser.id }
+        });
+
+        if (error) throw error;
+        if (data && data.url) {
+            window.location.href = data.url;
+        } else {
+            showToast("Erreur lors de l'initialisation de l'abonnement.", "error");
+        }
+    } catch (err) {
+        showToast(err.message, "error");
     }
 }
