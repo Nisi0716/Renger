@@ -642,7 +642,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     // Assainissement supplémentaire du terme de recherche
     const cleanSearch = (search || '').replace(/[,()[\]\\"]/g, '').trim();
 
-    let query = supabaseClient.from('trailers').select('*').eq('is_active', true).order('id', { ascending: false });
+    let query = supabaseClient.from('trailers').select('*').order('id', { ascending: false });
 
     if (filter && filter !== 'all') {
         query = query.eq('category', filter);
@@ -653,6 +653,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     }
 
     const { data: trailers, error } = await query;
+    const visibleTrailers = (trailers || []).filter(t => t.is_active !== false);
 
     const grid = document.getElementById('trailers-grid');
     if (!grid) return;
@@ -668,7 +669,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         }
     }
 
-    if (error || !trailers || trailers.length === 0) {
+    if (error || !visibleTrailers || visibleTrailers.length === 0) {
         const msg = document.createElement('p');
         msg.className = 'col-span-3 text-center text-stone-400 italic py-12';
         msg.textContent = cleanSearch
@@ -679,7 +680,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     }
 
     const fragment = document.createDocumentFragment();
-    trailers.forEach(trailer => {
+    visibleTrailers.forEach(trailer => {
         const card = document.createElement('div');
         card.className = "bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden hover:shadow-md cursor-pointer transition";
         card.onclick = () => openTrailerDetail(trailer);
@@ -2366,6 +2367,8 @@ function switchProfileTab(tab) {
     const sellerTab = document.getElementById('tab-seller');
     const buyerSection = document.getElementById('profile-buyer-section');
     const sellerSection = document.getElementById('profile-seller-section');
+    const manageSection = document.getElementById('manage-trailer-section');
+    if (manageSection) manageSection.classList.add('hidden');
 
     if (tab === 'buyer') {
         buyerSection.classList.remove('hidden');
@@ -2595,12 +2598,12 @@ async function loadProfileData() {
         .eq('status', 'paye')
         .order('start_date', { ascending: false });
 
-    const { data: myTrailers } = await supabaseClient
+    const { data: myTrailersRaw } = await supabaseClient
         .from('trailers')
         .select('*')
         .eq('owner_id', currentUser.id)
-        .eq('is_active', true)
         .order('id', { ascending: false });
+    const myTrailers = (myTrailersRaw || []).filter(t => t.is_active !== false);
 
     const { data: sellerBookings } = await supabaseClient
         .from('bookings')
@@ -2608,6 +2611,7 @@ async function loadProfileData() {
         .eq('owner_id', currentUser.id)
         .eq('status', 'paye')
         .order('start_date', { ascending: false });
+    cachedSellerBookings = sellerBookings || [];
 
     // Récupérer les avis déjà déposés par cet utilisateur
     const { data: myReviews } = await supabaseClient
@@ -2787,11 +2791,20 @@ async function loadProfileData() {
                 const textDiv = document.createElement('div');
                 textDiv.appendChild(titleEl);
                 textDiv.appendChild(priceEl);
+                
+                const manageBtn = document.createElement('div');
+                manageBtn.className = 'w-full mt-2 bg-stone-100 dark:bg-stone-700 group-hover:bg-terracotta-50 dark:group-hover:bg-terracotta-900/40 group-hover:text-terracotta-600 dark:group-hover:text-terracotta-400 text-stone-700 dark:text-stone-200 text-xs font-bold py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm';
+                manageBtn.innerHTML = '<span>⚙️</span><span>Gérer l\'annonce (Modifier, Booster…)</span>';
+                textDiv.appendChild(manageBtn);
+                
                 infoDiv.appendChild(textDiv);
 
                 const card = document.createElement('div');
-                card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative cursor-pointer hover:border-terracotta-500 transition-colors';
-                card.onclick = () => openManageTrailer(trailer, city);
+                card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative cursor-pointer hover:border-terracotta-500 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all group';
+                card.onclick = (e) => {
+                    e.preventDefault();
+                    openManageTrailer(trailer, city);
+                };
                 card.appendChild(imgWrapper);
                 card.appendChild(infoDiv);
                 sellerFragment.appendChild(card);
@@ -4306,42 +4319,65 @@ async function handleSubscribePro() {
 // --- GESTION DE L'ANNONCE ---
 let currentManagedTrailer = null;
 let currentManagedCity = null;
+let cachedSellerBookings = [];
 
 function openManageTrailer(trailer, city) {
-    currentManagedTrailer = trailer;
-    currentManagedCity = city;
+    if (!trailer) return;
+    try {
+        currentManagedTrailer = trailer;
+        currentManagedCity = city || (trailer.location && trailer.location.includes(',') ? trailer.location.split(',')[0] : (trailer.location || 'votre région'));
 
-    // Calculer les stats
-    let totalRevenue = 0;
-    let totalRentals = 0;
+        // Calculer les stats de cette remorque spécifique
+        let totalRevenue = 0;
+        let totalRentals = 0;
 
-    if (sellerBookings && sellerBookings.length > 0) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        sellerBookings.forEach(b => {
-            const bEnd = b.end_date ? b.end_date.split('T')[0] : '';
-            if (b.trailer_id === trailer.id && b.status === 'paye' && bEnd < todayStr) {
-                totalRevenue += Number(b.total_price || 0);
-                totalRentals += 1;
-            }
-        });
+        const bookingsToCount = (typeof cachedSellerBookings !== 'undefined' && Array.isArray(cachedSellerBookings)) ? cachedSellerBookings : [];
+        if (bookingsToCount.length > 0) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            bookingsToCount.forEach(b => {
+                const bEnd = b.end_date ? b.end_date.split('T')[0] : '';
+                if (b.trailer_id === trailer.id && b.status === 'paye' && bEnd < todayStr) {
+                    totalRevenue += Number(b.total_price || 0);
+                    totalRentals += 1;
+                }
+            });
+        }
+
+        // Remplir les données dans l'interface
+        const titleEl = document.getElementById('manage-trailer-title');
+        if (titleEl) titleEl.textContent = trailer.title || 'Mon annonce';
+        
+        const revEl = document.getElementById('manage-trailer-revenue');
+        if (revEl) revEl.textContent = totalRevenue.toFixed(2) + ' CHF';
+        
+        const rentEl = document.getElementById('manage-trailer-rentals');
+        if (rentEl) rentEl.textContent = totalRentals;
+        
+        const viewsEl = document.getElementById('manage-trailer-views');
+        if (viewsEl) viewsEl.textContent = trailer.views_count || 0;
+
+        // Basculer l'affichage vers la section de gestion
+        const sellerSection = document.getElementById('profile-seller-section');
+        if (sellerSection) sellerSection.classList.add('hidden');
+        
+        const manageSection = document.getElementById('manage-trailer-section');
+        if (manageSection) {
+            manageSection.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    } catch (err) {
+        console.error('Erreur openManageTrailer:', err);
+        showToast("Impossible d'ouvrir la gestion de l'annonce : " + err.message, "error");
     }
-
-    // Populate UI
-    document.getElementById('manage-trailer-title').textContent = trailer.title;
-    document.getElementById('manage-trailer-revenue').textContent = totalRevenue.toFixed(2) + ' CHF';
-    document.getElementById('manage-trailer-rentals').textContent = totalRentals;
-    document.getElementById('manage-trailer-views').textContent = trailer.views_count || 0;
-
-    // Show/Hide sections
-    document.getElementById('profile-seller-section').classList.add('hidden');
-    document.getElementById('manage-trailer-section').classList.remove('hidden');
 }
 
 function closeManageTrailer() {
     currentManagedTrailer = null;
     currentManagedCity = null;
-    document.getElementById('manage-trailer-section').classList.add('hidden');
-    document.getElementById('profile-seller-section').classList.remove('hidden');
+    const manageSection = document.getElementById('manage-trailer-section');
+    if (manageSection) manageSection.classList.add('hidden');
+    const sellerSection = document.getElementById('profile-seller-section');
+    if (sellerSection) sellerSection.classList.remove('hidden');
 }
 
 function boostManagedTrailer() {
@@ -4417,8 +4453,8 @@ async function archiveTrailer() {
         
         showToast('Annonce archivée avec succès !');
         closeManageTrailer();
-        // Refresh profile
-        await loadMyProfile();
+        // Rafraîchir les données du profil
+        await loadProfileData();
     } catch (err) {
         console.error('Erreur archiveTrailer:', err);
         alert('Erreur lors de l\'archivage de l\'annonce.');
