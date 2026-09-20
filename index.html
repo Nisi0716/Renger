@@ -914,6 +914,39 @@
                 <div id="seller-history-list" class="space-y-4"></div>
             </div>
         </div>
+
+        <!-- SECTION GESTION DE L'ANNONCE -->
+        <div id="manage-trailer-section" class="hidden">
+            <button onclick="closeManageTrailer()" class="text-terracotta-600 font-semibold mb-6 hover:text-terracotta-500 transition">← Retour à mon espace</button>
+            <h3 id="manage-trailer-title" class="text-3xl font-bold text-stone-800 dark:text-white mb-6"></h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-stone-900 rounded-2xl p-6 text-white shadow-lg">
+                    <p class="text-stone-400 font-medium mb-1">Revenus générés</p>
+                    <p id="manage-trailer-revenue" class="text-3xl font-bold text-terracotta-500">0 CHF</p>
+                </div>
+                <div class="bg-white dark:bg-stone-800 rounded-2xl p-6 shadow-sm border border-stone-200 dark:border-stone-700">
+                    <p class="text-stone-500 font-medium mb-1">Locations passées</p>
+                    <p id="manage-trailer-rentals" class="text-3xl font-bold text-stone-800 dark:text-white">0</p>
+                </div>
+                <div class="bg-white dark:bg-stone-800 rounded-2xl p-6 shadow-sm border border-stone-200 dark:border-stone-700">
+                    <p class="text-stone-500 font-medium mb-1">Vues de l'annonce</p>
+                    <p id="manage-trailer-views" class="text-3xl font-bold text-stone-800 dark:text-white">0</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4">
+                <button onclick="editTrailer()" class="flex-1 bg-stone-800 hover:bg-stone-900 text-white font-bold py-4 px-6 rounded-xl shadow-md transition active:scale-95 text-lg">
+                    ✏️ Modifier l'annonce
+                </button>
+                <button onclick="boostManagedTrailer()" class="flex-1 bg-gradient-to-r from-terracotta-500 to-terracotta-600 hover:from-terracotta-600 hover:to-terracotta-700 text-white font-bold py-4 px-6 rounded-xl shadow-md transition active:scale-95 text-lg">
+                    🚀 Booster l'annonce
+                </button>
+                <button onclick="archiveTrailer()" class="flex-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold py-4 px-6 rounded-xl border border-red-200 dark:border-red-800/50 hover:bg-red-200 dark:hover:bg-red-900/50 transition active:scale-95 text-lg">
+                    🗑️ Archiver / Supprimer
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- 8. PAGE PARAMÈTRES -->

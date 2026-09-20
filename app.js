@@ -642,7 +642,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     // Assainissement supplémentaire du terme de recherche
     const cleanSearch = (search || '').replace(/[,()[\]\\"]/g, '').trim();
 
-    let query = supabaseClient.from('trailers').select('*').order('id', { ascending: false });
+    let query = supabaseClient.from('trailers').select('*').eq('is_active', true).order('id', { ascending: false });
 
     if (filter && filter !== 'all') {
         query = query.eq('category', filter);
@@ -1289,16 +1289,21 @@ async function handlePublish(event) {
         submitBtn.style.opacity = '0.7';
     }
 
+    const form = document.getElementById('add-trailer-form');
+    const editId = form.dataset.editId;
+
     const PLACEHOLDER = "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
     let imageUrls = [];
 
-    if (pendingPhotos.length === 0) {
+    if (pendingPhotos.length === 0 && !editId) {
         showToast("Ajoutez au moins une photo pour publier votre annonce.", "error");
         if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
         return;
     }
 
-    showToast("Upload des photos en cours…", "info");
+    if (pendingPhotos.length > 0) {
+        showToast("Upload des photos en cours…", "info");
+    }
 
     try {
         // Upload séquentiel de toutes les photos dans le bucket trailers-images
@@ -1354,26 +1359,48 @@ async function handlePublish(event) {
             payload: isNaN(payloadVal) || payloadVal < 0 ? 0 : payloadVal,
             socket: document.querySelector('input[name="prise"]:checked')?.value || '7 broches',
             owner_id: currentUser.id,
-            image_url: imageUrls[0] || PLACEHOLDER,  // Photo de couverture (rétrocompatibilité)
-            images: imageUrls,                         // Toutes les photos (nouveau champ)
             equipments: equipments,
             upsells: upsells,
             category: category
         };
 
-        const { error } = await supabaseClient.from('trailers').insert([newTrailer]);
+        if (imageUrls.length > 0) {
+            newTrailer.image_url = imageUrls[0];
+            newTrailer.images = imageUrls;
+        } else if (!editId) {
+            newTrailer.image_url = PLACEHOLDER;
+            newTrailer.images = [PLACEHOLDER];
+        }
+
+        let error = null;
+        if (editId) {
+            const res = await supabaseClient.from('trailers').update(newTrailer).eq('id', editId);
+            error = res.error;
+        } else {
+            const res = await supabaseClient.from('trailers').insert([newTrailer]);
+            error = res.error;
+        }
+
         if (error) {
             showToast("Erreur BDD : " + error.message, "error");
         } else {
-            const modeElement = document.querySelector('input[name="monetization_mode"]:checked');
-            if (modeElement && modeElement.value === 'pro') {
-                showToast("✅ Annonce publiée ! Redirection vers Renger PRO...", "success");
-                await handleSubscribePro();
-                return; // On arrête l'exécution pour la redirection
+            if (!editId) {
+                const modeElement = document.querySelector('input[name="monetization_mode"]:checked');
+                if (modeElement && modeElement.value === 'pro') {
+                    showToast("✅ Annonce publiée ! Redirection vers Renger PRO...", "success");
+                    await handleSubscribePro();
+                    return; // On arrête l'exécution pour la redirection
+                }
             }
 
-            showToast("✅ Annonce publiée !", "success");
+            showToast(editId ? "✅ Annonce modifiée !" : "✅ Annonce publiée !", "success");
             document.getElementById('add-trailer-form').reset();
+            delete form.dataset.editId;
+            if (submitBtn && submitBtn.dataset.originalText) {
+                submitBtn.innerHTML = submitBtn.dataset.originalText;
+                delete submitBtn.dataset.originalText;
+            }
+
             hasUserEditedDescription = false;
             updateSmartPricingFeedback();
             updateLegalPermitBadge();
@@ -1393,6 +1420,7 @@ async function handlePublish(event) {
         }
     }
 }
+
 
 // ==========================================
 // CAROUSEL DE LA PAGE DÉTAIL
@@ -1499,6 +1527,14 @@ document.addEventListener('keydown', (e) => {
 // ==========================================
 async function openTrailerDetail(trailer) {
     currentTrailer = trailer;
+    
+    // Increment views_count asynchronously using RPC to bypass RLS for non-owners
+    if (trailer && trailer.id) {
+        supabaseClient.rpc('increment_views', { trailer_id: trailer.id })
+            .then(() => {})
+            .catch(e => console.error('Error incrementing views:', e));
+    }
+
     // Reset des dates à chaque ouverture pour repartir d'un état propre
     selectedStartDate = null;
     selectedEndDate = null;
@@ -1692,7 +1728,7 @@ async function openTrailerDetail(trailer) {
 
             // Badges (compact — icône seulement)
             const { data: ownerTrailers } = await supabaseClient
-                .from('trailers').select('id').eq('owner_id', trailer.owner_id);
+                .from('trailers').select('id').eq('owner_id', trailer.owner_id).eq('is_active', true);
             const badges = computeBadges(ownerProfile, ownerTrailers?.length || 0);
             const badgesEl = document.getElementById('owner-badges');
             if (badgesEl) {
@@ -2563,6 +2599,7 @@ async function loadProfileData() {
         .from('trailers')
         .select('*')
         .eq('owner_id', currentUser.id)
+        .eq('is_active', true)
         .order('id', { ascending: false });
 
     const { data: sellerBookings } = await supabaseClient
@@ -2742,24 +2779,19 @@ async function loadProfileData() {
                 priceEl.className = 'text-stone-500 dark:text-stone-400 text-sm mb-4';
                 priceEl.textContent = `Génère ${Number(trailer.price).toFixed(2)} CHF / jour`;
 
-                // Bouton Boost
-                const boostBtn = document.createElement('button');
-                boostBtn.className = 'w-full bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-800 dark:text-white font-bold py-2 rounded-xl transition flex items-center justify-center gap-2 border border-stone-200 dark:border-stone-600 active:scale-95';
-                boostBtn.innerHTML = '🚀 Booster';
-                // Extraction de la ville, ou défaut "votre région"
+                // Extract city
                 const city = (trailer.location && trailer.location.includes(',')) ? trailer.location.split(',')[0] : (trailer.location || 'votre région');
-                boostBtn.onclick = () => openBoostModal(trailer.id, city);
-
+                
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'p-4 flex flex-col justify-between h-full';
                 const textDiv = document.createElement('div');
                 textDiv.appendChild(titleEl);
                 textDiv.appendChild(priceEl);
                 infoDiv.appendChild(textDiv);
-                infoDiv.appendChild(boostBtn);
 
                 const card = document.createElement('div');
-                card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative';
+                card.className = 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl overflow-hidden shadow-sm relative cursor-pointer hover:border-terracotta-500 transition-colors';
+                card.onclick = () => openManageTrailer(trailer, city);
                 card.appendChild(imgWrapper);
                 card.appendChild(infoDiv);
                 sellerFragment.appendChild(card);
@@ -2972,6 +3004,7 @@ async function openPublicProfile(username) {
         .from('trailers')
         .select('*')
         .eq('owner_id', profile.id)
+        .eq('is_active', true)
         .order('id', { ascending: false });
 
     const trailersCount = trailers?.length || 0;
@@ -4267,5 +4300,127 @@ async function handleSubscribePro() {
         }
     } catch (err) {
         showToast(err.message, "error");
+    }
+}
+
+// --- GESTION DE L'ANNONCE ---
+let currentManagedTrailer = null;
+let currentManagedCity = null;
+
+function openManageTrailer(trailer, city) {
+    currentManagedTrailer = trailer;
+    currentManagedCity = city;
+
+    // Calculer les stats
+    let totalRevenue = 0;
+    let totalRentals = 0;
+
+    if (sellerBookings && sellerBookings.length > 0) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        sellerBookings.forEach(b => {
+            const bEnd = b.end_date ? b.end_date.split('T')[0] : '';
+            if (b.trailer_id === trailer.id && b.status === 'paye' && bEnd < todayStr) {
+                totalRevenue += Number(b.total_price || 0);
+                totalRentals += 1;
+            }
+        });
+    }
+
+    // Populate UI
+    document.getElementById('manage-trailer-title').textContent = trailer.title;
+    document.getElementById('manage-trailer-revenue').textContent = totalRevenue.toFixed(2) + ' CHF';
+    document.getElementById('manage-trailer-rentals').textContent = totalRentals;
+    document.getElementById('manage-trailer-views').textContent = trailer.views_count || 0;
+
+    // Show/Hide sections
+    document.getElementById('profile-seller-section').classList.add('hidden');
+    document.getElementById('manage-trailer-section').classList.remove('hidden');
+}
+
+function closeManageTrailer() {
+    currentManagedTrailer = null;
+    currentManagedCity = null;
+    document.getElementById('manage-trailer-section').classList.add('hidden');
+    document.getElementById('profile-seller-section').classList.remove('hidden');
+}
+
+function boostManagedTrailer() {
+    if (currentManagedTrailer && currentManagedCity) {
+        openBoostModal(currentManagedTrailer.id, currentManagedCity);
+    }
+}
+
+function editTrailer() {
+    if (!currentManagedTrailer) return;
+    
+    // Switch to ADD form but in EDIT mode
+    const titleEl = document.getElementById('ad-title');
+    if (titleEl) titleEl.value = currentManagedTrailer.title || '';
+    
+    const priceEl = document.getElementById('ad-price');
+    if (priceEl) priceEl.value = currentManagedTrailer.price || '';
+    
+    const payloadEl = document.getElementById('ad-payload');
+    if (payloadEl) payloadEl.value = currentManagedTrailer.payload || '';
+    
+    const descEl = document.getElementById('ad-desc');
+    if (descEl) descEl.value = currentManagedTrailer.description || '';
+
+    // Category
+    if (currentManagedTrailer.category) {
+        const catRadio = document.querySelector(`input[name="category"][value="${currentManagedTrailer.category}"]`);
+        if (catRadio) catRadio.checked = true;
+    }
+    // Prise
+    if (currentManagedTrailer.socket) {
+        const socketRadio = document.querySelector(`input[name="prise"][value="${currentManagedTrailer.socket}"]`);
+        if (socketRadio) socketRadio.checked = true;
+    }
+    // Equipments
+    document.querySelectorAll('input[name="equipments"]').forEach(cb => {
+        cb.checked = currentManagedTrailer.equipments && currentManagedTrailer.equipments.includes(cb.value);
+    });
+    // Upsells
+    document.querySelectorAll('input[name="upsell"]').forEach(cb => {
+        cb.checked = currentManagedTrailer.upsells && currentManagedTrailer.upsells.includes(cb.value);
+    });
+    
+    // Set edit state
+    const form = document.getElementById('add-trailer-form');
+    if (form) form.dataset.editId = currentManagedTrailer.id;
+    
+    // Change submit button text
+    const submitBtn = form?.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        if (!submitBtn.dataset.originalText) {
+            submitBtn.dataset.originalText = submitBtn.innerHTML;
+        }
+        submitBtn.innerHTML = 'Enregistrer les modifications';
+    }
+
+    // Hide manage section, show form
+    closeManageTrailer();
+    showPage('seller-page');
+}
+
+async function archiveTrailer() {
+    if (!currentManagedTrailer) return;
+    if (!confirm('Êtes-vous sûr de vouloir archiver / supprimer cette annonce ?')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('trailers')
+            .update({ is_active: false })
+            .eq('id', currentManagedTrailer.id);
+
+        if (error) throw error;
+        
+        showToast('Annonce archivée avec succès !');
+        closeManageTrailer();
+        // Refresh profile
+        await loadMyProfile();
+    } catch (err) {
+        console.error('Erreur archiveTrailer:', err);
+        alert('Erreur lors de l\'archivage de l\'annonce.');
     }
 }
