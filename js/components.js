@@ -516,3 +516,14 @@ document.addEventListener('DOMContentLoaded', () => {
         updateMobileNavState(pageId);
     }
 });
+
+
+// Aliases & fallbacks for backwards compatibility
+function showWelcomeScreen() {
+    window.location.href = 'index.html';
+}
+function subscribePro() {
+    if (typeof handleSubscribePro === 'function') {
+        handleSubscribePro();
+    }
+}
