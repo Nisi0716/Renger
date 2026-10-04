@@ -504,3 +504,15 @@ async function submitReview() {
         if (submitBtn) submitBtn.disabled = false;
     }
 }
+document.addEventListener('DOMContentLoaded', () => {
+    const path = window.location.pathname;
+    let pageId = 'welcome-screen';
+    if (path.includes('remorques.html') || path.includes('remorque.html')) pageId = 'buyer-page';
+    else if (path.includes('louer-ma-remorque.html')) pageId = 'seller-page';
+    else if (path.includes('profil.html')) {
+        pageId = window.location.search.includes('settings') ? 'settings-page' : 'profile-page';
+    }
+    if (typeof updateMobileNavState === 'function') {
+        updateMobileNavState(pageId);
+    }
+});
