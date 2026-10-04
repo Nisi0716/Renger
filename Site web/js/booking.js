@@ -2,6 +2,11 @@
 // 5. RÉSERVATION, BLOCAGE DATES & PAIEMENT
 // ==========================================
 async function openTrailerDetail(trailer) {
+    // MPA : hors de la fiche détail, on navigue vers remorque.html?id=... (la page recharge l'annonce)
+    if (!document.getElementById('detail-page')) {
+        if (trailer && trailer.id) window.location.href = 'remorque.html?id=' + encodeURIComponent(trailer.id);
+        return;
+    }
     currentTrailer = trailer;
     
     // Increment views_count asynchronously using RPC to bypass RLS for non-owners
@@ -89,16 +94,12 @@ async function openTrailerDetail(trailer) {
         });
     }
     
-    if (!window.location.pathname.includes('remorque.html')) { 
-        window.location.href = 'remorque.html?id=' + trailer.id; 
-        return; 
-    } else {
+    // MPA : on est déjà sur remorque.html, on affiche la section détail
         if (typeof showPage === 'function') {
             showPage('detail-page');
         } else {
             document.getElementById('detail-page').classList.remove('hidden');
         }
-    }
     updateChatButtonState(); // État initial du bouton chat (grisé car pas de dates)
 
     // On interroge la vue publique contenant uniquement les dates
