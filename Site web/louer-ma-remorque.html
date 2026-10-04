@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Louer ma remorque - Renger</title>
+    <meta name="description" content="Gagnez de l'argent en louant votre remorque">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://renger.ch/louer-ma-remorque.html">
+    
+    <meta property="og:title" content="Louer ma remorque - Renger">
+    <meta property="og:description" content="Gagnez de l'argent en louant votre remorque">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://renger.ch/louer-ma-remorque.html">
+    <meta property="og:image" content="https://renger.ch/Renger_Logo_SVG.svg">
+    <meta name="twitter:card" content="summary_large_image">
+    
+    <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg?v=2">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'self';">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { terracotta: { 50: '#fff4f0', 500: '#d85110', 600: '#bc450b' } } } }
+        }
+    </script>
+    <style>
+        html.dark .flatpickr-calendar { background: #292524; border-color: #44403c; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        html.dark .flatpickr-day { color: #f5f5f4; }
+        html.dark .flatpickr-day.flatpickr-disabled { color: #57534e; }
+        html.dark .flatpickr-month, html.dark .flatpickr-current-month, html.dark .flatpickr-weekday { color: #d6d3d1; fill: #d6d3d1; }
+        html.dark .flatpickr-day.selected, html.dark .flatpickr-day.startRange, html.dark .flatpickr-day.endRange { background: #d85110; border-color: #d85110; }
+        .hidden { display: none !important; }
+    </style>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative pb-20 transition-colors duration-300">
+<div id="toast-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 -translate-y-24 opacity-0 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white pointer-events-none">
+        <span id="toast-icon" class="text-2xl"></span>
+        <span id="toast-message"></span>
+    </div>
+<header class="absolute top-0 w-full p-4 sm:p-6 flex justify-between z-40 items-center">
+        <!-- Logo -->
+        <a href="index.html" class="flex items-center gap-3 cursor-pointer group" title="Renger - Accueil">
+            <div class="w-10 h-10 rounded-xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
+                <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <span class="text-2xl sm:text-3xl font-extrabold text-terracotta-500 tracking-tight transition-colors group-hover:text-terracotta-600">Renger</span>
+        </a>
+        
+        <!-- Menu Droit -->
+        <div class="flex items-center gap-4">
+            <!-- Bouton Dark Mode -->
+            <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2" title="Mode sombre/clair">
+                <!-- Icône Lune (affichée en mode clair) -->
+                <svg class="w-6 h-6 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+                <!-- Icône Soleil (affichée en mode sombre) -->
+                <svg class="w-6 h-6 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+            </button>
+
+            <!-- Sélecteur de langue -->
+            <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent dark:bg-stone-900 font-bold text-stone-600 dark:text-stone-300 focus:outline-none cursor-pointer">
+                <option value="fr">FR</option>
+                <option value="de">DE</option>
+                <option value="en">EN</option>
+            </select>
+            
+            <!-- Zone utilisateur gérée par Supabase -->
+            <div id="user-menu-container">
+                <a href="profil.html" class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-200 hover:text-terracotta-500 font-semibold py-2 px-4 rounded-xl shadow-sm transition">
+                    <span data-i18n="login">Se connecter</span>
+                </button>
+            </div>
+        </div>
+    </header>
+<div id="seller-page" class="min-h-screen p-6 pt-24 max-w-2xl mx-auto mb-24 md:mb-0">
+        <button onclick="showWelcomeScreen()" data-i18n="back" class="text-terracotta-600 font-semibold mb-6 hover:text-terracotta-500 transition">← Retour</button>
+        
+        <div class="flex items-center gap-3.5 mb-2">
+            <div class="w-10 h-10 rounded-2xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <h2 data-i18n="publish_title" class="text-3xl font-bold text-stone-800 dark:text-white leading-tight">Louer ma remorque</h2>
+        </div>
+        <p class="text-stone-500 dark:text-stone-400 mb-8" data-i18n="publish_subtitle">Gagnez de l'argent en toute sécurité avec votre équipement.</p>
+        
+        <!-- CORRECTION : Ajout de l'ID et modification du onsubmit -->
+        <form id="add-trailer-form" onsubmit="handlePublish(event)" class="space-y-6">
+            
+            <!-- Upload Photos (multi, max 10) -->
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <!-- Input caché, déclenché par JS -->
+                <input type="file" id="file-upload" accept="image/*" multiple class="hidden" onchange="handleMultiPhotoSelect(event)">
+
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <p class="font-bold text-stone-700 dark:text-stone-300 text-sm">Photos de l'annonce</p>
+                        <p class="text-xs text-stone-400 mt-0.5">La 1ʳᵉ photo sera la photo de couverture</p>
+                    </div>
+                    <span id="photo-count-badge" class="text-xs font-bold text-stone-400 bg-stone-100 dark:bg-stone-700 px-3 py-1 rounded-full">0 / 10</span>
+                </div>
+
+                <!-- Grille de vignettes + tuile "Ajouter" -->
+                <div id="photo-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    <!-- Tuile d'ajout (toujours en premier via JS) -->
+                    <button type="button" id="add-photo-tile" onclick="document.getElementById('file-upload').click()"
+                        class="aspect-square rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-600 flex flex-col items-center justify-center gap-1 hover:bg-stone-50 dark:hover:bg-stone-700 transition text-stone-400 hover:text-terracotta-500 hover:border-terracotta-400">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span class="text-xs font-semibold">Ajouter</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <div class="mb-5">
+                    <label data-i18n="form_title" class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Titre de l'annonce</label>
+                    <input type="text" id="ad-title" placeholder="Ex: Van à chevaux 2 places" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition" required>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                    <!-- Champ Prix avec Moteur Smart Pricing -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300" data-i18n="price_label">Prix / Jour (CHF)</label>
+                            <span id="price-suggested-tag" class="text-[11px] font-bold text-terracotta-600 dark:text-terracotta-400 bg-terracotta-50 dark:bg-stone-700/60 px-2 py-0.5 rounded-full cursor-pointer hover:underline transition" onclick="applySuggestedPrice()" title="Cliquer pour appliquer le prix optimal">Conseillé : 50 CHF</span>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="ad-price" placeholder="50" min="5" max="999" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-lg focus:border-terracotta-500 focus:outline-none transition pr-12" required>
+                            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm pointer-events-none">CHF</span>
+                        </div>
+
+                        <!-- JAUGE VISUELLE SMART PRICING -->
+                        <div id="smart-pricing-widget" class="mt-2.5 space-y-2">
+                            <!-- Barre segmentée -->
+                            <div class="h-2 w-full bg-stone-100 dark:bg-stone-700/60 rounded-full overflow-hidden flex gap-1 p-0.5 border border-stone-200/50 dark:border-stone-600/50">
+                                <div id="gauge-low" class="h-full w-1/4 rounded-l-full bg-stone-200 dark:bg-stone-700 transition-all duration-300" title="Prix économique"></div>
+                                <div id="gauge-optimal" class="h-full w-2/4 bg-stone-200 dark:bg-stone-700 transition-all duration-300" title="Zone optimale (3x plus de demandes)"></div>
+                                <div id="gauge-high" class="h-full w-1/4 rounded-r-full bg-stone-200 dark:bg-stone-700 transition-all duration-300" title="Prix supérieur"></div>
+                            </div>
+                            <!-- Message d'aide et statut dynamique -->
+                            <div id="pricing-feedback-box" class="p-2.5 rounded-xl text-xs flex items-start gap-2 bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-700 transition-all duration-200">
+                                <span id="pricing-feedback-icon" class="text-sm flex-shrink-0 mt-0.5">💡</span>
+                                <div class="flex-1">
+                                    <p id="pricing-feedback-text" class="text-stone-600 dark:text-stone-300 font-medium leading-snug">
+                                        Indiquez votre prix. La fourchette recommandée s'adapte en temps réel à votre remorque.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Champ Charge Utile avec Pédagogie Permis directe -->
+                    <div>
+                        <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2" data-i18n="payload_input">Charge Utile (kg)</label>
+                        <div class="relative">
+                            <input type="number" id="ad-payload" placeholder="500" min="50" max="3500" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-lg focus:border-terracotta-500 focus:outline-none transition pr-12" required>
+                            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm pointer-events-none">kg</span>
+                        </div>
+                        
+                        <!-- Indicateur de permis en temps réel selon la charge -->
+                        <div id="payload-permit-indicator" class="mt-2.5 p-2.5 rounded-xl text-xs flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 transition-all">
+                            <span id="permit-icon" class="text-base flex-shrink-0">🚗</span>
+                            <span id="permit-label" class="font-bold">Permis B suffisant</span>
+                            <span id="permit-sublabel" class="text-[10px] text-emerald-600 dark:text-emerald-400 ml-auto font-medium">(Charge ≤ 750 kg)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GÉNÉRATEUR AUTOMATIQUE DE DESCRIPTION -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">Description de l'annonce</label>
+                            <span class="text-[11px] text-stone-400 dark:text-stone-500 hidden sm:inline">• Automatique & personnalisable</span>
+                        </div>
+                        <button type="button" onclick="generateAutoDescription(true)" class="text-xs font-bold text-terracotta-600 dark:text-terracotta-400 hover:text-terracotta-700 flex items-center gap-1.5 py-1 px-3 rounded-lg bg-terracotta-50 dark:bg-stone-700 hover:bg-terracotta-100 dark:hover:bg-stone-600 transition shadow-xs active:scale-95 cursor-pointer">
+                            <span>✨ Générer la description</span>
+                        </button>
+                    </div>
+                    <textarea id="ad-desc" placeholder="Décrivez votre remorque ou cliquez sur 'Générer la description' pour assembler automatiquement un texte complet..." class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3.5 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition h-36 resize-y text-sm leading-relaxed" required></textarea>
+                    
+                    <!-- Pédagogie Légale sous la description -->
+                    <div id="desc-legal-footer" class="mt-2 flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1">
+                        <span class="flex items-center gap-1.5">
+                            <span>⚖️</span>
+                            <span id="desc-legal-mention">Mention légale incluse : <strong class="text-emerald-600 dark:text-emerald-400 font-bold">Permis B suffisant</strong></span>
+                        </span>
+                        <span class="text-[11px] text-stone-400">Réglementation suisse LCR / OAC</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3" data-i18n="socket_label">Type de prise électrique</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="prise" value="7 broches" class="peer sr-only" required checked>
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-4 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block font-bold mb-1">7 broches</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="prise" value="13 broches" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-4 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block font-bold mb-1">13 broches</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- TYPE DE REMORQUE (lié aux filtres de recherche) -->
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">Type de remorque</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="utilitaire" class="peer sr-only" required checked>
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">📦</span><span class="text-xs font-bold">Utilitaire</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="cheval" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🐴</span><span class="text-xs font-bold">Cheval</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="voiture" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🚗</span><span class="text-xs font-bold">Voiture</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="moto" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🏍️</span><span class="text-xs font-bold">Moto</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="refrigere" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">❄️</span><span class="text-xs font-bold">Réfrigéré</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="category" value="porte-velo" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🚲</span><span class="text-xs font-bold">Porte-vélo</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative col-span-2">
+                        <input type="radio" name="category" value="bagage" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
+                            <span class="block text-2xl mb-1">🧳</span><span class="text-xs font-bold">Bagage de toit</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- ÉQUIPEMENTS INCLUS -->
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3" data-i18n="equip_label">Équipements inclus</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="sangles" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">🔗 Sangles</div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="bache" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⛺ Bâche</div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="treuil" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⚙️ Treuil</div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="rames" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⚓ Rames</div></label>
+                </div>
+            </div>
+
+            <!-- Upsell pour augmenter la rentabilité -->
+            <div class="bg-gradient-to-br from-terracotta-50 to-white dark:from-stone-800 dark:to-stone-900 p-6 rounded-3xl shadow-sm border border-terracotta-200 dark:border-stone-700 relative overflow-hidden">
+                <label class="block text-sm font-bold text-terracotta-600 mb-1" data-i18n="upsell_title">Boostez vos revenus 🚀</label>
+                <p class="text-xs text-stone-500 dark:text-stone-400 mb-4" data-i18n="upsell_desc">Proposez des options payantes additionnelles à vos locataires.</p>
+                <div class="space-y-3 relative z-10">
+                    <label class="flex items-center justify-between p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl cursor-pointer">
+                        <div class="flex items-center gap-3"><input type="checkbox" name="upsell" value="livraison" class="w-5 h-5 text-terracotta-500 rounded"><span class="font-semibold text-sm dark:text-white">🚚 Livraison de la remorque</span></div>
+                        <span class="text-terracotta-600 font-bold text-sm">+25 CHF</span>
+                    </label>
+                    <label class="flex items-center justify-between p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl cursor-pointer">
+                        <div class="flex items-center gap-3"><input type="checkbox" name="upsell" value="diable" class="w-5 h-5 text-terracotta-500 rounded"><span class="font-semibold text-sm dark:text-white">🛒 Prêt d'un diable</span></div>
+                        <span class="text-terracotta-600 font-bold text-sm">+10 CHF/j</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Sélection Mode Standard / Mode PRO -->
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">Choisissez votre modèle de monétisation</label>
+                <div class="space-y-3">
+                    <label class="flex items-start gap-3 p-4 border border-stone-200 dark:border-stone-700 rounded-xl cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-900 transition">
+                        <input type="radio" name="monetization_mode" value="standard" class="mt-1 w-5 h-5 text-terracotta-500 rounded-full" checked>
+                        <div>
+                            <span class="block font-bold text-stone-800 dark:text-white">Mode Standard</span>
+                            <span class="block text-sm text-stone-500 dark:text-stone-400">Je cède 20% de mes gains à la plateforme (gratuit)</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-3 p-4 border border-terracotta-200 dark:border-terracotta-900/50 bg-terracotta-50/50 dark:bg-terracotta-900/10 rounded-xl cursor-pointer hover:bg-terracotta-50 dark:hover:bg-terracotta-900/20 transition relative overflow-hidden">
+                        <input type="radio" name="monetization_mode" value="pro" class="mt-1 w-5 h-5 text-terracotta-500 rounded-full">
+                        <div>
+                            <span class="block font-bold text-terracotta-700 dark:text-terracotta-400">Mode PRO 👑</span>
+                            <span class="block text-sm text-stone-600 dark:text-stone-300">Je garde 100% de mes revenus (39 CHF/mois)</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-xl mt-4 shadow-lg flex flex-col items-center justify-center transition active:scale-95">
+                <span data-i18n="form_submit">Publier et lier mon compte bancaire</span>
+            </a>
+        </form>
+    </div>
+<div id="auth-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-50 flex items-center justify-center z-50 px-4" onclick="handleAuthModalBackdrop(event)">
+        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-2xl w-full max-w-md relative" onclick="event.stopPropagation()">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-5 text-stone-400 hover:text-terracotta-500 text-3xl transition">&times;</button>
+
+            <!-- Panneau Connexion -->
+            <div id="auth-panel-login">
+                <div class="flex justify-center mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-white dark:bg-stone-800 shadow-md border border-stone-200/80 dark:border-stone-700 p-2 flex items-center justify-center overflow-hidden">
+                        <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+                    </div>
+                </div>
+                <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 dark:text-white text-center">Rejoindre Renger</h2>
+
+                <!-- Bouton Google -->
+                <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-100 font-semibold py-3 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-600 transition shadow-sm mb-5">
+                    <!-- Logo Google officiel SVG -->
+                    <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continuer avec Google
+                </button>
+
+                <!-- Séparateur ou -->
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                    <span class="text-xs text-stone-400 font-medium">ou par email</span>
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                </div>
+
+                <input type="email" id="login-email" placeholder="Votre email" autocomplete="email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
+                <input type="password" id="login-password" placeholder="Mot de passe (8 caractères minimum)" minlength="8" autocomplete="current-password" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-2 focus:border-terracotta-500 focus:outline-none">
+                <div class="text-right mb-5">
+                    <button onclick="showResetPanel()" class="text-sm text-terracotta-500 hover:underline font-medium">Mot de passe oublié ?</button>
+                </div>
+                <div class="flex flex-col gap-3 mb-5">
+                    <button onclick="handleLogin()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Connexion</button>
+                </div>
+
+                <!-- Séparateur inscription -->
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                    <span class="text-xs text-stone-400 font-medium">Nouveau sur Renger ?</span>
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                </div>
+
+                <!-- Champ username — uniquement pour l'inscription -->
+                <div class="mb-3">
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">@</span>
+                        <input
+                            type="text"
+                            id="signup-username"
+                            placeholder="nom_utilisateur"
+                            oninput="checkUsernameAvailability(this.value)"
+                            maxlength="20"
+                            class="w-full pl-8 pr-10 py-3 border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl focus:border-terracotta-500 focus:outline-none transition"
+                        >
+                        <span id="username-status-icon" class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5"></span>
+                    </div>
+                    <p id="username-feedback" class="text-xs mt-1 text-stone-400">Lettres minuscules, chiffres, . - _ — 1 à 20 caractères</p>
+                </div>
+                <button onclick="handleSignup()" class="w-full bg-stone-800 dark:bg-stone-200 dark:text-stone-900 text-white font-semibold py-3 rounded-xl hover:bg-stone-700 dark:hover:bg-white transition">S'inscrire</button>
+            </div>
+
+
+            <!-- Panneau Mot de passe oublié -->
+            <div id="auth-panel-reset" class="hidden">
+                <button onclick="showLoginPanel()" class="text-terracotta-500 font-semibold mb-4 flex items-center gap-1 hover:underline">← Retour</button>
+                <div class="flex justify-center mb-3">
+                    <div class="w-12 h-12 rounded-2xl bg-white dark:bg-stone-800 shadow-md border border-stone-200/80 dark:border-stone-700 p-2 flex items-center justify-center overflow-hidden">
+                        <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+                    </div>
+                </div>
+                <h2 class="text-2xl font-bold mb-3 text-stone-800 dark:text-white text-center">Réinitialiser le mot de passe</h2>
+                <p class="text-stone-500 dark:text-stone-400 text-sm mb-6">Entrez votre email. Nous vous enverrons un lien pour créer un nouveau mot de passe.</p>
+                <input type="email" id="reset-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 mb-4 focus:border-terracotta-500 focus:outline-none">
+                <button onclick="handleResetPassword()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Envoyer le lien de réinitialisation</button>
+            </div>
+        </div>
+    </div>
+<footer class="w-full py-8 mt-16 border-t border-stone-200 dark:border-stone-800 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
+        <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-lg bg-white dark:bg-stone-800 shadow-xs border border-stone-200/80 dark:border-stone-700 p-0.5 flex items-center justify-center overflow-hidden">
+                <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+            </div>
+            <span class="text-stone-400 dark:text-stone-500 font-semibold">© 2026 Renger</span>
+        </div>
+        <a href="cgu.html" class="hover:text-terracotta-500 transition font-medium">Conditions Générales d'Utilisation (CGU)</a>
+        <a href="politique-confidentialite.html" class="hover:text-terracotta-500 transition font-medium">Politique de Confidentialité</a>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="js/core.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/trailers.js"></script>
+<div id="chat-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleChatModalBackdrop(event)">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md flex flex-col" style="max-height: 85vh;" onclick="event.stopPropagation()">
+            <!-- En-tête -->
+            <div class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-700 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-stone-900 dark:text-white text-lg leading-tight">Question au propriétaire</h3>
+                        <p id="chat-modal-subtitle" class="text-xs text-stone-400 mt-0.5">Posez vos questions sur la remorque</p>
+                    </div>
+                </div>
+                <button onclick="closeChatModal()" class="w-9 h-9 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-600 transition text-xl font-bold leading-none">&times;</button>
+            </div>
+
+            <!-- Avertissement anti-contournement -->
+            <div class="mx-6 mt-3 flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-3.5 py-2.5 flex gap-2.5 items-start">
+                <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                <p class="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">Les coordonnées personnelles (email, téléphone) sont automatiquement masquées pour votre sécurité et celle du propriétaire.</p>
+            </div>
+
+            <!-- BANDEAU TRANSACTION & ÉTAT DES LIEUX ASYMÉTRIQUE -->
+            <div id="chat-inspection-bar" class="hidden mx-6 mt-3 p-3.5 bg-stone-50 dark:bg-stone-900/90 border border-stone-200 dark:border-stone-700 rounded-2xl flex-col gap-2 flex-shrink-0">
+                <!-- Côté Propriétaire (Départ) -->
+                <div id="chat-owner-actions" class="hidden flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                            <span>🔑</span> État des lieux de départ :
+                        </span>
+                        <span id="chat-owner-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            0 / 4 photo(s)
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button id="chat-owner-inspection-btn" onclick="startOwnerInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
+                            <span>📸 Faire l'état des lieux</span>
+                        </button>
+                        <button id="chat-owner-unlock-btn" onclick="handleUnlockStripeFunds()" disabled class="bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-500 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed transition shadow-sm">
+                            <span>🔒 Déverrouiller mes fonds</span>
+                        </button>
+                    </div>
+                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                        ⚠️ 4 photos requises pour déverrouiller vos fonds Stripe (80%).
+                    </p>
+                </div>
+
+                <!-- Côté Locataire (Retour) -->
+                <div id="chat-renter-actions" class="hidden flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                            <span>🔄</span> État des lieux de retour :
+                        </span>
+                        <span id="chat-renter-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            0 / 4 photo(s)
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button id="chat-renter-inspection-btn" onclick="startRenterInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
+                            <span>📸 État des lieux retour</span>
+                        </button>
+                        <button id="chat-renter-close-btn" onclick="handleRenterCloseRental()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm">
+                            <span>🏁 Clôturer la location</span>
+                        </button>
+                    </div>
+                    <p id="chat-renter-close-hint" class="text-[11px] text-stone-500 dark:text-stone-400">
+                        Réalisez les 4 photos de retour pour attester de l'état impeccable.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Zone de messages -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto px-6 py-4 space-y-3 min-h-0">
+                <p class="text-center text-sm text-stone-400 italic py-4">Chargement des messages...</p>
+            </div>
+
+            <!-- Zone de saisie -->
+            <div class="px-6 pb-6 pt-3 border-t border-stone-100 dark:border-stone-700 flex-shrink-0">
+                <div class="flex gap-3 items-end">
+                    <textarea id="chat-input" placeholder="Votre question… (ex: Compatible 7 broches ?)" rows="2"
+                        class="flex-1 border-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-2xl px-4 py-3 text-sm resize-none focus:border-terracotta-500 outline-none transition leading-relaxed"
+                        maxlength="800" onkeydown="handleChatKeydown(event)"></textarea>
+                    <button onclick="sendChatMessage()" id="chat-send-btn"
+                        class="flex-shrink-0 bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-bold w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-xs text-stone-300 dark:text-stone-600 mt-2 text-right"><span id="chat-char-count">0</span>/800</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

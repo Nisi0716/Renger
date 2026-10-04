@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Renger - Accueil</title>
-    <meta name="description" content="Location de remorques entre particuliers">
+    <title>Catalogue des Remorques - Renger</title>
+    <meta name="description" content="Trouvez la remorque idéale">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://renger.ch/index.html">
+    <link rel="canonical" href="https://renger.ch/remorques.html">
     
-    <meta property="og:title" content="Renger - Accueil">
-    <meta property="og:description" content="Location de remorques entre particuliers">
+    <meta property="og:title" content="Catalogue des Remorques - Renger">
+    <meta property="og:description" content="Trouvez la remorque idéale">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://renger.ch/index.html">
+    <meta property="og:url" content="https://renger.ch/remorques.html">
     <meta property="og:image" content="https://renger.ch/Renger_Logo_SVG.svg">
     <meta name="twitter:card" content="summary_large_image">
     
@@ -36,16 +36,6 @@
         .hidden { display: none !important; }
     </style>
     <link rel="stylesheet" href="style.css">
-
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "AutoRental",
-      "name": "Renger",
-      "description": "Location de remorques entre particuliers",
-      "url": "https://renger.ch"
-    }
-    </script>
 </head>
 <body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative pb-20 transition-colors duration-300">
 <div id="toast-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 -translate-y-24 opacity-0 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white pointer-events-none">
@@ -90,24 +80,50 @@
             </div>
         </div>
     </header>
-<div id="welcome-screen" class="min-h-screen flex flex-col items-center justify-center p-6 pt-20">
-        <!-- Emblème Logo Hero -->
-        <div class="mb-5 relative flex items-center justify-center group">
-            <div class="absolute -inset-2 bg-gradient-to-r from-terracotta-500/25 to-terracotta-600/10 rounded-3xl blur-xl opacity-70 group-hover:opacity-100 transition duration-500"></div>
-            <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white dark:bg-stone-800 shadow-xl border border-stone-200/80 dark:border-stone-700 p-3 flex items-center justify-center overflow-hidden transform group-hover:scale-105 transition-all duration-300">
-                <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
-            </div>
-        </div>
-        <h1 class="text-5xl md:text-6xl font-bold mb-4 text-terracotta-500 tracking-tight text-center">Renger</h1>
-        <p data-i18n="subtitle" class="text-lg text-stone-600 dark:text-stone-400 mb-10 text-center max-w-lg">La plateforme de location de remorques entre particuliers. Trouvez la remorque parfaite ou rentabilisez la vôtre.</p>
-        <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
-            <a href="remorques.html" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                <span>🔍</span> <span data-i18n="btn_buyer">Je cherche une remorque</span>
+<div id="buyer-page" class="min-h-screen p-6 pt-24 max-w-5xl mx-auto">
+        <button onclick="showWelcomeScreen()" class="text-terracotta-600 font-semibold mb-6 transition" data-i18n="back">← Retour</button>
+        
+        <div class="flex overflow-x-auto gap-3 pb-4 mb-6 no-scrollbar">
+            <button id="filter-all" onclick="setFilter('all')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-terracotta-500 text-white rounded-xl border-2 border-terracotta-500 shadow-sm transition focus:outline-none">
+                <span class="text-3xl mb-1">🔍</span><span class="text-xs font-semibold">Tout</span>
             </a>
-            <a href="louer-ma-remorque.html" class="w-full bg-white dark:bg-stone-800 hover:bg-terracotta-50 dark:hover:bg-stone-700 text-terracotta-600 border-2 border-terracotta-500 font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                <span>➕</span> <span data-i18n="btn_seller">Je loue ma remorque</span>
+            <button id="filter-utilitaire" onclick="setFilter('utilitaire')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">📦</span><span class="text-xs font-semibold">Utilitaire</span>
+            </a>
+            <button id="filter-cheval" onclick="setFilter('cheval')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🐴</span><span class="text-xs font-semibold">Cheval</span>
+            </a>
+            <button id="filter-voiture" onclick="setFilter('voiture')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🚗</span><span class="text-xs font-semibold">Voiture</span>
+            </a>
+            <button id="filter-moto" onclick="setFilter('moto')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🏍️</span><span class="text-xs font-semibold">Moto</span>
+            </a>
+            <button id="filter-refrigere" onclick="setFilter('refrigere')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">❄️</span><span class="text-xs font-semibold">Réfrigéré</span>
+            </a>
+            <button id="filter-porte-velo" onclick="setFilter('porte-velo')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🚲</span><span class="text-xs font-semibold">Porte-vélo</span>
+            </a>
+            <button id="filter-bagage" onclick="setFilter('bagage')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
+                <span class="text-3xl mb-1">🧳</span><span class="text-xs font-semibold">Bagage de toit</span>
             </a>
         </div>
+
+        <!-- Barre de recherche textuelle -->
+        <div class="relative mb-5">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg pointer-events-none">🔍</span>
+            <input
+                type="search"
+                id="search-input"
+                placeholder="Rechercher une remorque (ex: van à chevaux, fermée...)"
+                oninput="handleSearch(this.value)"
+                class="w-full pl-11 pr-4 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm"
+            >
+        </div>
+
+        <h3 id="filter-title" class="text-xl font-bold mb-4 text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
+        <div id="trailers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 <div id="auth-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-50 flex items-center justify-center z-50 px-4" onclick="handleAuthModalBackdrop(event)">
         <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-2xl w-full max-w-md relative" onclick="event.stopPropagation()">
@@ -208,6 +224,102 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="js/core.js"></script>
     <script src="js/components.js"></script>
+    <script src="js/chat.js"></script>
     <script src="js/trailers.js"></script>
+<div id="chat-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleChatModalBackdrop(event)">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md flex flex-col" style="max-height: 85vh;" onclick="event.stopPropagation()">
+            <!-- En-tête -->
+            <div class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-700 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-stone-900 dark:text-white text-lg leading-tight">Question au propriétaire</h3>
+                        <p id="chat-modal-subtitle" class="text-xs text-stone-400 mt-0.5">Posez vos questions sur la remorque</p>
+                    </div>
+                </div>
+                <button onclick="closeChatModal()" class="w-9 h-9 flex items-center justify-center rounded-full bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-600 transition text-xl font-bold leading-none">&times;</button>
+            </div>
+
+            <!-- Avertissement anti-contournement -->
+            <div class="mx-6 mt-3 flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-3.5 py-2.5 flex gap-2.5 items-start">
+                <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                <p class="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">Les coordonnées personnelles (email, téléphone) sont automatiquement masquées pour votre sécurité et celle du propriétaire.</p>
+            </div>
+
+            <!-- BANDEAU TRANSACTION & ÉTAT DES LIEUX ASYMÉTRIQUE -->
+            <div id="chat-inspection-bar" class="hidden mx-6 mt-3 p-3.5 bg-stone-50 dark:bg-stone-900/90 border border-stone-200 dark:border-stone-700 rounded-2xl flex-col gap-2 flex-shrink-0">
+                <!-- Côté Propriétaire (Départ) -->
+                <div id="chat-owner-actions" class="hidden flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                            <span>🔑</span> État des lieux de départ :
+                        </span>
+                        <span id="chat-owner-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            0 / 4 photo(s)
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button id="chat-owner-inspection-btn" onclick="startOwnerInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
+                            <span>📸 Faire l'état des lieux</span>
+                        </button>
+                        <button id="chat-owner-unlock-btn" onclick="handleUnlockStripeFunds()" disabled class="bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-500 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed transition shadow-sm">
+                            <span>🔒 Déverrouiller mes fonds</span>
+                        </button>
+                    </div>
+                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
+                        ⚠️ 4 photos requises pour déverrouiller vos fonds Stripe (80%).
+                    </p>
+                </div>
+
+                <!-- Côté Locataire (Retour) -->
+                <div id="chat-renter-actions" class="hidden flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                            <span>🔄</span> État des lieux de retour :
+                        </span>
+                        <span id="chat-renter-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            0 / 4 photo(s)
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button id="chat-renter-inspection-btn" onclick="startRenterInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
+                            <span>📸 État des lieux retour</span>
+                        </button>
+                        <button id="chat-renter-close-btn" onclick="handleRenterCloseRental()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm">
+                            <span>🏁 Clôturer la location</span>
+                        </button>
+                    </div>
+                    <p id="chat-renter-close-hint" class="text-[11px] text-stone-500 dark:text-stone-400">
+                        Réalisez les 4 photos de retour pour attester de l'état impeccable.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Zone de messages -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto px-6 py-4 space-y-3 min-h-0">
+                <p class="text-center text-sm text-stone-400 italic py-4">Chargement des messages...</p>
+            </div>
+
+            <!-- Zone de saisie -->
+            <div class="px-6 pb-6 pt-3 border-t border-stone-100 dark:border-stone-700 flex-shrink-0">
+                <div class="flex gap-3 items-end">
+                    <textarea id="chat-input" placeholder="Votre question… (ex: Compatible 7 broches ?)" rows="2"
+                        class="flex-1 border-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-2xl px-4 py-3 text-sm resize-none focus:border-terracotta-500 outline-none transition leading-relaxed"
+                        maxlength="800" onkeydown="handleChatKeydown(event)"></textarea>
+                    <button onclick="sendChatMessage()" id="chat-send-btn"
+                        class="flex-shrink-0 bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-bold w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-xs text-stone-300 dark:text-stone-600 mt-2 text-right"><span id="chat-char-count">0</span>/800</p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

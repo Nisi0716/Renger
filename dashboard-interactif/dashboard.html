@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renger - Dashboard Central</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 900: '#1e3a8a' },
+                        dark: { bg: '#0f172a', card: '#1e293b', sidebar: '#0b1120', text: '#f8fafc', border: '#334155' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Bibliothèques -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
+    <!-- PapaParse pour lire les CSV intelligents -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+        /* Grid.js Customization */
+        .gridjs-container { font-family: inherit; width: 100%; overflow: hidden; }
+        .gridjs-wrapper { border-radius: 0.5rem; border-color: #e2e8f0; width: 100%; overflow-x: auto; }
+        html.dark .gridjs-container { color: #f8fafc; }
+        html.dark .gridjs-table { border-color: #334155; }
+        html.dark .gridjs-th { background-color: #1e293b; border-color: #334155; color: #f8fafc; font-weight: 600; white-space: nowrap; }
+        html.dark .gridjs-td { background-color: #0f172a; border-color: #334155; color: #cbd5e1; }
+        html.dark .gridjs-search-input { background-color: #1e293b; color: #f8fafc; border-color: #475569; }
+        html.dark .gridjs-pagination, html.dark .gridjs-footer { background-color: #1e293b; border-color: #334155; }
+        html.dark .gridjs-pages button { background-color: #334155; color: #f8fafc; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-dark-bg text-gray-900 dark:text-dark-text transition-colors duration-300 h-[100dvh] overflow-hidden flex w-full">
+
+    <!-- BACKDROP (Mobile) -->
+    <div id="sidebarBackdrop" class="fixed inset-0 bg-gray-900/50 z-40 hidden md:hidden transition-opacity duration-300"></div>
+
+    <!-- SIDEBAR (Navigation) -->
+    <aside id="sidebar" class="w-72 bg-white dark:bg-dark-sidebar border-r border-gray-200 dark:border-dark-border flex flex-col z-50 shadow-lg fixed md:relative h-full inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-dark-border">
+            <h1 class="text-xl font-extrabold text-brand-600 dark:text-brand-500 tracking-tight flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                Renger Analytics
+            </h1>
+            <button id="closeSidebarBtn" class="md:hidden text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto py-4">
+            <div class="px-4 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Vos Bases de données</div>
+            <nav id="sidebarMenu" class="space-y-1 px-3">
+                <!-- Les liens vers les tableaux seront injectés ici -->
+                <div class="text-sm text-gray-500 italic px-4 py-2">Aucune donnée importée.</div>
+            </nav>
+        </div>
+
+        <div class="p-4 border-t border-gray-200 dark:border-dark-border">
+            <button id="sidebarImportBtn" class="w-full py-2.5 bg-brand-50 hover:bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:hover:bg-brand-900/50 dark:text-brand-400 rounded-lg transition font-medium flex justify-center items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Importer Données
+            </button>
+            <button id="clearDataBtn" class="w-full mt-2 py-2 text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 hidden transition">Effacer la mémoire locale</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-[100dvh] relative min-w-0 overflow-hidden">
+        
+        <!-- TOPBAR -->
+        <header class="h-16 bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border flex items-center justify-between px-4 md:px-6 z-10 shadow-sm shrink-0">
+            <!-- Bouton Menu Mobile -->
+            <button id="mobileMenuBtn" class="md:hidden mr-3 p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            
+            <!-- Barre de recherche globale -->
+            <div class="flex-1 max-w-2xl relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input type="text" id="globalSearchInput" disabled placeholder="Recherche globale omnipotente (tapez un mot clé...)" class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl leading-5 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition disabled:opacity-50">
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3 ml-4">
+                <button id="themeToggle" class="p-2 rounded-lg border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                    <svg id="sunIcon" class="hidden w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="moonIcon" class="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- ZONE DE DÉFILEMENT PRINCIPALE -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 relative scroll-smooth min-h-0" id="mainScrollArea">
+            
+            <!-- ÉCRAN D'IMPORTATION -->
+            <div id="importView" class="bg-white dark:bg-dark-card p-10 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border max-w-3xl mx-auto mt-10 text-center fade-in">
+                <div class="mb-8">
+                    <div class="mx-auto bg-brand-50 dark:bg-brand-900/20 w-20 h-20 rounded-2xl flex items-center justify-center mb-6">
+                        <svg class="h-10 w-10 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Centralisez vos décisions</h2>
+                    <p class="mt-3 text-gray-500 dark:text-gray-400">
+                        Copiez-collez l'intégralité de votre feuille Google Sheets (même si elle contient plusieurs tableaux). Vos données seront sauvegardées localement.
+                    </p>
+                </div>
+                
+                <textarea id="pasteArea" rows="6" class="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none mb-6 resize-y" placeholder="Collez vos données ici..."></textarea>
+                
+                <div class="relative flex py-4 items-center">
+                    <div class="flex-grow border-t border-gray-200 dark:border-dark-border"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-400 text-xs font-bold uppercase tracking-wider">ou via fichier</span>
+                    <div class="flex-grow border-t border-gray-200 dark:border-dark-border"></div>
+                </div>
+
+                <label class="cursor-pointer w-full flex justify-center items-center px-6 py-4 bg-gray-50 dark:bg-dark-bg text-gray-700 dark:text-gray-300 border-2 border-dashed border-gray-300 dark:border-dark-border rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition font-medium">
+                    <svg class="w-6 h-6 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    Importer un fichier .csv
+                    <input type="file" id="fileInput" accept=".csv" class="hidden">
+                </label>
+
+                <div id="errorMsg" class="mt-6 text-red-600 hidden font-medium bg-red-50 dark:bg-red-900/20 p-4 rounded-xl text-sm"></div>
+            </div>
+
+            <!-- VUE RECHERCHE GLOBALE -->
+            <div id="searchResultsView" class="hidden fade-in">
+                <div class="mb-6 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Résultats de la recherche</h2>
+                    <button id="closeSearchBtn" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition text-sm font-medium">Fermer la recherche</button>
+                </div>
+                <div id="searchResultsContent" class="space-y-6"></div>
+            </div>
+
+            <!-- VUE DASHBOARD (Dynamique) -->
+            <div id="activeDashboardView" class="hidden fade-in space-y-8">
+                <!-- En-tête du dashboard -->
+                <div class="border-b border-gray-200 dark:border-dark-border pb-6">
+                    <h2 id="dashTitle" class="text-3xl font-extrabold text-gray-900 dark:text-white"></h2>
+                    <p id="dashDesc" class="mt-2 text-gray-500 dark:text-gray-400 font-medium"></p>
+                </div>
+                
+                <!-- Insight IA -->
+                <div id="dashInsight" class="bg-brand-50 dark:bg-brand-900/20 border-l-4 border-brand-500 p-4 rounded-r-lg text-sm text-brand-800 dark:text-brand-300"></div>
+
+                <!-- KPIs -->
+                <div id="dashKPIs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+                <!-- Graphiques -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border w-full overflow-hidden">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Vue Comparative</h3>
+                        <div id="chart-bar" class="w-full"></div>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border w-full overflow-hidden">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Tendances / Corrélations</h3>
+                        <div id="chart-line" class="w-full"></div>
+                    </div>
+                </div>
+
+                <!-- Tableau Source -->
+                <div class="bg-white dark:bg-dark-card p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border w-full overflow-hidden">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Base de Données Détaillée</h3>
+                    <div id="table-container" class="w-full"></div>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <!-- LOGIQUE JAVASCRIPT -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- GESTION DU THÈME ---
+            const html = document.documentElement;
+            function applyTheme(isDark) {
+                isDark ? html.classList.add('dark') : html.classList.remove('dark');
+                document.getElementById('sunIcon').classList.toggle('hidden', !isDark);
+                document.getElementById('moonIcon').classList.toggle('hidden', isDark);
+                if(window.currentCharts) {
+                    const mode = isDark ? 'dark' : 'light';
+                    const foreColor = isDark ? '#94a3b8' : '#64748b';
+                    window.currentCharts.forEach(c => {
+                        try { c.updateOptions({ theme: { mode }, chart: { foreColor } }); } catch(e){}
+                    });
+                }
+            }
+            applyTheme(localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches));
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                const dark = !html.classList.contains('dark');
+                localStorage.theme = dark ? 'dark' : 'light';
+                applyTheme(dark);
+            });
+
+            // --- VARIABLES DE L'APPLICATION ---
+            let appState = {
+                datasets: [],
+                activeIndex: -1,
+                searchQuery: ''
+            };
+            window.currentCharts = [];
+            let currentGrid = null;
+
+            // DOM Elements
+            const viewImport = document.getElementById('importView');
+            const viewDashboard = document.getElementById('activeDashboardView');
+            const viewSearch = document.getElementById('searchResultsView');
+            const searchInput = document.getElementById('globalSearchInput');
+            const sidebarMenu = document.getElementById('sidebarMenu');
+            const clearDataBtn = document.getElementById('clearDataBtn');
+
+            // Mobile Sidebar Logic
+            const sidebar = document.getElementById('sidebar');
+            const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+            function toggleSidebar() {
+                const isClosed = sidebar.classList.contains('-translate-x-full');
+                if (isClosed) {
+                    sidebar.classList.remove('-translate-x-full');
+                    sidebarBackdrop.classList.remove('hidden');
+                } else {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarBackdrop.classList.add('hidden');
+                }
+            }
+
+            if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleSidebar);
+            if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
+            if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', toggleSidebar);
+
+            // --- INITIALISATION (Persistance) ---
+            const savedData = localStorage.getItem('renger_raw_data');
+            if (savedData) {
+                processRawData(savedData);
+            }
+
+            // --- ÉVÉNEMENTS ---
+            document.getElementById('pasteArea').addEventListener('input', (e) => {
+                if (e.target.value.trim()) handleNewData(e.target.value.trim());
+            });
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => handleNewData(ev.target.result);
+                reader.readAsText(file);
+            });
+            document.getElementById('sidebarImportBtn').addEventListener('click', () => {
+                showView('import');
+                if (window.innerWidth < 768) toggleSidebar();
+            });
+            clearDataBtn.addEventListener('click', () => {
+                localStorage.removeItem('renger_raw_data');
+                location.reload();
+            });
+
+            // Recherche globale avec debounce pour éviter les bugs de Grid.js
+            let searchTimeout = null;
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                appState.searchQuery = query;
+                
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (query.length > 1) {
+                        executeGlobalSearch(query);
+                    } else if (appState.activeIndex >= 0) {
+                        showView('dashboard');
+                    } else {
+                        showView('import');
+                    }
+                }, 300);
+            });
+            document.getElementById('closeSearchBtn').addEventListener('click', () => {
+                searchInput.value = '';
+                if (appState.activeIndex >= 0) showView('dashboard');
+                else showView('import');
+            });
+
+            // --- LOGIQUE PRINCIPALE ---
+            function handleNewData(rawCsv) {
+                // Sauvegarde
+                try { localStorage.setItem('renger_raw_data', rawCsv); } catch(e) { console.warn("Quota Storage exceeded"); }
+                processRawData(rawCsv);
+            }
+
+            function processRawData(csvText) {
+                Papa.parse(csvText, {
+                    header: false,
+                    skipEmptyLines: false,
+                    complete: (results) => extractDatasets(results.data)
+                });
+            }
+
+            function extractDatasets(matrix) {
+                const datasets = [];
+                let currentData = [];
+                let title = "Tableau sans nom";
+                let desc = "";
+
+                for (let i = 0; i < matrix.length; i++) {
+                    const row = matrix[i];
+                    const nonEmpty = row.filter(cell => cell !== null && cell.trim() !== '');
+
+                    if (nonEmpty.length === 0) {
+                        if (currentData.length > 2) {
+                            const ds = buildDatasetObj(currentData, title, desc);
+                            if(ds) datasets.push(ds);
+                            currentData = []; title = "Tableau sans nom"; desc = "";
+                        }
+                    } else if (nonEmpty.length <= 2 && currentData.length === 0) {
+                        if (title === "Tableau sans nom") title = nonEmpty.join(' - ');
+                        else desc = nonEmpty.join(' - ');
+                    } else {
+                        currentData.push(row);
+                    }
+                }
+                if (currentData.length > 2) {
+                    const ds = buildDatasetObj(currentData, title, desc);
+                    if(ds) datasets.push(ds);
+                }
+
+                if (datasets.length > 0) {
+                    appState.datasets = datasets;
+                    searchInput.disabled = false;
+                    clearDataBtn.classList.remove('hidden');
+                    renderSidebar();
+                    selectDataset(0); // Ouvre le premier par défaut
+                } else {
+                    showError("Impossible de structurer les données. Vérifiez l'alignement des colonnes.");
+                }
+            }
+
+            function buildDatasetObj(dataRows, title, desc) {
+                // Nettoyage et garantie d'unicité des headers
+                const headersRaw = dataRows[0];
+                const headers = [];
+                const seen = new Set();
+                
+                headersRaw.forEach((h, i) => {
+                    let name = (h && h.trim()) ? h.trim() : `Col ${i+1}`;
+                    let suffix = 1;
+                    let finalName = name;
+                    while (seen.has(finalName)) { finalName = `${name} (${suffix})`; suffix++; }
+                    seen.add(finalName);
+                    headers.push(finalName);
+                });
+
+                const rawData = [];
+                for (let i = 1; i < dataRows.length; i++) {
+                    const row = dataRows[i];
+                    if (row.filter(c => c && c.trim() !== '').length < 2 && dataRows.length > 3) continue;
+                    const obj = {};
+                    headers.forEach((h, j) => { obj[h] = row[j] !== undefined ? row[j].trim() : ''; });
+                    rawData.push(obj);
+                }
+                if(rawData.length === 0) return null;
+
+                const numericKeys = [];
+                const categoricalKeys = [];
+                
+                headers.forEach(col => {
+                    let numCount = 0;
+                    const sampleSize = Math.min(10, rawData.length);
+                    for (let i = 0; i < sampleSize; i++) {
+                        if (parseSwissNumber(rawData[i][col]) !== null) numCount++;
+                    }
+                    if (numCount >= sampleSize * 0.4) numericKeys.push(col);
+                    else categoricalKeys.push(col);
+                });
+
+                const cleanData = rawData.map(row => {
+                    const cRow = { ...row };
+                    numericKeys.forEach(k => {
+                        const num = parseSwissNumber(row[k]);
+                        cRow[k] = num !== null ? num : 0;
+                    });
+                    return cRow;
+                });
+
+                return { title, description: desc, headers, rawData, cleanData, numericKeys, categoricalKeys };
+            }
+
+            function parseSwissNumber(str) {
+                if (typeof str === 'number') return str;
+                if (!str || str.trim() === '') return null;
+                let s = str.toString().replace(/CHF|%|€|\$|£/gi, '').replace(/[\s\u202F\u00A0]/g, '').replace(',', '.');
+                const val = parseFloat(s);
+                return isNaN(val) ? null : val;
+            }
+
+            // --- RENDU UI ---
+            function renderSidebar() {
+                sidebarMenu.innerHTML = '';
+                appState.datasets.forEach((ds, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = `w-full text-left px-4 py-3 rounded-xl transition text-sm font-medium mb-1 truncate flex items-center gap-2 ${idx === appState.activeIndex ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}`;
+                    btn.title = ds.title;
+                    btn.innerHTML = `
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                        <span class="truncate">${ds.title}</span>
+                    `;
+                    btn.onclick = () => selectDataset(idx);
+                    sidebarMenu.appendChild(btn);
+                });
+            }
+
+            function selectDataset(idx) {
+                appState.activeIndex = idx;
+                renderSidebar();
+                renderDashboard(appState.datasets[idx]);
+                if (window.innerWidth < 768 && !sidebar.classList.contains('-translate-x-full')) {
+                    toggleSidebar();
+                }
+            }
+
+            function renderDashboard(ds) {
+                showView('dashboard');
+                document.getElementById('mainScrollArea').scrollTop = 0;
+                
+                document.getElementById('dashTitle').textContent = ds.title;
+                document.getElementById('dashDesc').textContent = ds.description;
+
+                // Insight
+                const insightEl = document.getElementById('dashInsight');
+                if (ds.numericKeys.length > 0 && ds.categoricalKeys.length > 0) {
+                    const cat = ds.categoricalKeys[0];
+                    const num = ds.numericKeys[0];
+                    let maxRow = ds.cleanData[0];
+                    ds.cleanData.forEach(r => { if (r[num] > maxRow[num]) maxRow = r; });
+                    insightEl.innerHTML = `<strong>Insight Automatique :</strong> Le segment <span class="font-bold underline">${maxRow[cat] || 'N/A'}</span> génère la plus haute valeur pour <strong>${num}</strong> (${new Intl.NumberFormat('fr-CH').format(maxRow[num])}).`;
+                    insightEl.classList.remove('hidden');
+                } else {
+                    insightEl.classList.add('hidden');
+                }
+
+                // KPIs
+                const kpisEl = document.getElementById('dashKPIs');
+                kpisEl.innerHTML = buildKPICard("Entrées", ds.cleanData.length, "");
+                
+                ds.numericKeys.slice(0, 3).forEach(key => {
+                    const isRatio = key.toLowerCase().includes('%') || key.toLowerCase().includes('marge') || key.toLowerCase().includes('unitaire') || key.toLowerCase().includes('prix');
+                    const sum = ds.cleanData.reduce((s, r) => s + (r[key] || 0), 0);
+                    const val = isRatio ? (sum / (ds.cleanData.length || 1)) : sum;
+                    kpisEl.innerHTML += buildKPICard(`${isRatio ? 'Moyenne' : 'Total'} ${key.replace(/\(CHF\)|\(%\)/gi, '').trim()}`, val, key.includes('%') ? '%' : (key.includes('CHF') ? 'CHF' : ''));
+                });
+
+                // Clear old charts/grids
+                window.currentCharts.forEach(c => { try { c.destroy(); } catch(e){} });
+                window.currentCharts = [];
+                if (currentGrid) { try { currentGrid.destroy(); } catch(e){} document.getElementById('table-container').innerHTML=''; }
+
+                // Charts
+                const isDark = html.classList.contains('dark');
+                const foreColor = isDark ? '#94a3b8' : '#64748b';
+                
+                let xAxisKey = ds.categoricalKeys[0] || ds.headers[0];
+                let categories = ds.cleanData.map((r, i) => ds.categoricalKeys.length > 0 ? (r[xAxisKey] || 'N/A') : `Ligne ${i+1}`);
+
+                // Bar Chart
+                const barKeys = ds.numericKeys.filter(k => !k.includes('%')).slice(0, 2);
+                if (barKeys.length > 0) {
+                    const series = barKeys.map(k => ({ name: k.replace(/\(CHF\)/gi, ''), data: ds.cleanData.map(r => Number((r[k]||0).toFixed(2))) }));
+                    const chartBar = new ApexCharts(document.querySelector("#chart-bar"), {
+                        series, 
+                        chart: { type: 'bar', height: 300, toolbar: { show: false }, background: 'transparent', foreColor: foreColor },
+                        plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
+                        dataLabels: { enabled: false }, stroke: { show: true, width: 2, colors: ['transparent'] },
+                        xaxis: { categories, tooltip: { enabled: false } },
+                        theme: { mode: isDark ? 'dark' : 'light' }, colors: ['#3b82f6', '#8b5cf6']
+                    });
+                    chartBar.render();
+                    window.currentCharts.push(chartBar);
+                } else {
+                    document.querySelector("#chart-bar").innerHTML = "<p class='text-sm text-gray-500 py-10 text-center'>Pas de données numériques absolues.</p>";
+                }
+
+                // Line Chart
+                const lineKeys = ds.numericKeys.filter(k => k.includes('%') || k.toLowerCase().includes('marge'));
+                const lKeys = lineKeys.length > 0 ? lineKeys : ds.numericKeys.slice(2, 4);
+                if (lKeys.length > 0) {
+                    const series = lKeys.map(k => ({ name: k.replace(/\(%\)|\(CHF\)/gi, ''), data: ds.cleanData.map(r => Number((r[k]||0).toFixed(2))) }));
+                    const chartLine = new ApexCharts(document.querySelector("#chart-line"), {
+                        series, 
+                        chart: { type: 'area', height: 300, toolbar: { show: false }, background: 'transparent', foreColor: foreColor },
+                        dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 3 },
+                        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.05 } },
+                        xaxis: { categories }, theme: { mode: isDark ? 'dark' : 'light' }, colors: ['#10b981', '#f59e0b']
+                    });
+                    chartLine.render();
+                    window.currentCharts.push(chartLine);
+                } else {
+                    document.querySelector("#chart-line").innerHTML = "<p class='text-sm text-gray-500 py-10 text-center'>Pas de ratios ou tendances détectées.</p>";
+                }
+
+                // Table
+                setTimeout(() => {
+                    currentGrid = new gridjs.Grid({
+                        columns: ds.headers,
+                        data: ds.rawData.map(row => ds.headers.map(col => row[col])),
+                        search: true, sort: true, pagination: { enabled: true, limit: 10 }, resizable: true,
+                        style: { table: { width: '100%' } },
+                        language: { search: { placeholder: 'Rechercher...' }, pagination: { previous: 'Préc', next: 'Suiv', showing: 'Affichage', results: () => 'lignes' } }
+                    }).render(document.getElementById("table-container"));
+                }, 100);
+            }
+
+            function buildKPICard(title, value, suffix) {
+                const fVal = new Intl.NumberFormat('fr-CH', { maximumFractionDigits: 1 }).format(value);
+                return `
+                    <div class="bg-white dark:bg-dark-card p-5 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border flex flex-col justify-center">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 truncate" title="${title}">${title}</span>
+                        <div class="text-2xl font-extrabold text-gray-900 dark:text-white">${fVal} <span class="text-sm font-medium text-gray-400 ml-1">${suffix}</span></div>
+                    </div>
+                `;
+            }
+
+            // --- RECHERCHE GLOBALE ---
+            function executeGlobalSearch(query) {
+                showView('search');
+                const resultsContainer = document.getElementById('searchResultsContent');
+                resultsContainer.innerHTML = '';
+                
+                let foundAny = false;
+
+                appState.datasets.forEach(ds => {
+                    const matchedRows = ds.rawData.filter(row => {
+                        return Object.values(row).some(val => String(val).toLowerCase().includes(query));
+                    });
+
+                    if (matchedRows.length > 0) {
+                        foundAny = true;
+                        const block = document.createElement('div');
+                        block.className = 'bg-white dark:bg-dark-card p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden';
+                        block.innerHTML = `<h3 class="text-lg font-bold text-brand-600 dark:text-brand-400 mb-4">${ds.title} <span class="text-xs text-gray-500 ml-2">(${matchedRows.length} résultats)</span></h3>`;
+                        
+                        const tableWrapper = document.createElement('div');
+                        block.appendChild(tableWrapper);
+                        resultsContainer.appendChild(block);
+
+                        new gridjs.Grid({
+                            columns: ds.headers,
+                            data: matchedRows.map(row => ds.headers.map(col => row[col])),
+                            pagination: { enabled: true, limit: 5 }, resizable: true,
+                            style: { table: { width: '100%' } },
+                            language: { pagination: { previous: 'Préc', next: 'Suiv', showing: 'Affichage', results: () => 'lignes' } }
+                        }).render(tableWrapper);
+                    }
+                });
+
+                if (!foundAny) {
+                    resultsContainer.innerHTML = `<div class="p-10 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-dark-card rounded-2xl border border-gray-200 dark:border-dark-border">Aucun résultat trouvé pour "<b>${query}</b>" dans l'ensemble des bases de données.</div>`;
+                }
+            }
+
+            function showView(viewName) {
+                viewImport.classList.add('hidden');
+                viewDashboard.classList.add('hidden');
+                viewSearch.classList.add('hidden');
+                if (viewName === 'import') viewImport.classList.remove('hidden');
+                if (viewName === 'dashboard') viewDashboard.classList.remove('hidden');
+                if (viewName === 'search') viewSearch.classList.remove('hidden');
+            }
+
+            function showError(msg) {
+                const el = document.getElementById('errorMsg');
+                el.textContent = msg;
+                el.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

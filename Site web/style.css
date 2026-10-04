@@ -1,0 +1,21 @@
+/* style.css */
+/* Masquer la barre de défilement tout en gardant le scroll sur mobile */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Style pour masquer les cases à cocher standards et utiliser nos couleurs Tailwind */
+input[type="checkbox"]:checked + div {
+    border-color: #d16a54;
+    background-color: #fcf4f2;
+    color: #d16a54;
+}
+input[type="radio"]:checked + div {
+    border-color: #d16a54;
+    background-color: #fcf4f2;
+    color: #d16a54;
+}
