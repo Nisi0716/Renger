@@ -24,6 +24,32 @@ async function openTrailerDetail(trailer) {
     document.getElementById('detail-socket').innerText = trailer.socket;
     document.getElementById('detail-payload').innerText = trailer.payload + " kg";
 
+    // Mise à jour dynamique des métadonnées SEO
+    document.title = trailer.title + " - Location sur Renger";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+        metaDesc.setAttribute("content", trailer.description ? trailer.description.substring(0, 150) + "..." : `Louez ${trailer.title} sur Renger.`);
+    }
+
+    // Mise à jour du JSON-LD structuré
+    const schemaScript = document.getElementById('schema-trailer');
+    if (schemaScript) {
+        try {
+            const schemaData = JSON.parse(schemaScript.textContent);
+            schemaData.name = trailer.title;
+            schemaData.description = trailer.description || `Location de ${trailer.title}`;
+            if (schemaData.offers) {
+                schemaData.offers.price = trailer.price;
+            }
+            if (trailer.image_url) {
+                schemaData.image = trailer.image_url;
+            }
+            schemaScript.textContent = JSON.stringify(schemaData);
+        } catch (e) {
+            console.error("Erreur parsing JSON-LD", e);
+        }
+    }
+
     // Affichage de la note moyenne sous le titre
     const ratingContainer = document.getElementById('detail-rating');
     if (ratingContainer) {

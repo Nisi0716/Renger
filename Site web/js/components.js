@@ -63,6 +63,36 @@ function updateMobileNavState(pageId) {
 
 
 
+// ==========================================
+// GESTION DU MENU UTILISATEUR & AUTHENTIFICATION UI
+// ==========================================
+function updateUserMenu(user) {
+    const container = document.getElementById('user-menu-container');
+    if (!container) return;
+
+    if (user) {
+        // Extraction du nom : full_name Google ou première partie de l'adresse email
+        const displayName = user.user_metadata?.full_name || 
+                            user.user_metadata?.name || 
+                            (user.email ? user.email.split('@')[0] : 'Utilisateur');
+
+        container.innerHTML = `
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-semibold text-stone-700 dark:text-stone-200" id="user-display-name"></span>
+                <button onclick="supabase.auth.signOut()" class="text-stone-400 hover:text-red-500 text-sm font-medium transition hover:underline">Déconnexion</button>
+            </div>
+        `;
+        const nameEl = document.getElementById('user-display-name');
+        if (nameEl) nameEl.textContent = displayName;
+    } else {
+        container.innerHTML = `
+            <button onclick="openAuthModal()" class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-200 hover:text-terracotta-500 font-semibold py-2 px-4 rounded-xl shadow-sm transition">
+                <span data-i18n="login">Se connecter</span>
+            </button>
+        `;
+    }
+}
+
 function openAuthModal() { 
     const modal = document.getElementById('auth-modal');
     if (modal) modal.classList.remove('hidden');
@@ -526,4 +556,9 @@ function subscribePro() {
     if (typeof handleSubscribePro === 'function') {
         handleSubscribePro();
     }
+}
+
+// Initialisation immédiate du menu utilisateur si l'état auth a déjà été résolu
+if (typeof currentUser !== 'undefined' && currentUser) {
+    updateUserMenu(currentUser);
 }

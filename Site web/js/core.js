@@ -5,6 +5,34 @@ const supabaseUrl = 'https://cwifrzajxrcpnqceyxnj.supabase.co';
 const supabaseKey = 'sb_publishable_b8sieHW3SGLka8GSxRfr_w_eM3wtyYc';
 const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
+// Alias et exposition globale pour compatibilité multi-scripts et handlers inline
+const supabase = supabaseClient;
+window.supabaseClient = supabaseClient;
+if (window.supabase && supabaseClient) {
+    window.supabase.auth = supabaseClient.auth;
+}
+
+// ==========================================
+// ÉCOUTEUR GLOBAL D'AUTHENTIFICATION (OAUTH & SESSIONS)
+// ==========================================
+if (supabaseClient) {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        currentUser = session?.user || null;
+
+        // Auto-création du profil pour les retours OAuth (Google)
+        if (currentUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+            if (typeof ensureProfileExists === 'function') {
+                ensureProfileExists(currentUser);
+            }
+        }
+
+        // Notification de l'interface modulaire
+        if (typeof updateUserMenu === 'function') {
+            updateUserMenu(session?.user || null);
+        }
+    });
+}
+
 // ==========================================
 // HELPER API SÉCURISÉ (EDGE FUNCTIONS)
 // ==========================================
@@ -417,29 +445,26 @@ async function handleLogin() {
 async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
-    checkUser();
+    currentUser = null;
+    if (typeof updateUserMenu === 'function') {
+        updateUserMenu(null);
+    }
     showWelcomeScreen();
 }
 
 async function checkUser() {
     if (!supabaseClient) return;
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    currentUser = user;
-    const container = document.getElementById('user-menu-container');
-    if (!container) return;
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    currentUser = session?.user || null;
     
     if (currentUser) {
-        // Auto-créer le profil si l'utilisateur vient de se connecter via Google (ou autre OAuth)
-        ensureProfileExists(currentUser);
-
-        container.innerHTML = `
-            <div class="flex items-center gap-4">
-                <button onclick="openProfile()" class="text-stone-600 dark:text-stone-300 font-bold hover:text-terracotta-500 transition hidden md:block">Mon Espace</button>
-                <button onclick="openSettings()" class="text-stone-600 dark:text-stone-300 font-bold hover:text-terracotta-500 transition">Paramètres</button>
-                <button onclick="handleLogout()" class="text-stone-400 text-sm hover:underline">Déconnexion</button>
-            </div>`;
-    } else {
-        container.innerHTML = `<button onclick="openAuthModal()" class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-200 font-semibold py-2 px-4 rounded-xl">Se connecter</button>`;
+        if (typeof ensureProfileExists === 'function') {
+            ensureProfileExists(currentUser);
+        }
+    }
+    
+    if (typeof updateUserMenu === 'function') {
+        updateUserMenu(currentUser);
     }
 }
 
@@ -915,10 +940,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
     
-    // Routing pour les tabs de la page profil (p=...)
-    const pParam = urlParams.get('p');
-    if (pParam && typeof showPage === 'function') {
-        showPage(pParam);
+    // Routing pour la page profil (MPA)
+    if (window.location.pathname.includes('profil.html')) {
+        const pParam = urlParams.get('p') || 'profile-page';
+        if (typeof showPage === 'function') {
+            showPage(pParam);
+        }
+        // Attendre que currentUser soit dfini par checkUser() avant de charger les donnes
+        if (pParam === 'settings-page' && typeof loadProfileSettings === 'function') {
+            setTimeout(() => loadProfileSettings(), 50); // slight delay to ensure user auth is parsed
+        } else if (typeof loadProfileData === 'function') {
+            setTimeout(() => loadProfileData(), 50);
+        }
+    } else {
+        // Fallback SPA routing 
+        const pParam = urlParams.get('p');
+        if (pParam && typeof showPage === 'function') {
+            showPage(pParam);
+        }
     }
 });
 
