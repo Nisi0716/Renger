@@ -17,8 +17,8 @@ let toastTimer = null; // Timer d'annulation pour éviter la collision des notif
 let activeChatPartnerId = null; // ID du destinataire de la conversation active
 let currentBookingContext = null; // Contexte de réservation pour la transaction active
 
-// Alias et exposition globale pour compatibilité multi-scripts et handlers inline
-const supabase = supabaseClient;
+// Configuration et client Supabase
+var supabase = supabaseClient;
 window.supabase = window.supabase || {};
 window.supabaseClient = supabaseClient;
 if (supabaseClient) {
