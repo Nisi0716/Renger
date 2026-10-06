@@ -5,10 +5,23 @@ const supabaseUrl = 'https://cwifrzajxrcpnqceyxnj.supabase.co';
 const supabaseKey = 'sb_publishable_b8sieHW3SGLka8GSxRfr_w_eM3wtyYc';
 const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
+// Variables d'état globales (déclarées en amont pour éviter tout ReferenceError TDZ)
+let currentUser = null;
+let currentTrailer = null; 
+let bookingCalendar = null; 
+let selectedStartDate = null;
+let selectedEndDate = null;
+let videoStream = null;
+let currentFilter = 'all'; // Filtre actif sur la page des annonces
+let toastTimer = null; // Timer d'annulation pour éviter la collision des notifications toast
+let activeChatPartnerId = null; // ID du destinataire de la conversation active
+let currentBookingContext = null; // Contexte de réservation pour la transaction active
+
 // Alias et exposition globale pour compatibilité multi-scripts et handlers inline
 const supabase = supabaseClient;
+window.supabase = window.supabase || {};
 window.supabaseClient = supabaseClient;
-if (window.supabase && supabaseClient) {
+if (supabaseClient) {
     window.supabase.auth = supabaseClient.auth;
 }
 
@@ -17,18 +30,23 @@ if (window.supabase && supabaseClient) {
 // ==========================================
 if (supabaseClient) {
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        currentUser = session?.user || null;
+        try {
+            currentUser = session?.user || null;
+            window.currentUser = currentUser;
 
-        // Auto-création du profil pour les retours OAuth (Google)
-        if (currentUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-            if (typeof ensureProfileExists === 'function') {
-                ensureProfileExists(currentUser);
+            // Auto-création du profil pour les retours OAuth (Google)
+            if (currentUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+                if (typeof ensureProfileExists === 'function') {
+                    ensureProfileExists(currentUser);
+                }
             }
-        }
 
-        // Notification de l'interface modulaire
-        if (typeof updateUserMenu === 'function') {
-            updateUserMenu(session?.user || null);
+            // Notification de l'interface modulaire
+            if (typeof updateUserMenu === 'function') {
+                updateUserMenu(session?.user || null);
+            }
+        } catch (err) {
+            console.warn("Erreur dans onAuthStateChange:", err);
         }
     });
 }
@@ -63,16 +81,6 @@ async function callEdgeFunction(functionName, payload = {}) {
     return data;
 }
 
-let currentUser = null;
-let currentTrailer = null; 
-let bookingCalendar = null; 
-let selectedStartDate = null;
-let selectedEndDate = null;
-let videoStream = null;
-let currentFilter = 'all'; // Filtre actif sur la page des annonces
-let toastTimer = null; // Timer d'annulation pour éviter la collision des notifications toast
-let activeChatPartnerId = null; // ID du destinataire de la conversation active
-let currentBookingContext = null; // Contexte de réservation pour la transaction active
 
 /**
  * Formate un objet Date en chaîne SQL standard YYYY-MM-DD
@@ -367,19 +375,28 @@ async function handleSignup() {
         if (signupBtn) signupBtn.disabled = false;
     }
 }
+window.handleSignup = handleSignup;
 
 // Connexion via Google OAuth
 async function handleGoogleLogin() {
     if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: window.location.origin + window.location.pathname + window.location.search
+    try {
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin + window.location.pathname + window.location.search
+            }
+        });
+        if (error) {
+            console.error("Erreur Google OAuth:", error);
+            showToast("Erreur Google : " + error.message, "error");
         }
-    });
-    if (error) showToast("Erreur Google : " + error.message, "error");
-    // Supabase redirige vers Google — le retour est géré dans DOMContentLoaded via onAuthStateChange
+    } catch (err) {
+        console.error("Exception Google OAuth:", err);
+        showToast("Erreur Google : " + (err.message || err), "error");
+    }
 }
+window.handleGoogleLogin = handleGoogleLogin;
 
 // Crée un profil si l'utilisateur n'en a pas encore (pour les connexions OAuth/Google)
 async function ensureProfileExists(user) {
@@ -467,6 +484,9 @@ async function checkUser() {
         updateUserMenu(currentUser);
     }
 }
+window.handleLogin = handleLogin;
+window.handleLogout = handleLogout;
+window.checkUser = checkUser;
 
 // Mapping catégories → emoji+label pour les badges
 const CATEGORY_MAP = {
