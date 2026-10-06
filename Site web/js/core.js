@@ -381,15 +381,19 @@ window.handleSignup = handleSignup;
 async function handleGoogleLogin() {
     if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
     try {
-        const { error } = await supabaseClient.auth.signInWithOAuth({
+        const { data, error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin + window.location.pathname + window.location.search
+                redirectTo: window.location.origin + window.location.pathname
             }
         });
         if (error) {
             console.error("Erreur Google OAuth:", error);
             showToast("Erreur Google : " + error.message, "error");
+            return;
+        }
+        if (data?.url) {
+            window.location.href = data.url;
         }
     } catch (err) {
         console.error("Exception Google OAuth:", err);
