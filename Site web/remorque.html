@@ -268,7 +268,7 @@
                 <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 dark:text-white text-center">Rejoindre Renger</h2>
 
                 <!-- Bouton Google -->
-                <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-100 font-semibold py-3 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-600 transition shadow-sm mb-5">
+                <button id="google-login-btn" type="button" data-action="google-login" onclick="handleGoogleLogin(event)" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-100 font-semibold py-3 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-600 transition shadow-sm mb-5 cursor-pointer">
                     <!-- Logo Google officiel SVG -->
                     <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -535,11 +535,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="https://js.stripe.com/v3/" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
-    <script src="js/core.js?v=3" defer></script>
-    <script src="js/components.js?v=3" defer></script>
-    <script src="js/chat.js?v=3" defer></script>
-    <script src="js/trailers.js?v=3" defer></script>
-    <script src="js/booking.js?v=3" defer></script>
+    <script src="js/core.js?v=4" defer></script>
+    <script src="js/components.js?v=4" defer></script>
+    <script src="js/chat.js?v=4" defer></script>
+    <script src="js/trailers.js?v=4" defer></script>
+    <script src="js/booking.js?v=4" defer></script>
 <div id="chat-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleChatModalBackdrop(event)">
         <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md flex flex-col" style="max-height: 85vh;" onclick="event.stopPropagation()">
             <!-- En-tête -->

@@ -378,29 +378,75 @@ async function handleSignup() {
 window.handleSignup = handleSignup;
 
 // Connexion via Google OAuth
-async function handleGoogleLogin() {
-    if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
+async function handleGoogleLogin(event) {
+    if (event) {
+        if (typeof event.preventDefault === 'function') event.preventDefault();
+        if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    console.log("[Renger] handleGoogleLogin() déclenché");
+
+    let client = supabaseClient;
+    if (!client && window.supabase && typeof window.supabase.createClient === 'function') {
+        client = window.supabase.createClient(supabaseUrl, supabaseKey);
+    }
+    if (!client) {
+        alert("Erreur : Impossible de charger le module Supabase. Veuillez recharger la page.");
+        return;
+    }
+
+    const googleBtn = document.getElementById('google-login-btn') || document.querySelector('button[onclick*="handleGoogleLogin"]');
+    if (googleBtn) {
+        googleBtn.disabled = true;
+        googleBtn.style.opacity = '0.6';
+        googleBtn.style.cursor = 'wait';
+    }
+
     try {
-        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        const redirectUrl = window.location.origin + window.location.pathname;
+        console.log("[Renger] Lancement OAuth vers :", redirectUrl);
+
+        const { data, error } = await client.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin + window.location.pathname
+                redirectTo: redirectUrl
             }
         });
+
         if (error) {
-            console.error("Erreur Google OAuth:", error);
-            showToast("Erreur Google : " + error.message, "error");
+            console.error("[Renger] Erreur Google OAuth:", error);
+            alert("Erreur Google : " + error.message);
+            if (googleBtn) {
+                googleBtn.disabled = false;
+                googleBtn.style.opacity = '1';
+                googleBtn.style.cursor = 'pointer';
+            }
             return;
         }
+
         if (data?.url) {
-            window.location.href = data.url;
+            console.log("[Renger] Redirection vers :", data.url);
+            window.location.assign(data.url);
         }
     } catch (err) {
-        console.error("Exception Google OAuth:", err);
-        showToast("Erreur Google : " + (err.message || err), "error");
+        console.error("[Renger] Exception Google OAuth:", err);
+        alert("Erreur Google : " + (err.message || err));
+        if (googleBtn) {
+            googleBtn.disabled = false;
+            googleBtn.style.opacity = '1';
+            googleBtn.style.cursor = 'pointer';
+        }
     }
 }
 window.handleGoogleLogin = handleGoogleLogin;
+
+// Écouteur global pour intercepter le clic sur le bouton Google
+document.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('#google-login-btn, [data-action="google-login"]') : null;
+    if (btn) {
+        handleGoogleLogin(e);
+    }
+});
+
 
 // Crée un profil si l'utilisateur n'en a pas encore (pour les connexions OAuth/Google)
 async function ensureProfileExists(user) {

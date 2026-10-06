@@ -47,7 +47,7 @@
     </script>
 </head>
 <body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative pb-20 transition-colors duration-300">
-<div id="toast-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 -translate-y-24 opacity-0 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white pointer-events-none">
+<div id="toast-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 -translate-y-24 opacity-0 transition-all duration-500 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white pointer-events-none">
         <span id="toast-icon" class="text-2xl"></span>
         <span id="toast-message"></span>
     </div>
@@ -120,7 +120,7 @@
                 <h2 data-i18n="auth_title" class="text-3xl font-bold mb-6 text-stone-800 dark:text-white text-center">Rejoindre Renger</h2>
 
                 <!-- Bouton Google -->
-                <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-100 font-semibold py-3 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-600 transition shadow-sm mb-5">
+                <button id="google-login-btn" type="button" data-action="google-login" onclick="handleGoogleLogin(event)" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-100 font-semibold py-3 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-600 transition shadow-sm mb-5 cursor-pointer">
                     <!-- Logo Google officiel SVG -->
                     <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -206,11 +206,11 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
 
     <!-- Modules Renger (Ordre strict : core.js avant components.js) -->
-    <script src="js/core.js?v=3" defer></script>
-    <script src="js/components.js?v=3" defer></script>
-    <script src="js/chat.js?v=3" defer></script>
-    <script src="js/trailers.js?v=3" defer></script>
-    <script src="js/booking.js?v=3" defer></script>
+    <script src="js/core.js?v=4" defer></script>
+    <script src="js/components.js?v=4" defer></script>
+    <script src="js/chat.js?v=4" defer></script>
+    <script src="js/trailers.js?v=4" defer></script>
+    <script src="js/booking.js?v=4" defer></script>
     <!-- BOTTOM NAVIGATION BAR -->
     <nav class="fixed bottom-0 left-0 w-full bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex justify-around items-center pb-6 pt-3 z-50 md:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         <a href="remorques.html" id="mobile-nav-explore" class="mobile-nav-btn flex flex-col items-center gap-1 w-20 text-stone-400 hover:text-terracotta-500 transition-transform active:scale-95">
