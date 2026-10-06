@@ -129,11 +129,28 @@ async function openTrailerDetail(trailer) {
         }
     updateChatButtonState(); // État initial du bouton chat (grisé car pas de dates)
 
-    // On interroge la vue publique contenant uniquement les dates
-    const { data: bookings } = await supabaseClient
-        .from('trailer_booked_dates')
-        .select('start_date, end_date')
-        .eq('trailer_id', trailer.id);
+    // On interroge la vue publique contenant uniquement les dates (avec repli résilient vers bookings)
+    let bookings = null;
+    try {
+        const { data, error } = await supabaseClient
+            .from('trailer_booked_dates')
+            .select('start_date, end_date')
+            .eq('trailer_id', trailer.id);
+        if (error) throw error;
+        bookings = data;
+    } catch (err) {
+        console.warn("Vue trailer_booked_dates indisponible, repli vers la table bookings:", err);
+        try {
+            const { data: fallbackData } = await supabaseClient
+                .from('bookings')
+                .select('start_date, end_date')
+                .eq('trailer_id', trailer.id)
+                .in('status', ['confirmed', 'paid', 'active', 'paye', 'indisponible']);
+            bookings = fallbackData;
+        } catch (fallbackErr) {
+            console.warn("Erreur requête repli bookings:", fallbackErr);
+        }
+    }
 
     const disabledDates = bookings ? bookings.map(b => ({
         from: b.start_date,
@@ -178,8 +195,11 @@ async function openTrailerDetail(trailer) {
                 selectedStartDate = selectedDates[0];
                 selectedEndDate = selectedDates[1];
                 
-                const diffTime = Math.abs(selectedEndDate - selectedStartDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
+                // Normalisation UTC minuit pour immuniser contre les décalages DST (changement d'heure)
+                const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+                const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
+                const diffTime = Math.abs(utcEnd - utcStart);
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1; 
                 const rentalPrice = diffDays * currentTrailer.price;
                 const serviceFee = calculateRengerServiceFee(rentalPrice);
                 const totalWithFee = rentalPrice + serviceFee;
@@ -365,9 +385,11 @@ function submitBooking() {
         return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
     }
 
-    // Calculer les montants détaillés pour la modale
-    const diffTime = Math.abs(selectedEndDate - selectedStartDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    // Calculer les montants détaillés pour la modale (avec normalisation UTC minuit contre les décalages DST)
+    const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+    const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
+    const diffTime = Math.abs(utcEnd - utcStart);
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
     const rentalPrice = diffDays * currentTrailer.price;
     const serviceFee = calculateRengerServiceFee(rentalPrice);
     const totalToPay = rentalPrice + serviceFee;
@@ -647,57 +669,11 @@ function boostManagedTrailer() {
     }
 }
 
-function editTrailer() {
-    if (!currentManagedTrailer) return;
-    
-    // Switch to ADD form but in EDIT mode
-    const titleEl = document.getElementById('ad-title');
-    if (titleEl) titleEl.value = currentManagedTrailer.title || '';
-    
-    const priceEl = document.getElementById('ad-price');
-    if (priceEl) priceEl.value = currentManagedTrailer.price || '';
-    
-    const payloadEl = document.getElementById('ad-payload');
-    if (payloadEl) payloadEl.value = currentManagedTrailer.payload || '';
-    
-    const descEl = document.getElementById('ad-desc');
-    if (descEl) descEl.value = currentManagedTrailer.description || '';
-
-    // Category
-    if (currentManagedTrailer.category) {
-        const catRadio = document.querySelector(`input[name="category"][value="${currentManagedTrailer.category}"]`);
-        if (catRadio) catRadio.checked = true;
-    }
-    // Prise
-    if (currentManagedTrailer.socket) {
-        const socketRadio = document.querySelector(`input[name="prise"][value="${currentManagedTrailer.socket}"]`);
-        if (socketRadio) socketRadio.checked = true;
-    }
-    // Equipments
-    document.querySelectorAll('input[name="equipments"]').forEach(cb => {
-        cb.checked = currentManagedTrailer.equipments && currentManagedTrailer.equipments.includes(cb.value);
-    });
-    // Upsells
-    document.querySelectorAll('input[name="upsell"]').forEach(cb => {
-        cb.checked = currentManagedTrailer.upsells && currentManagedTrailer.upsells.includes(cb.value);
-    });
-    
-    // Set edit state
-    const form = document.getElementById('add-trailer-form');
-    if (form) form.dataset.editId = currentManagedTrailer.id;
-    
-    // Change submit button text
-    const submitBtn = form?.querySelector('button[type="submit"]');
-    if (submitBtn) {
-        if (!submitBtn.dataset.originalText) {
-            submitBtn.dataset.originalText = submitBtn.innerHTML;
-        }
-        submitBtn.innerHTML = 'Enregistrer les modifications';
-    }
-
-    // Hide manage section, show form
-    closeManageTrailer();
-    showPage('seller-page');
+function editTrailer(id) {
+    const targetId = id || (currentManagedTrailer ? currentManagedTrailer.id : null);
+    if (!targetId) return;
+    if (typeof closeManageTrailer === 'function') closeManageTrailer();
+    window.location.href = `louer-ma-remorque.html?edit=${targetId}`;
 }
 
 async function archiveTrailer() {

@@ -625,6 +625,7 @@ async function requestGeolocationAndSort() {
 
 // Analytics: Log Impression
 async function logImpression(trailerId) {
+    if (localStorage.getItem('renger_cookie_consent') !== 'accepted') return;
     if (!supabaseClient) return;
     try {
         await supabaseClient.from('impressions').insert([{ trailer_id: trailerId, user_id: currentUser?.id || null }]);
@@ -633,6 +634,7 @@ async function logImpression(trailerId) {
 
 // Analytics: Log Click
 async function logClick(trailerId) {
+    if (localStorage.getItem('renger_cookie_consent') !== 'accepted') return;
     if (!supabaseClient) return;
     try {
         await supabaseClient.from('clicks').insert([{ trailer_id: trailerId, user_id: currentUser?.id || null }]);
@@ -911,7 +913,8 @@ function removePhoto(index) {
 // ==========================================
 function openSettings() {
     if (!currentUser) return;
-    document.getElementById('settings-email').innerText = currentUser.email;
+    const settingsEmail = document.getElementById('settings-email');
+    if (settingsEmail) settingsEmail.innerText = currentUser.email;
     showPage('settings-page');
     loadProfileSettings(); // Charger le profil dans le formulaire
 }
@@ -1054,12 +1057,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     if (window.location.pathname.includes('remorques.html') && typeof loadTrailers === 'function') {
         const cat = urlParams.get('category');
-        if (cat && typeof filterByCategory === 'function') {
-            filterByCategory(cat);
+        if (cat && typeof setFilter === 'function') {
+            setFilter(cat);
         } else {
             loadTrailers();
         }
-    } else if (typeof loadTrailers === 'function' && !window.location.pathname.includes('remorque.html')) {
+    } else if (typeof loadTrailers === 'function' && !window.location.pathname.includes('remorque.html') && document.getElementById('trailers-grid')) {
         loadTrailers();
     }
 

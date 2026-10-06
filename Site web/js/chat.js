@@ -39,17 +39,26 @@ function updateChatButtonState() {
 }
 
 /**
- * Filtre anti-contournement de plateforme.
- * Remplace les emails et les suites de chiffres (>8 caractères consécutifs, i.e. téléphones)
- * par un placeholder neutre.
+ * Filtre anti-contournement de plateforme et durcissement anti-scam.
+ * Masque les adresses email, les identifiants de messagerie externe (WhatsApp, Telegram),
+ * les numéros IBAN suisses et internationaux, et les numéros de téléphone.
  */
 function sanitizeMessage(text) {
+    if (!text) return text;
     const MASK = '[Information masquée avant réservation]';
-    // Email
+
+    // 1. Adresses email
     text = text.replace(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, MASK);
-    // Suites de chiffres > 8 caractères (numéros de téléphone, IBAN partiel, etc.)
-    // On autorise les séparateurs courants (espace, point, tiret) entre groupes
-    text = text.replace(/(\d[\s.\-]?){9,}/g, MASK);
+
+    // 2. Liens externes vers messageries tierces (WhatsApp, Telegram, etc.)
+    text = text.replace(/(?:https?:\/\/)?(?:wa\.me|t\.me|telegram\.me|api\.whatsapp\.com|instagram\.com)\/[a-zA-Z0-9_+\-]+/gi, MASK);
+
+    // 3. IBAN suisse et international (ex: CH93 0076 2011 6238 5295 7)
+    text = text.replace(/\b[A-Za-z]{2}\d{2}(?:[\s\-]?[0-9A-Za-z]{4}){3,6}(?:[\s\-]?[0-9A-Za-z]{1,4})?\b/g, MASK);
+
+    // 4. Numéros de téléphone (avec ou sans indicatif international + ou 00, avec séparateurs éventuels)
+    text = text.replace(/(?:(?:\+|00)\s*)?(?:\d[\s./\-]?){8,}\d/g, MASK);
+
     return text;
 }
 
@@ -526,6 +535,15 @@ async function sendChatMessage() {
     if (!rawText) return showToast('Écrivez un message avant d\'envoyer.', 'error');
 
     const sanitized = sanitizeMessage(rawText);
+    if (sanitized !== rawText) {
+        showToast('⚠️ Coordonnées masquées : pour votre sécurité, restez sur Renger.', 'info');
+    }
+
+    const directPayRegex = /(?:twint\s*(?:direct|en\s*direct|hors\s*site)|paiement\s*(?:en\s*espèces|en\s*liquide|cash|de\s*la\s*main\s*à\s*la\s*main)|payer\s*(?:en\s*espèces|en\s*liquide|cash))/i;
+    if (directPayRegex.test(rawText)) {
+        showToast('⚠️ Sollicitation hors-plateforme détectée : les paiements en cash ou TWINT direct ne sont pas couverts.', 'warning');
+    }
+
     const sendBtn = document.getElementById('chat-send-btn');
     if (sendBtn) sendBtn.disabled = true;
 

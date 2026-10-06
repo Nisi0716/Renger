@@ -470,6 +470,7 @@ async function handlePublish(event) {
 
         const newTrailer = {
             title: (document.getElementById('ad-title')?.value || '').trim(),
+            location: locationInput,
             location_city: geoData.city,
             latitude: geoData.lat,
             longitude: geoData.lon,
@@ -1024,7 +1025,10 @@ async function loadProfileData() {
     if (revenueElement) revenueElement.textContent = monthlyRevenue.toFixed(2) + ' CHF';
 
         // --- STATS DASHBOARD PRO ---
-        if (profile.is_pro) {
+        const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
+        const sellerTrailers = myTrailers || [];
+
+        if (profile?.is_pro) {
             document.getElementById('pro-stats-blur')?.classList.add('hidden');
             
             if (sellerTrailers.length > 0) {
@@ -1042,9 +1046,12 @@ async function loadProfileData() {
                 const clk = clickCount || 0;
                 const conv = clk > 0 ? ((sellerBookings.length / clk) * 100).toFixed(1) : 0;
                 
-                document.getElementById('stat-impressions').textContent = imp;
-                document.getElementById('stat-clicks').textContent = clk;
-                document.getElementById('stat-conversion').textContent = conv + '%';
+                const statImp = document.getElementById('stat-impressions');
+                if (statImp) statImp.textContent = imp;
+                const statClicks = document.getElementById('stat-clicks');
+                if (statClicks) statClicks.textContent = clk;
+                const statConv = document.getElementById('stat-conversion');
+                if (statConv) statConv.textContent = conv + '%';
             }
             
             // Calcul Occupancy (approximation)
@@ -1061,14 +1068,19 @@ async function loadProfileData() {
                 }
             });
             const occupancy = totalPossibleDays > 0 ? ((rentedDays / totalPossibleDays) * 100).toFixed(1) : 0;
-            document.getElementById('stat-occupancy').textContent = occupancy + '%';
+            const statOcc = document.getElementById('stat-occupancy');
+            if (statOcc) statOcc.textContent = occupancy + '%';
             
         } else {
             document.getElementById('pro-stats-blur')?.classList.remove('hidden');
-            document.getElementById('stat-impressions').textContent = "---";
-            document.getElementById('stat-clicks').textContent = "---";
-            document.getElementById('stat-conversion').textContent = "-%";
-            document.getElementById('stat-occupancy').textContent = "-%";
+            const statImp = document.getElementById('stat-impressions');
+            if (statImp) statImp.textContent = "---";
+            const statClicks = document.getElementById('stat-clicks');
+            if (statClicks) statClicks.textContent = "---";
+            const statConv = document.getElementById('stat-conversion');
+            if (statConv) statConv.textContent = "-%";
+            const statOcc = document.getElementById('stat-occupancy');
+            if (statOcc) statOcc.textContent = "-%";
         }
 
 
@@ -1571,7 +1583,7 @@ async function geocodeCity(cityOrZip) {
     if (!cityOrZip) return { lat: null, lon: null, city: null };
     try {
         const query = encodeURIComponent(cityOrZip + ', Switzerland');
-        const res = await fetch(https://nominatim.openstreetmap.org/search?format=json&q=&limit=1, {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
             headers: { 'User-Agent': 'RengerApp/1.0' }
         });
         const data = await res.json();

@@ -424,6 +424,108 @@
     <script src="js/chat.js?v=6" defer></script>
     <script src="js/trailers.js?v=6" defer></script>
     <script src="js/booking.js?v=6" defer></script>
+    <script>
+        // MPA Trailer Edit Flow (?edit=${id})
+        async function initTrailerEditMode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('edit');
+            if (!editId) return;
+
+            try {
+                // Attente de disponibilité du client Supabase
+                let client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+                if (!client && typeof window.supabase?.createClient === 'function') {
+                    client = window.supabase.createClient('https://cwifrzajxrcpnqceyxnj.supabase.co', 'sb_publishable_b8sieHW3SGLka8GSxRfr_w_eM3wtyYc');
+                }
+                if (!client) return;
+
+                const { data: trailer, error } = await client
+                    .from('trailers')
+                    .select('*')
+                    .eq('id', editId)
+                    .single();
+
+                if (error || !trailer) {
+                    console.error("Erreur lors de la récupération de la remorque à modifier:", error);
+                    if (typeof showToast === 'function') showToast("Impossible de charger la remorque à modifier.", "error");
+                    return;
+                }
+
+                const form = document.getElementById('add-trailer-form');
+                if (form) form.dataset.editId = editId;
+
+                const titleEl = document.getElementById('ad-title');
+                if (titleEl) titleEl.value = trailer.title || '';
+
+                const locationEl = document.getElementById('ad-location');
+                if (locationEl) locationEl.value = trailer.location || trailer.location_city || '';
+
+                const priceEl = document.getElementById('ad-price');
+                if (priceEl) priceEl.value = trailer.price ?? '';
+
+                const payloadEl = document.getElementById('ad-payload');
+                if (payloadEl) payloadEl.value = trailer.payload ?? '';
+
+                const descEl = document.getElementById('ad-desc') || document.getElementById('ad-description');
+                if (descEl) descEl.value = trailer.description || '';
+
+                if (trailer.category) {
+                    const catRadio = document.querySelector(`input[name="category"][value="${trailer.category}"]`);
+                    if (catRadio) catRadio.checked = true;
+                }
+
+                if (trailer.socket) {
+                    const socketRadio = document.querySelector(`input[name="prise"][value="${trailer.socket}"]`);
+                    if (socketRadio) socketRadio.checked = true;
+                }
+
+                const equipments = Array.isArray(trailer.equipments)
+                    ? trailer.equipments
+                    : (typeof trailer.equipments === 'string' ? JSON.parse(trailer.equipments || '[]') : []);
+                document.querySelectorAll('input[name="equipments"]').forEach(cb => {
+                    cb.checked = equipments.includes(cb.value);
+                });
+
+                const upsells = Array.isArray(trailer.upsells)
+                    ? trailer.upsells
+                    : (typeof trailer.upsells === 'string' ? JSON.parse(trailer.upsells || '[]') : []);
+                document.querySelectorAll('input[name="upsell"]').forEach(cb => {
+                    cb.checked = upsells.includes(cb.value);
+                });
+
+                // Titre de la page et en-tête
+                document.title = "Mettre à jour l'annonce - Renger";
+                const pageHeading = document.querySelector('h2[data-i18n="publish_title"]') || document.querySelector('#seller-page h2');
+                if (pageHeading) pageHeading.textContent = "Mettre à jour l'annonce";
+
+                // Bouton de soumission
+                const submitBtn = form?.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    const submitSpan = submitBtn.querySelector('span[data-i18n="form_submit"]') || submitBtn.querySelector('span');
+                    if (submitSpan) {
+                        submitSpan.textContent = "Mettre à jour l'annonce";
+                    }
+                    submitBtn.childNodes.forEach(n => {
+                        if (n.nodeType === 3 && n.textContent.trim()) {
+                            n.textContent = "Mettre à jour l'annonce";
+                        }
+                    });
+                }
+
+                // Actualiser les aides visuelles dynamiques
+                if (typeof updateSmartPricingFeedback === 'function') updateSmartPricingFeedback();
+                if (typeof updateLegalPermitBadge === 'function') updateLegalPermitBadge();
+            } catch (err) {
+                console.error("Erreur init trailer edit mode:", err);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTrailerEditMode);
+        } else {
+            initTrailerEditMode();
+        }
+    </script>
 <div id="chat-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleChatModalBackdrop(event)">
         <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md flex flex-col" style="max-height: 85vh;" onclick="event.stopPropagation()">
             <!-- En-tête -->
@@ -530,11 +632,11 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             <span class="text-[10px] font-bold tracking-wide">R&eacute;servations</span>
         </a>
-        <a href="profil.html" id="mobile-nav-settings" class="mobile-nav-btn flex flex-col items-center gap-1 w-20 text-stone-400 hover:text-terracotta-500 transition-transform active:scale-95">
+        <a href="profil.html?p=settings-page" id="mobile-nav-settings" class="mobile-nav-btn flex flex-col items-center gap-1 w-20 text-stone-400 hover:text-terracotta-500 transition-transform active:scale-95">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
             <span class="text-[10px] font-bold tracking-wide">Profil</span>
         </a>
     </nav>
-\n    <script src="js/tracking.js"></script>
+    <script src="js/tracking.js"></script>
 </body>
 </html>
