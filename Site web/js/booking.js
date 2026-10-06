@@ -2,6 +2,7 @@
 // 5. RÉSERVATION, BLOCAGE DATES & PAIEMENT
 // ==========================================
 async function openTrailerDetail(trailer) {
+    if (trailer && typeof logClick === 'function') logClick(trailer.id);
     // MPA : hors de la fiche détail, on navigue vers remorque.html?id=... (la page recharge l'annonce)
     if (!document.getElementById('detail-page')) {
         if (trailer && trailer.id) window.location.href = 'remorque.html?id=' + encodeURIComponent(trailer.id);

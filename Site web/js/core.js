@@ -587,6 +587,58 @@ function handleSearch(term) {
     }, 350);
 }
 
+
+let userLat = null;
+let userLon = null;
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+async function requestGeolocationAndSort() {
+    if (!navigator.geolocation) {
+        showToast("Géolocalisation non supportée par votre navigateur", "error");
+        return;
+    }
+    
+    showToast("Recherche de votre position...", "info");
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            userLat = position.coords.latitude;
+            userLon = position.coords.longitude;
+            showToast("Position trouvée ! Tri en cours...", "success");
+            loadTrailers(); // reload with sorting
+        },
+        (error) => {
+            showToast("Erreur géolocalisation: " + error.message, "error");
+        }
+    );
+}
+
+// Analytics: Log Impression
+async function logImpression(trailerId) {
+    if (!supabaseClient) return;
+    try {
+        await supabaseClient.from('impressions').insert([{ trailer_id: trailerId, user_id: currentUser?.id || null }]);
+    } catch(e) {}
+}
+
+// Analytics: Log Click
+async function logClick(trailerId) {
+    if (!supabaseClient) return;
+    try {
+        await supabaseClient.from('clicks').insert([{ trailer_id: trailerId, user_id: currentUser?.id || null }]);
+    } catch(e) {}
+}
+
 async function loadTrailers(filter = currentFilter, search = currentSearch) {
     if (!supabaseClient) return;
 
@@ -606,7 +658,21 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     }
 
     const { data: trailers, error } = await query;
-    const visibleTrailers = (trailers || []).filter(t => t.is_active !== false);
+    let visibleTrailers = (trailers || []).filter(t => t.is_active !== false);
+    
+    // Feature 1: Geolocation sorting
+    if (userLat && userLon) {
+        visibleTrailers.forEach(t => {
+            t.distance = calculateDistance(userLat, userLon, t.latitude, t.longitude);
+        });
+        visibleTrailers.sort((a, b) => a.distance - b.distance);
+    }
+    
+    // Feature 2: Analytics Impressions
+    visibleTrailers.forEach(t => {
+        logImpression(t.id);
+    });
+
 
     const grid = document.getElementById('trailers-grid');
     if (!grid) return;

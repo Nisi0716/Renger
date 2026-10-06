@@ -324,6 +324,19 @@ async function takeGuidedInspectionPhoto() {
                 content: content,
                 image_url: filePath
             }]);
+            
+            // 7.5 Sauvegarde structurée dans la table inspections (Anti-arnaque)
+            await supabaseClient.from('inspections').insert([{
+                trailer_id: trailerId,
+                user_id: currentUser.id,
+                mode: mode,
+                step: currentStep.step,
+                image_url: filePath,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                accuracy: coords.accuracy,
+                timestamp: now.toISOString()
+            }]);
         }
 
         // 8. Passage à l'étape suivante ou clôture

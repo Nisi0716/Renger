@@ -120,7 +120,13 @@
             <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
                 <div class="mb-5">
                     <label data-i18n="form_title" class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Titre de l'annonce</label>
-                    <input type="text" id="ad-title" placeholder="Ex: Van à chevaux 2 places" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition" required>
+                    <input type="text" id="ad-title" placeholder="Ex: Van a chevaux 2 places" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition" required>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Emplacement (Ville ou Code Postal)</label>
+                    <input type="text" id="ad-location" placeholder="Ex: 1000 Lausanne" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition" required>
+                    <p class="text-[11px] text-stone-400 mt-1">Nécessaire pour le tri par proximité (Géolocalisation).</p>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
@@ -529,5 +535,6 @@
             <span class="text-[10px] font-bold tracking-wide">Profil</span>
         </a>
     </nav>
-\n</body>
+\n    <script src="js/tracking.js"></script>
+</body>
 </html>

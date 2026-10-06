@@ -464,8 +464,15 @@ async function handlePublish(event) {
             finalDesc += `\n\n⚖️ Réglementation suisse : ${permitMention}`;
         }
 
+        
+        const locationInput = (document.getElementById('ad-location')?.value || '').trim();
+        const geoData = await geocodeCity(locationInput);
+
         const newTrailer = {
             title: (document.getElementById('ad-title')?.value || '').trim(),
+            location_city: geoData.city,
+            latitude: geoData.lat,
+            longitude: geoData.lon,
             description: finalDesc,
             price: isNaN(priceVal) || priceVal < 0 ? 0 : priceVal,
             payload: isNaN(payloadVal) || payloadVal < 0 ? 0 : payloadVal,
@@ -1016,6 +1023,55 @@ async function loadProfileData() {
     const revenueElement = document.getElementById('seller-monthly-revenue');
     if (revenueElement) revenueElement.textContent = monthlyRevenue.toFixed(2) + ' CHF';
 
+        // --- STATS DASHBOARD PRO ---
+        if (profile.is_pro) {
+            document.getElementById('pro-stats-blur')?.classList.add('hidden');
+            
+            if (sellerTrailers.length > 0) {
+                // Fetch Impressions
+                const { count: impCount } = await supabaseClient.from('impressions')
+                    .select('*', { count: 'exact', head: true })
+                    .in('trailer_id', sellerTrailers.map(t => t.id));
+                    
+                // Fetch Clicks
+                const { count: clickCount } = await supabaseClient.from('clicks')
+                    .select('*', { count: 'exact', head: true })
+                    .in('trailer_id', sellerTrailers.map(t => t.id));
+                    
+                const imp = impCount || 0;
+                const clk = clickCount || 0;
+                const conv = clk > 0 ? ((sellerBookings.length / clk) * 100).toFixed(1) : 0;
+                
+                document.getElementById('stat-impressions').textContent = imp;
+                document.getElementById('stat-clicks').textContent = clk;
+                document.getElementById('stat-conversion').textContent = conv + '%';
+            }
+            
+            // Calcul Occupancy (approximation)
+            const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+            const totalPossibleDays = sellerTrailers.length * daysInMonth;
+            let rentedDays = 0;
+            sellerBookings.forEach(b => {
+                if (b.start_date && b.end_date) {
+                    const start = new Date(b.start_date);
+                    const end = new Date(b.end_date);
+                    if (start.getMonth() === new Date().getMonth()) {
+                        rentedDays += Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    }
+                }
+            });
+            const occupancy = totalPossibleDays > 0 ? ((rentedDays / totalPossibleDays) * 100).toFixed(1) : 0;
+            document.getElementById('stat-occupancy').textContent = occupancy + '%';
+            
+        } else {
+            document.getElementById('pro-stats-blur')?.classList.remove('hidden');
+            document.getElementById('stat-impressions').textContent = "---";
+            document.getElementById('stat-clicks').textContent = "---";
+            document.getElementById('stat-conversion').textContent = "-%";
+            document.getElementById('stat-occupancy').textContent = "-%";
+        }
+
+
     // 2.2 État de ma flotte
     const trailersCountBadge = document.getElementById('seller-trailers-count');
     if (trailersCountBadge) {
@@ -1510,3 +1566,24 @@ window.openProfile = openProfile;
 window.switchProfileTab = switchProfileTab;
 window.loadProfileData = loadProfileData;
 
+
+async function geocodeCity(cityOrZip) {
+    if (!cityOrZip) return { lat: null, lon: null, city: null };
+    try {
+        const query = encodeURIComponent(cityOrZip + ', Switzerland');
+        const res = await fetch(https://nominatim.openstreetmap.org/search?format=json&q=&limit=1, {
+            headers: { 'User-Agent': 'RengerApp/1.0' }
+        });
+        const data = await res.json();
+        if (data && data.length > 0) {
+            return {
+                lat: parseFloat(data[0].lat),
+                lon: parseFloat(data[0].lon),
+                city: cityOrZip
+            };
+        }
+    } catch (err) {
+        console.warn("Geocoding failed", err);
+    }
+    return { lat: null, lon: null, city: cityOrZip };
+}
