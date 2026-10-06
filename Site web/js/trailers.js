@@ -743,6 +743,28 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
     chatBtn.onclick = () => openChatForBooking(booking, false);
     actionsRow.appendChild(chatBtn);
 
+    const contractBtn = document.createElement('button');
+    contractBtn.type = 'button';
+    contractBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
+    contractBtn.innerHTML = '<span>📄</span><span>Contrat de location (PDF)</span>';
+    contractBtn.onclick = () => {
+        if (window.RengerContracts && typeof window.RengerContracts.downloadRentalContract === 'function') {
+            window.RengerContracts.downloadRentalContract(booking);
+        }
+    };
+    actionsRow.appendChild(contractBtn);
+
+    const reportBtn = document.createElement('button');
+    reportBtn.type = 'button';
+    reportBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
+    reportBtn.innerHTML = '<span>📑</span><span>Rapport d\'état des lieux</span>';
+    reportBtn.onclick = () => {
+        if (window.RengerContracts && typeof window.RengerContracts.downloadInspectionReport === 'function') {
+            window.RengerContracts.downloadInspectionReport(booking);
+        }
+    };
+    actionsRow.appendChild(reportBtn);
+
     if (booking.trailers) {
         if (reviewsByBooking.has(booking.id)) {
             const rev = reviewsByBooking.get(booking.id);
@@ -832,18 +854,44 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr) {
     datesEl.className = 'text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1.5';
     datesEl.textContent = `Du ${startDate.toLocaleDateString('fr-CH')} au ${endDate.toLocaleDateString('fr-CH')} (${diffDays} jour${diffDays > 1 ? 's' : ''})`;
 
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'flex flex-wrap items-center gap-2 mt-2.5';
+
     const chatBtn = document.createElement('button');
     chatBtn.type = 'button';
-    chatBtn.className = 'mt-2.5 text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
+    chatBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
     chatBtn.innerHTML = '<span>💬</span><span>Messagerie & État des lieux</span>';
     chatBtn.onclick = () => openChatForBooking(booking, true);
+    actionsRow.appendChild(chatBtn);
+
+    const contractBtn = document.createElement('button');
+    contractBtn.type = 'button';
+    contractBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
+    contractBtn.innerHTML = '<span>📄</span><span>Contrat de location (PDF)</span>';
+    contractBtn.onclick = () => {
+        if (window.RengerContracts && typeof window.RengerContracts.downloadRentalContract === 'function') {
+            window.RengerContracts.downloadRentalContract(booking);
+        }
+    };
+    actionsRow.appendChild(contractBtn);
+
+    const reportBtn = document.createElement('button');
+    reportBtn.type = 'button';
+    reportBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
+    reportBtn.innerHTML = '<span>📑</span><span>Rapport d\'état des lieux</span>';
+    reportBtn.onclick = () => {
+        if (window.RengerContracts && typeof window.RengerContracts.downloadInspectionReport === 'function') {
+            window.RengerContracts.downloadInspectionReport(booking);
+        }
+    };
+    actionsRow.appendChild(reportBtn);
 
     const infoDiv = document.createElement('div');
     infoDiv.className = 'flex-1 min-w-0';
     infoDiv.appendChild(titleEl);
     infoDiv.appendChild(renterRow);
     infoDiv.appendChild(datesEl);
-    infoDiv.appendChild(chatBtn);
+    infoDiv.appendChild(actionsRow);
 
     // Montant net perçu à droite
     const priceDiv = document.createElement('div');
@@ -1599,3 +1647,191 @@ async function geocodeCity(cityOrZip) {
     }
     return { lat: null, lon: null, city: cityOrZip };
 }
+
+// ==========================================
+// CARTOGRAPHIE INTERACTIVE LEAFLET (MILESTONE 1)
+// ==========================================
+let leafletMap = null;
+let markersLayer = null;
+let currentViewMode = 'list';
+let lastRenderedTrailers = [];
+
+/**
+ * Initialise l'instance Leaflet sur le conteneur #trailers-map
+ * avec les tuiles OpenStreetMap et un centrage par défaut sur Lausanne.
+ */
+function initTrailersMap() {
+    const mapEl = document.getElementById('trailers-map');
+    if (!mapEl || leafletMap || typeof L === 'undefined') return;
+
+    try {
+        leafletMap = L.map('trailers-map').setView([46.5197, 6.6323], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(leafletMap);
+
+        markersLayer = L.layerGroup().addTo(leafletMap);
+    } catch (err) {
+        console.warn("Erreur lors de l'initialisation de Leaflet:", err);
+    }
+}
+
+/**
+ * Met à jour les marqueurs de la carte Leaflet avec les remorques filtrées.
+ * Crée des pilules de prix Terracotta et des popups sécurisées (Zero XSS).
+ * @param {Array<Object>} trailers - Liste des remorques visibles
+ */
+function updateTrailersMap(trailers) {
+    lastRenderedTrailers = trailers || [];
+
+    if (!leafletMap && typeof L !== 'undefined') {
+        initTrailersMap();
+    }
+    if (!markersLayer || typeof L === 'undefined') return;
+
+    try {
+        markersLayer.clearLayers();
+        const geolocated = (trailers || []).filter(t => 
+            t && t.latitude != null && t.longitude != null && 
+            !isNaN(parseFloat(t.latitude)) && !isNaN(parseFloat(t.longitude))
+        );
+
+        geolocated.forEach(trailer => {
+            const priceVal = trailer.price != null ? String(trailer.price) : '0';
+            const safePrice = priceVal.replace(/[^\d.,]/g, '');
+
+            const customIcon = L.divIcon({
+                className: 'renger-map-marker',
+                html: `<div style="background-color:#d85110; color:white; font-weight:bold; font-size:11px; padding:3px 8px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.3); border:2px solid white; white-space:nowrap; cursor:pointer;">${safePrice} CHF</div>`,
+                iconSize: [50, 24],
+                iconAnchor: [25, 12],
+                popupAnchor: [0, -14]
+            });
+
+            const marker = L.marker([parseFloat(trailer.latitude), parseFloat(trailer.longitude)], { icon: customIcon });
+
+            // Rendu sécurisé de la popup via createElement et textContent (immunité totale XSS)
+            const popup = document.createElement('div');
+            popup.className = 'trailer-popup text-stone-800 font-sans p-1 max-w-[220px]';
+
+            const imgDiv = document.createElement('div');
+            imgDiv.className = 'w-full h-24 rounded-lg overflow-hidden mb-2 bg-stone-100';
+            const img = document.createElement('img');
+            img.src = trailer.image_url || 'https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger';
+            img.alt = '';
+            img.className = 'w-full h-full object-cover';
+            imgDiv.appendChild(img);
+            popup.appendChild(imgDiv);
+
+            const title = document.createElement('h4');
+            title.className = 'font-bold text-sm text-stone-900 leading-tight mb-1 truncate';
+            title.textContent = trailer.title || 'Remorque';
+            popup.appendChild(title);
+
+            const price = document.createElement('p');
+            price.className = 'text-xs font-bold text-terracotta-600 mb-1';
+            price.textContent = `${trailer.price || 0} CHF / jour`;
+            popup.appendChild(price);
+
+            const loc = document.createElement('p');
+            loc.className = 'text-[11px] text-stone-500 mb-2';
+            loc.textContent = `📍 ${trailer.location_city || trailer.location || 'Suisse'}`;
+            popup.appendChild(loc);
+
+            const link = document.createElement('a');
+            link.href = `remorque.html?id=${encodeURIComponent(trailer.id || '')}`;
+            link.className = 'block w-full text-center bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold text-xs py-1.5 px-3 rounded-lg no-underline transition';
+            link.textContent = 'Voir la remorque';
+            popup.appendChild(link);
+
+            marker.bindPopup(popup);
+            markersLayer.addLayer(marker);
+        });
+
+        fitMapToTrailers(geolocated);
+    } catch (err) {
+        console.warn("Erreur lors de la mise à jour des marqueurs Leaflet:", err);
+    }
+}
+
+/**
+ * Ajuste les limites de la vue Leaflet pour englober toutes les remorques affichées.
+ * Repli sur Lausanne si aucune remorque géolocalisée.
+ * @param {Array<Object>} trailers
+ */
+function fitMapToTrailers(trailers) {
+    if (!leafletMap || typeof L === 'undefined') return;
+
+    try {
+        if (!trailers || trailers.length === 0) {
+            leafletMap.setView([46.5197, 6.6323], 10);
+            return;
+        }
+
+        const coords = trailers.map(t => [parseFloat(t.latitude), parseFloat(t.longitude)]);
+        if (coords.length === 1) {
+            leafletMap.setView(coords[0], 13);
+        } else {
+            const bounds = L.latLngBounds(coords);
+            leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        }
+    } catch (err) {
+        console.warn("Erreur lors de l'ajustement des limites de la carte:", err);
+    }
+}
+
+/**
+ * Bascule le mode d'affichage entre la grille ('list') et la carte ('map').
+ * Actualise les dimensions du viewport Leaflet (invalidateSize).
+ * @param {'list'|'map'} mode
+ */
+function setViewMode(mode) {
+    currentViewMode = mode;
+    const grid = document.getElementById('trailers-grid');
+    const map = document.getElementById('trailers-map');
+    const listBtn = document.getElementById('view-mode-list-btn');
+    const mapBtn = document.getElementById('view-mode-map-btn');
+
+    if (mode === 'map') {
+        if (grid) grid.classList.add('hidden');
+        if (map) {
+            map.classList.remove('hidden');
+            if (!leafletMap && typeof L !== 'undefined') {
+                initTrailersMap();
+            }
+            if (leafletMap && typeof leafletMap.invalidateSize === 'function') {
+                leafletMap.invalidateSize();
+                fitMapToTrailers(lastRenderedTrailers);
+            }
+        }
+        if (listBtn) {
+            listBtn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200";
+        }
+        if (mapBtn) {
+            mapBtn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs";
+        }
+    } else {
+        if (map) map.classList.add('hidden');
+        if (grid) grid.classList.remove('hidden');
+        if (listBtn) {
+            listBtn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs";
+        }
+        if (mapBtn) {
+            mapBtn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200";
+        }
+    }
+}
+
+// Exports globaux pour la cartographie
+window.initTrailersMap = initTrailersMap;
+window.updateTrailersMap = updateTrailersMap;
+window.fitMapToTrailers = fitMapToTrailers;
+window.setViewMode = setViewMode;
+try {
+    Object.defineProperty(window, 'leafletMap', {
+        get() { return leafletMap; },
+        set(v) { leafletMap = v; },
+        configurable: true
+    });
+} catch (e) {}

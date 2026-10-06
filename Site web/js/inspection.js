@@ -58,6 +58,7 @@ async function startGuidedInspection(mode, trailerId, receiverId, bookingId) {
     inspectionContext.bookingId = bookingId || currentBookingContext?.id;
     inspectionContext.currentStepIndex = 0;
     inspectionContext.isCapturing = false;
+    inspectionContext.capturedPhotos = [];
 
     showPage('inspection-page');
     updateInspectionHUD();
@@ -285,15 +286,40 @@ async function takeGuidedInspectionPhoto() {
         // 4. Incruster le filigrane légal inaltérable sur l'image
         applyInspectionWatermark(ctx, canvas.width, canvas.height, currentStep, coords, now);
 
-        // 5. Convertir en Blob JPEG
+        // 5. Convertir en Blob JPEG et extraire DataURL en mémoire
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
         if (!blob) throw new Error("Échec de la génération de l'image.");
+
+        let dataUrl = null;
+        try {
+            dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        } catch (e) {
+            console.warn("Canvas toDataURL warning:", e);
+        }
+
+        if (!inspectionContext.capturedPhotos) {
+            inspectionContext.capturedPhotos = [];
+        }
+        inspectionContext.capturedPhotos.push({
+            step: currentStep.step,
+            title: currentStep.title,
+            desc: currentStep.instruction,
+            dataUrl: dataUrl,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: coords.accuracy,
+            timestamp: now.toISOString(),
+            image_url: null
+        });
 
         // 6. Upload dans le bucket PRIVÉ 'inspections'
         const timestamp = Date.now();
         const mode = inspectionContext.mode;
         const trailerId = inspectionContext.trailerId || 'generale';
         const filePath = `${currentUser.id}/${trailerId}/${mode}_step${currentStep.step}_${timestamp}.jpg`;
+        if (inspectionContext.capturedPhotos.length > 0) {
+            inspectionContext.capturedPhotos[inspectionContext.capturedPhotos.length - 1].image_url = filePath;
+        }
 
         if (supabaseClient && currentUser) {
             const { error: uploadError } = await supabaseClient.storage
@@ -349,8 +375,22 @@ async function takeGuidedInspectionPhoto() {
             stopCamera();
             stopInspectionClock();
             showToast("🎉 État des lieux complet certifié (4/4 photos enregistrées) !", "success");
-            showPage('detail-page');
-            await openChatModal();
+
+            const completedSession = {
+                id: inspectionContext.bookingId || inspectionContext.trailerId || 'EDL' + Date.now().toString(36),
+                booking_id: inspectionContext.bookingId,
+                trailer_id: inspectionContext.trailerId,
+                mode: inspectionContext.mode,
+                receiver_id: inspectionContext.receiverId,
+                completedAt: now.toISOString(),
+                photos: inspectionContext.capturedPhotos ? [...inspectionContext.capturedPhotos] : []
+            };
+
+            if (typeof window !== 'undefined') {
+                window.lastInspectionSession = completedSession;
+            }
+
+            showInspectionSuccessModal(completedSession);
         }
 
     } catch (err) {
@@ -358,6 +398,72 @@ async function takeGuidedInspectionPhoto() {
     } finally {
         inspectionContext.isCapturing = false;
     }
+}
+
+/**
+ * Affiche la modale de succès avec accès immédiat au téléchargement du rapport certifié.
+ */
+function showInspectionSuccessModal(sessionData) {
+    const modal = document.getElementById('inspection-success-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        if (typeof window !== 'undefined' && window.RengerContracts && typeof window.RengerContracts.downloadInspectionReport === 'function') {
+            window.RengerContracts.downloadInspectionReport(sessionData, sessionData.mode);
+        }
+        showPage('detail-page');
+        if (typeof openChatModal === 'function') {
+            openChatModal();
+        }
+    }
+}
+
+/**
+ * Ferme la modale de succès et redirige vers la messagerie.
+ */
+function closeInspectionSuccessModal() {
+    const modal = document.getElementById('inspection-success-modal');
+    if (modal) modal.classList.add('hidden');
+    showPage('detail-page');
+    if (typeof openChatModal === 'function') {
+        openChatModal();
+    }
+}
+
+/**
+ * Gère le clic extérieur sur l'arrière-plan de la modale de succès.
+ */
+function handleSuccessModalBackdrop(event) {
+    if (event.target && event.target.id === 'inspection-success-modal') {
+        closeInspectionSuccessModal();
+    }
+}
+
+/**
+ * Déclenche le téléchargement du rapport d'état des lieux certifié (PDF).
+ */
+function downloadCurrentInspectionReport() {
+    const sessionData = (typeof window !== 'undefined' && window.lastInspectionSession)
+        ? window.lastInspectionSession
+        : {
+            booking_id: inspectionContext.bookingId,
+            trailer_id: inspectionContext.trailerId,
+            mode: inspectionContext.mode,
+            photos: inspectionContext.capturedPhotos || []
+        };
+    if (typeof window !== 'undefined' && window.RengerContracts && typeof window.RengerContracts.downloadInspectionReport === 'function') {
+        window.RengerContracts.downloadInspectionReport(sessionData, inspectionContext.mode);
+        showToast("📑 Téléchargement du rapport d'état des lieux certifié lancé !", "success");
+    } else {
+        showToast("Génération du rapport en cours...", "info");
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.showInspectionSuccessModal = showInspectionSuccessModal;
+    window.closeInspectionSuccessModal = closeInspectionSuccessModal;
+    window.handleSuccessModalBackdrop = handleSuccessModalBackdrop;
+    window.downloadCurrentInspectionReport = downloadCurrentInspectionReport;
 }
 
 // Alias pour compatibilité

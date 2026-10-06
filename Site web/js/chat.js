@@ -367,6 +367,68 @@ function updateChatInspectionBar(messages) {
             }
         }
     }
+
+    // Gestion des boutons de téléchargement du contrat et de l'état des lieux PDF
+    const docsRow = document.getElementById('chat-booking-docs-row');
+    if (docsRow) {
+        if (currentBookingContext) {
+            docsRow.classList.remove('hidden');
+            docsRow.classList.add('flex');
+        } else {
+            docsRow.classList.add('hidden');
+            docsRow.classList.remove('flex');
+        }
+    } else if (currentBookingContext) {
+        const newDocsRow = document.createElement('div');
+        newDocsRow.id = 'chat-booking-docs-row';
+        newDocsRow.className = 'flex flex-wrap items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-700';
+        newDocsRow.innerHTML = `
+            <button type="button" id="chat-download-contract-btn" onclick="handleChatDownloadContract()" class="flex-1 min-w-[130px] text-xs font-bold bg-white hover:bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95 shadow-xs">
+                <span>📄</span><span>Contrat (PDF)</span>
+            </button>
+            <button type="button" id="chat-download-report-btn" onclick="handleChatDownloadReport()" class="flex-1 min-w-[130px] text-xs font-bold bg-white hover:bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95 shadow-xs">
+                <span>📑</span><span>État des lieux (PDF)</span>
+            </button>
+        `;
+        inspectionBar.appendChild(newDocsRow);
+    }
+}
+
+/**
+ * Télécharge le contrat de location PDF depuis le contexte actif du chat
+ */
+function handleChatDownloadContract() {
+    if (!currentBookingContext) {
+        return showToast("Aucune réservation active sélectionnée pour ce contrat.", "error");
+    }
+    if (typeof window !== 'undefined' && window.RengerContracts && typeof window.RengerContracts.downloadRentalContract === 'function') {
+        window.RengerContracts.downloadRentalContract(currentBookingContext);
+        showToast("📄 Téléchargement du contrat de location en cours...", "success");
+    } else {
+        showToast("Module de contrats indisponible.", "error");
+    }
+}
+
+/**
+ * Télécharge le rapport d'état des lieux PDF depuis le contexte actif du chat
+ */
+function handleChatDownloadReport() {
+    if (!currentBookingContext) {
+        return showToast("Aucune réservation active sélectionnée pour l'état des lieux.", "error");
+    }
+    if (typeof window !== 'undefined' && window.RengerContracts && typeof window.RengerContracts.downloadInspectionReport === 'function') {
+        const returnCount = getReturnPhotosCount();
+        const mode = (returnCount >= 4) ? 'return' : 'departure';
+        window.RengerContracts.downloadInspectionReport(currentBookingContext, mode);
+        showToast("📑 Téléchargement du rapport d'état des lieux en cours...", "success");
+    } else {
+        showToast("Module d'état des lieux indisponible.", "error");
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.handleChatDownloadContract = handleChatDownloadContract;
+    window.handleChatDownloadReport = handleChatDownloadReport;
 }
 
 function getDeparturePhotosCount() {

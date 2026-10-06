@@ -40,6 +40,12 @@ const TIERS = [
         id: 'tier4',
         name: 'Tier 4: Parcours MPA & Résilience Intégration',
         file: 'tier4-mpa-journeys.test.mjs'
+    },
+    {
+        tier: 5,
+        id: 'tier5',
+        name: 'Tier 5: Vue Carte, Disponibilités & Contrats PDF',
+        file: 'tier5-map-contracts.test.mjs'
     }
 ];
 
@@ -50,7 +56,7 @@ function parseArguments() {
     for (const arg of args) {
         if (arg.startsWith('--tier=')) {
             selectedTier = parseInt(arg.split('=')[1], 10);
-        } else if (/^tier[1-4]$/i.test(arg)) {
+        } else if (/^tier[1-5]$/i.test(arg)) {
             selectedTier = parseInt(arg.replace(/tier/i, ''), 10);
         } else if (arg === '-h' || arg === '--help') {
             console.log(`
@@ -60,14 +66,14 @@ Usage:
   node tests/run-tests.mjs [options]
 
 Options:
-  --tier=N         Exécuter uniquement le palier N (1, 2, 3 ou 4)
-  tier1..tier4     Raccourci pour exécuter un palier spécifique
+  --tier=N         Exécuter uniquement le palier N (1, 2, 3, 4 ou 5)
+  tier1..tier5     Raccourci pour exécuter un palier spécifique
   --help, -h       Afficher cette aide
 
 Exemples:
-  node tests/run-tests.mjs            # Exécute l'ensemble des 4 paliers
+  node tests/run-tests.mjs            # Exécute l'ensemble des 5 paliers
   node tests/run-tests.mjs --tier=1   # Exécute uniquement le Tier 1
-  node tests/run-tests.mjs tier3      # Exécute uniquement le Tier 3
+  node tests/run-tests.mjs tier5      # Exécute uniquement le Tier 5
 `);
             process.exit(0);
         }
@@ -183,7 +189,8 @@ function printSummaryReport(results) {
     console.log(`${BOLD}├──────┼────────────────────────────────────────┼────────┼────────┼───────┼─────────┼──────────┤${RESET}`);
     const overallRate = grandTotal > 0 ? Math.round((grandPassed / grandTotal) * 100) : 0;
     const overallColor = grandFailed === 0 ? GREEN : RED;
-    console.log(`│ ${BOLD}TOTAL${RESET}│ ${'Ensemble des 4 paliers'.padEnd(38)} │ ${GREEN}${String(grandPassed).padStart(6)}${RESET} │ ${grandFailed > 0 ? RED : GRAY}${String(grandFailed).padStart(6)}${RESET} │ ${String(grandTotal).padStart(5)} │ ${overallColor}${`${overallRate}%`.padStart(7)}${RESET} │ ${`${grandDuration.toFixed(0)} ms`.padStart(8)} │`);
+    const totalLabel = results.length === TIERS.length ? `Ensemble des ${TIERS.length} paliers` : `${results.length} palier(s) sélectionné(s)`;
+    console.log(`│ ${BOLD}TOTAL${RESET}│ ${totalLabel.padEnd(38)} │ ${GREEN}${String(grandPassed).padStart(6)}${RESET} │ ${grandFailed > 0 ? RED : GRAY}${String(grandFailed).padStart(6)}${RESET} │ ${String(grandTotal).padStart(5)} │ ${overallColor}${`${overallRate}%`.padStart(7)}${RESET} │ ${`${grandDuration.toFixed(0)} ms`.padStart(8)} │`);
     console.log(`${BOLD}└──────┴────────────────────────────────────────┴────────┴────────┴───────┴─────────┴──────────┘${RESET}\n`);
 
     // Diagnostic des échecs s'il y en a
@@ -196,7 +203,7 @@ function printSummaryReport(results) {
                 console.log(`    ${RED}✖${RESET} ${fail}`);
             }
         }
-        console.log(`\n${YELLOW}ℹ Diagnostic : Ces échecs reflètent fidèlement l'état initial avant l'application complète des jalons M2 & M3.${RESET}`);
+        console.log(`\n${YELLOW}ℹ Diagnostic : Ces échecs indiquent des anomalies dans les tests des paliers sélectionnés.${RESET}`);
     } else {
         console.log(`${BOLD}${GREEN}✔ FÉLICITATIONS : 100% des tests des paliers sélectionnés sont passés avec succès !${RESET}`);
     }

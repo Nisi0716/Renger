@@ -13,6 +13,20 @@ let selectedStartDate = null;
 let selectedEndDate = null;
 let videoStream = null;
 let currentFilter = 'all'; // Filtre actif sur la page des annonces
+let currentStartDate = null; // Date de début du filtre de disponibilité (YYYY-MM-DD)
+let currentEndDate = null; // Date de fin du filtre de disponibilité (YYYY-MM-DD)
+try {
+    Object.defineProperty(window, 'currentStartDate', {
+        get() { return currentStartDate; },
+        set(v) { currentStartDate = v; },
+        configurable: true
+    });
+    Object.defineProperty(window, 'currentEndDate', {
+        get() { return currentEndDate; },
+        set(v) { currentEndDate = v; },
+        configurable: true
+    });
+} catch (e) {}
 let toastTimer = null; // Timer d'annulation pour éviter la collision des notifications toast
 let activeChatPartnerId = null; // ID du destinataire de la conversation active
 let currentBookingContext = null; // Contexte de réservation pour la transaction active
@@ -641,6 +655,53 @@ async function logClick(trailerId) {
     } catch(e) {}
 }
 
+/**
+ * Recherche les identifiants des remorques indisponibles (réservées ou bloquées)
+ * pour la plage de dates spécifiée.
+ * @param {string} startDateStr - Date de début ISO (YYYY-MM-DD)
+ * @param {string} endDateStr - Date de fin ISO (YYYY-MM-DD)
+ * @returns {Promise<Set<string>>}
+ */
+async function getUnavailableTrailerIds(startDateStr, endDateStr) {
+    if (!supabaseClient || !startDateStr || !endDateStr) return new Set();
+    try {
+        let s = String(startDateStr).split('T')[0];
+        let e = String(endDateStr).split('T')[0];
+        if (s > e) {
+            const tmp = s;
+            s = e;
+            e = tmp;
+        }
+
+        const { data: bookings, error } = await supabaseClient
+            .from('bookings')
+            .select('trailer_id, start_date, end_date, status')
+            .in('status', ['paye', 'indisponible'])
+            .lte('start_date', e)
+            .gte('end_date', s);
+
+        if (error) {
+            console.warn("Supabase bookings query error:", error);
+            return new Set();
+        }
+
+        const unavailable = new Set();
+        (bookings || []).forEach(b => {
+            if (!b || b.trailer_id == null) return;
+            const bStart = (b.start_date || '').split('T')[0].split(' ')[0];
+            const bEnd = (b.end_date || '').split('T')[0].split(' ')[0];
+            if (bStart && bEnd && bStart <= e && bEnd >= s) {
+                unavailable.add(String(b.trailer_id));
+            }
+        });
+        return unavailable;
+    } catch (err) {
+        console.warn("Erreur vérification disponibilité bookings:", err);
+        return new Set();
+    }
+}
+window.getUnavailableTrailerIds = getUnavailableTrailerIds;
+
 async function loadTrailers(filter = currentFilter, search = currentSearch) {
     if (!supabaseClient) return;
 
@@ -675,6 +736,34 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         logImpression(t.id);
     });
 
+    // R2.3: Filtrage par dates de réservation
+    if (currentStartDate && currentEndDate) {
+        try {
+            const unavailableIds = await getUnavailableTrailerIds(currentStartDate, currentEndDate);
+            if (unavailableIds && unavailableIds.size > 0) {
+                visibleTrailers = visibleTrailers.filter(t => !unavailableIds.has(String(t.id)));
+            }
+        } catch (err) {
+            console.warn("Erreur filtrage réservations:", err);
+        }
+    }
+
+    // R2.4: Compteur dynamique de remorques disponibles
+    const countEl = document.getElementById('available-trailers-count');
+    if (countEl) {
+        const count = visibleTrailers ? visibleTrailers.length : 0;
+        const s = count > 1 ? 's' : '';
+        countEl.textContent = `${count} disponible${s}`;
+    }
+
+    // R1.3: Synchronisation des marqueurs sur la carte Leaflet
+    if (typeof updateTrailersMap === 'function') {
+        try {
+            updateTrailersMap(visibleTrailers || []);
+        } catch (err) {
+            console.warn("Erreur mise à jour carte Leaflet:", err);
+        }
+    }
 
     const grid = document.getElementById('trailers-grid');
     if (!grid) return;
@@ -1003,6 +1092,123 @@ async function checkStripeConnectStatus() {
     }
 }
 
+/**
+ * Initialise le sélecteur de dates Flatpickr sur la page d'accueil (Hero)
+ * et met à jour dynamiquement le lien de redirection vers le catalogue.
+ */
+function initHeroDateFilter() {
+    const inputEl = document.getElementById('hero-dates');
+    if (!inputEl) return;
+    const searchLink = document.getElementById('hero-search-btn') || document.querySelector('#welcome-screen a[href*="remorques.html"]');
+    const clearBtn = document.getElementById('hero-clear-dates');
+
+    if (typeof flatpickr !== 'undefined') {
+        try {
+            const heroPicker = flatpickr(inputEl, {
+                mode: 'range',
+                minDate: 'today',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd.m.Y',
+                locale: (flatpickr.l10ns && flatpickr.l10ns.fr) ? flatpickr.l10ns.fr : undefined,
+                onChange: (selectedDates) => {
+                    if (selectedDates && selectedDates.length === 2) {
+                        const startStr = formatDateToLocalISO(selectedDates[0]);
+                        const endStr = formatDateToLocalISO(selectedDates[1]);
+                        if (searchLink) {
+                            searchLink.href = `remorques.html?start=${encodeURIComponent(startStr)}&end=${encodeURIComponent(endStr)}`;
+                        }
+                        if (clearBtn) clearBtn.classList.remove('hidden');
+                    }
+                }
+            });
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    heroPicker.clear();
+                    clearBtn.classList.add('hidden');
+                    if (searchLink) {
+                        searchLink.href = 'remorques.html';
+                    }
+                });
+            }
+        } catch (err) {
+            console.warn("Erreur Flatpickr hero:", err);
+        }
+    }
+}
+window.initHeroDateFilter = initHeroDateFilter;
+
+/**
+ * Initialise le sélecteur de dates Flatpickr sur la page catalogue (remorques.html)
+ * et synchronise avec les URL searchParams `start` et `end`.
+ */
+function initCatalogDateFilter() {
+    const inputEl = document.getElementById('catalog-dates');
+    const clearBtn = document.getElementById('catalog-clear-dates');
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get('start');
+    const endParam = urlParams.get('end');
+    if (startParam && endParam) {
+        currentStartDate = startParam;
+        currentEndDate = endParam;
+        if (clearBtn) clearBtn.classList.remove('hidden');
+    }
+
+    if (!inputEl) return;
+
+    if (typeof flatpickr !== 'undefined') {
+        try {
+            const pickerConfig = {
+                mode: 'range',
+                minDate: 'today',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd.m.Y',
+                locale: (flatpickr.l10ns && flatpickr.l10ns.fr) ? flatpickr.l10ns.fr : undefined,
+                defaultDate: (currentStartDate && currentEndDate) ? [currentStartDate, currentEndDate] : undefined,
+                onChange: (selectedDates) => {
+                    if (selectedDates && selectedDates.length === 2) {
+                        currentStartDate = formatDateToLocalISO(selectedDates[0]);
+                        currentEndDate = formatDateToLocalISO(selectedDates[1]);
+                        if (clearBtn) clearBtn.classList.remove('hidden');
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('start', currentStartDate);
+                        newUrl.searchParams.set('end', currentEndDate);
+                        window.history.replaceState({}, '', newUrl);
+                        loadTrailers(currentFilter, currentSearch);
+                    }
+                }
+            };
+            const picker = flatpickr(inputEl, pickerConfig);
+            window.catalogFlatpickr = picker;
+        } catch (err) {
+            console.warn("Erreur Flatpickr catalog:", err);
+        }
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            currentStartDate = null;
+            currentEndDate = null;
+            clearBtn.classList.add('hidden');
+            if (window.catalogFlatpickr && typeof window.catalogFlatpickr.clear === 'function') {
+                window.catalogFlatpickr.clear();
+            } else if (inputEl) {
+                inputEl.value = '';
+            }
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('start');
+            newUrl.searchParams.delete('end');
+            window.history.replaceState({}, '', newUrl);
+            loadTrailers(currentFilter, currentSearch);
+        });
+    }
+}
+window.initCatalogDateFilter = initCatalogDateFilter;
+
 // ==========================================
 // 9. DÉMARRAGE DU SITE
 // ==========================================
@@ -1020,6 +1226,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     await checkUser();
     
     const urlParams = new URLSearchParams(window.location.search);
+
+    // Initialisation sélecteur de dates accueil
+    if (document.getElementById('hero-dates')) {
+        initHeroDateFilter();
+    }
     
     // MPA routing for trailer detail
     if (window.location.pathname.includes('remorque.html')) {
@@ -1056,6 +1267,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     
     if (window.location.pathname.includes('remorques.html') && typeof loadTrailers === 'function') {
+        initCatalogDateFilter();
         const cat = urlParams.get('category');
         if (cat && typeof setFilter === 'function') {
             setFilter(cat);

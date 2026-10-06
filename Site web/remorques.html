@@ -17,9 +17,10 @@
     
     <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg?v=2">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://npmcdn.com https://js.stripe.com https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://unpkg.com; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com;">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -107,19 +108,49 @@
             </button>
         </div>
 
-        <!-- Barre de recherche textuelle -->
-        <div class="relative mb-5">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg pointer-events-none">🔍</span>
-            <input
-                type="search"
-                id="search-input"
-                placeholder="Rechercher une remorque (ex: van à chevaux, fermée...)"
-                oninput="handleSearch(this.value)"
-                class="w-full pl-11 pr-4 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm"
-            >
+        <!-- Barre de recherche textuelle et Filtre Dates -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+            <!-- Recherche textuelle -->
+            <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg pointer-events-none">🔍</span>
+                <input
+                    type="search"
+                    id="search-input"
+                    placeholder="Rechercher une remorque (ex: van à chevaux, fermée...)"
+                    oninput="handleSearch(this.value)"
+                    class="w-full pl-11 pr-4 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm"
+                >
+            </div>
+            <!-- Filtre Dates de disponibilité (R2) -->
+            <div class="relative flex items-center">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg pointer-events-none">📅</span>
+                <input type="text" id="catalog-dates" placeholder="Filtrer par dates de location..." readonly
+                    class="w-full pl-11 pr-10 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm cursor-pointer">
+                <button id="catalog-clear-dates" type="button" title="Effacer les dates"
+                    class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-bold p-1 text-lg leading-none">&times;</button>
+            </div>
         </div>
 
-        <h3 id="filter-title" class="text-xl font-bold mb-4 text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
+        <!-- En-tête des résultats, Compteur et Basculeur Vue Liste / Carte -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div class="flex items-center gap-3">
+                <h3 id="filter-title" class="text-xl font-bold text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
+                <span id="available-trailers-count" class="text-xs font-bold px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700"></span>
+            </div>
+            <div id="view-mode-toggle" class="inline-flex bg-stone-100 dark:bg-stone-800 p-1 rounded-xl border border-stone-200 dark:border-stone-700 self-start sm:self-auto">
+                <button id="view-mode-list-btn" type="button" onclick="setViewMode('list')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs">
+                    <span>📋</span><span>Liste</span>
+                </button>
+                <button id="view-mode-map-btn" type="button" onclick="setViewMode('map')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
+                    <span>🗺️</span><span>Carte</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Conteneur Carte Leaflet (R1) -->
+        <div id="trailers-map" class="hidden w-full h-[540px] rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden mb-6 z-10"></div>
+
+        <!-- Grille des remorques -->
         <div id="trailers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 <div id="auth-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-50 flex items-center justify-center z-50 px-4" onclick="handleAuthModalBackdrop(event)">
@@ -219,6 +250,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="https://js.stripe.com/v3/" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
     <script src="js/core.js?v=6" defer></script>
     <script src="js/components.js?v=6" defer></script>
     <script src="js/chat.js?v=6" defer></script>

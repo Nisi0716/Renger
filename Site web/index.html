@@ -17,7 +17,7 @@
     
     <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg?v=2">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://npmcdn.com https://js.stripe.com https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://unpkg.com; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com;">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -96,9 +96,18 @@
             </div>
         </div>
         <h1 class="text-5xl md:text-6xl font-bold mb-4 text-terracotta-500 tracking-tight text-center">Renger</h1>
-        <p data-i18n="subtitle" class="text-lg text-stone-600 dark:text-stone-400 mb-10 text-center max-w-lg">La plateforme de location de remorques entre particuliers. Trouvez la remorque parfaite ou rentabilisez la vôtre.</p>
+        <p data-i18n="subtitle" class="text-lg text-stone-600 dark:text-stone-400 mb-8 text-center max-w-lg">La plateforme de location de remorques entre particuliers. Trouvez la remorque parfaite ou rentabilisez la vôtre.</p>
+        <!-- Recherche Hero avec Sélecteur de Dates (R2) -->
+        <div class="w-full max-w-md mb-4">
+            <div class="relative bg-white dark:bg-stone-800 rounded-2xl shadow-lg border border-stone-200 dark:border-stone-700 p-2 flex items-center gap-2">
+                <span class="pl-3 text-xl text-stone-400">📅</span>
+                <input type="text" id="hero-dates" placeholder="Dates de location souhaitées..." readonly
+                    class="w-full py-2.5 px-2 bg-transparent text-stone-800 dark:text-stone-100 placeholder-stone-400 text-sm font-medium focus:outline-none cursor-pointer">
+                <button id="hero-clear-dates" type="button" title="Effacer les dates" class="hidden pr-3 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-sm font-bold">&times;</button>
+            </div>
+        </div>
         <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
-            <a href="remorques.html" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+            <a href="remorques.html" id="hero-search-btn" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
                 <span>🔍</span> <span data-i18n="btn_buyer">Je cherche une remorque</span>
             </a>
             <a href="louer-ma-remorque.html" class="w-full bg-white dark:bg-stone-800 hover:bg-terracotta-50 dark:hover:bg-stone-700 text-terracotta-600 border-2 border-terracotta-500 font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
