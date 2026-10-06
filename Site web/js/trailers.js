@@ -1505,3 +1505,8 @@ async function handleChangePassword(event) {
     }
 }
 
+// Exports globaux pour la navigation modulaire et les handlers HTML inline
+window.openProfile = openProfile;
+window.switchProfileTab = switchProfileTab;
+window.loadProfileData = loadProfileData;
+

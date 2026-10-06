@@ -546,15 +546,8 @@
         <a href="politique-confidentialite.html" class="hover:text-terracotta-500 transition font-medium">Politique de Confidentialité</a>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="https://js.stripe.com/v3/" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
-    <script src="js/core.js?v=5" defer></script>
-    <script src="js/components.js?v=5" defer></script>
-    <script src="js/chat.js?v=5" defer></script>
-    <script src="js/trailers.js?v=5" defer></script>
-    <script src="js/booking.js?v=5" defer></script>
-<div id="chat-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleChatModalBackdrop(event)">
+    <!-- CDN Librairies tierces (chargement différé dans l'ordre) -->
+    <div id="chat-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleChatModalBackdrop(event)">
         <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md flex flex-col" style="max-height: 85vh;" onclick="event.stopPropagation()">
             <!-- En-tête -->
             <div class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-700 flex-shrink-0">
@@ -665,5 +658,17 @@
             <span class="text-[10px] font-bold tracking-wide">Profil</span>
         </a>
     </nav>
-\n</body>
+    
+    <!-- CDN Librairies tierces (chargement différé dans l'ordre) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="https://js.stripe.com/v3/" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+
+    <!-- Modules Renger (Ordre strict : core.js avant components.js) -->
+    <script src="js/core.js?v=6" defer></script>
+    <script src="js/components.js?v=6" defer></script>
+    <script src="js/chat.js?v=6" defer></script>
+    <script src="js/trailers.js?v=6" defer></script>
+    <script src="js/booking.js?v=6" defer></script>
+</body>
 </html>

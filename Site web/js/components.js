@@ -77,9 +77,16 @@ function updateUserMenu(user) {
                             (user.email ? user.email.split('@')[0] : 'Utilisateur');
 
         container.innerHTML = `
-            <div class="flex items-center gap-3">
-                <span class="text-sm font-semibold text-stone-700 dark:text-stone-200" id="user-display-name"></span>
-                <button onclick="supabase.auth.signOut()" class="text-stone-400 hover:text-red-500 text-sm font-medium transition hover:underline">Déconnexion</button>
+            <div class="flex items-center gap-3 sm:gap-4">
+                <a href="profil.html" class="flex items-center gap-2 text-stone-700 dark:text-stone-200 hover:text-terracotta-500 font-semibold text-sm transition group" title="Accéder à Mon Espace">
+                    <span class="w-8 h-8 rounded-full bg-terracotta-50 dark:bg-stone-800 text-terracotta-600 flex items-center justify-center font-bold text-xs border border-terracotta-200 dark:border-stone-700 group-hover:scale-105 transition-transform">
+                        👤
+                    </span>
+                    <span class="hidden md:inline" id="user-display-name"></span>
+                </a>
+                <a href="profil.html" class="text-stone-600 dark:text-stone-300 font-semibold text-sm hover:text-terracotta-500 transition hidden sm:block">Mon Espace</a>
+                <a href="profil.html?p=settings-page" class="text-stone-500 dark:text-stone-400 font-medium text-sm hover:text-terracotta-500 transition hidden lg:block">Paramètres</a>
+                <button onclick="handleLogout()" class="text-stone-400 hover:text-red-500 text-sm font-medium transition hover:underline">Déconnexion</button>
             </div>
         `;
         const nameEl = document.getElementById('user-display-name');

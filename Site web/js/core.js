@@ -537,6 +537,7 @@ async function checkUser() {
 window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 window.checkUser = checkUser;
+window.openSettings = openSettings;
 
 // Mapping catégories → emoji+label pour les badges
 const CATEGORY_MAP = {
