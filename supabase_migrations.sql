@@ -78,8 +78,11 @@ CREATE TABLE IF NOT EXISTS inspections (
 );
 
 ALTER TABLE inspections ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public insert to inspections" ON inspections FOR INSERT TO public WITH CHECK (true);
-CREATE POLICY "Allow participants to read inspections" ON inspections FOR SELECT USING (true);
+CREATE POLICY "Allow authenticated users to insert inspections" ON inspections FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Allow participants and owners to read inspections" ON inspections FOR SELECT TO authenticated USING (
+    user_id = auth.uid() OR
+    trailer_id IN (SELECT id FROM trailers WHERE owner_id = auth.uid())
+);
 
 
 -- 9. Ajout de la date de fin de boost pour les remorques
