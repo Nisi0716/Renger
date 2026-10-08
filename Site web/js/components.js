@@ -100,10 +100,43 @@ function updateUserMenu(user) {
     }
 }
 
-function openAuthModal() { 
+function switchAuthTab(tab) {
+    const loginPanel = document.getElementById('auth-panel-login');
+    const signupPanel = document.getElementById('auth-panel-signup');
+    const resetPanel = document.getElementById('auth-panel-reset');
+    const tabsContainer = document.getElementById('auth-modal-tabs');
+    const tabLoginBtn = document.getElementById('auth-tab-login');
+    const tabSignupBtn = document.getElementById('auth-tab-signup');
+
+    if (resetPanel) resetPanel.classList.add('hidden');
+    if (tabsContainer) tabsContainer.classList.remove('hidden');
+
+    if (tab === 'signup') {
+        if (loginPanel) loginPanel.classList.add('hidden');
+        if (signupPanel) signupPanel.classList.remove('hidden');
+        if (tabSignupBtn) {
+            tabSignupBtn.className = "flex-1 py-2 text-sm font-bold rounded-xl transition bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm";
+        }
+        if (tabLoginBtn) {
+            tabLoginBtn.className = "flex-1 py-2 text-sm font-bold rounded-xl transition text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-white";
+        }
+    } else {
+        if (signupPanel) signupPanel.classList.add('hidden');
+        if (loginPanel) loginPanel.classList.remove('hidden');
+        if (tabLoginBtn) {
+            tabLoginBtn.className = "flex-1 py-2 text-sm font-bold rounded-xl transition bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm";
+        }
+        if (tabSignupBtn) {
+            tabSignupBtn.className = "flex-1 py-2 text-sm font-bold rounded-xl transition text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-white";
+        }
+    }
+}
+window.switchAuthTab = switchAuthTab;
+
+function openAuthModal(defaultTab = 'login') { 
     const modal = document.getElementById('auth-modal');
     if (modal) modal.classList.remove('hidden');
-    showLoginPanel(); // Toujours ouvrir sur le panneau connexion
+    switchAuthTab(defaultTab);
 }
 
 function closeAuthModal() { 
@@ -148,16 +181,25 @@ document.addEventListener('keydown', (event) => {
 });
 
 function showResetPanel() {
-    document.getElementById('auth-panel-login').classList.add('hidden');
-    document.getElementById('auth-panel-reset').classList.remove('hidden');
+    const tabsContainer = document.getElementById('auth-modal-tabs');
+    if (tabsContainer) tabsContainer.classList.add('hidden');
+    const loginPanel = document.getElementById('auth-panel-login');
+    if (loginPanel) loginPanel.classList.add('hidden');
+    const signupPanel = document.getElementById('auth-panel-signup');
+    if (signupPanel) signupPanel.classList.add('hidden');
+    const resetPanel = document.getElementById('auth-panel-reset');
+    if (resetPanel) resetPanel.classList.remove('hidden');
+
     // Pré-remplir l'email si déjà saisi
-    const loginEmail = document.getElementById('login-email').value;
-    if (loginEmail) document.getElementById('reset-email').value = loginEmail;
+    const emailVal = document.getElementById('login-email')?.value || document.getElementById('signup-email')?.value;
+    if (emailVal) {
+        const resetEl = document.getElementById('reset-email');
+        if (resetEl) resetEl.value = emailVal;
+    }
 }
 
 function showLoginPanel() {
-    document.getElementById('auth-panel-reset').classList.add('hidden');
-    document.getElementById('auth-panel-login').classList.remove('hidden');
+    switchAuthTab('login');
 }
 
 async function handleResetPassword() {

@@ -353,18 +353,148 @@ async function checkUsernameAvailability(value) {
     }, 400);
 }
 
+// --- Domaines d'emails autorisés (anti-comptes temporaires / spam) ---
+const ALLOWED_EMAIL_DOMAINS = [
+    // Google
+    'gmail.com', 'googlemail.com',
+    // Microsoft
+    'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'hotmail.fr', 'outlook.fr',
+    // Apple
+    'icloud.com', 'me.com', 'mac.com',
+    // Yahoo
+    'yahoo.com', 'yahoo.fr', 'ymail.com',
+    // Suisse
+    'bluewin.ch', 'swissonline.ch',
+    // Proton
+    'proton.me', 'protonmail.com', 'pm.me'
+];
+
+function isAllowedEmailDomain(email) {
+    if (!email || typeof email !== 'string') return false;
+    const parts = email.trim().toLowerCase().split('@');
+    if (parts.length !== 2) return false;
+    const domain = parts[1];
+    return ALLOWED_EMAIL_DOMAINS.includes(domain);
+}
+
+function evaluatePasswordConditions(password) {
+    const pwd = password || '';
+    return {
+        length: pwd.length >= 8,
+        upper: /[A-Z]/.test(pwd),
+        lower: /[a-z]/.test(pwd),
+        number: /[0-9]/.test(pwd),
+        special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(pwd)
+    };
+}
+
+function validateSignupEmailLive(value) {
+    const feedback = document.getElementById('signup-email-feedback');
+    if (!feedback) return;
+    const email = (value || '').trim().toLowerCase();
+    if (!email) {
+        feedback.textContent = "Domaines acceptés : Gmail, Outlook, Hotmail, iCloud, Yahoo, Bluewin, Proton";
+        feedback.className = "text-[11px] mt-1 text-stone-400";
+        return;
+    }
+    if (email.includes('@')) {
+        const parts = email.split('@');
+        if (parts[1]) {
+            if (isAllowedEmailDomain(email)) {
+                feedback.textContent = "✓ Domaine d'e-mail accepté";
+                feedback.className = "text-[11px] mt-1 text-green-600 dark:text-green-400 font-medium";
+            } else {
+                feedback.textContent = "Fournisseur non autorisé. Utilisez Gmail, Outlook, iCloud, Yahoo, Bluewin ou Proton.";
+                feedback.className = "text-[11px] mt-1 text-amber-600 dark:text-amber-400 font-medium";
+            }
+            return;
+        }
+    }
+    feedback.textContent = "Domaines acceptés : Gmail, Outlook, Hotmail, iCloud, Yahoo, Bluewin, Proton";
+    feedback.className = "text-[11px] mt-1 text-stone-400";
+}
+
+function updatePasswordRuleUI(elId, isMet) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const badge = el.querySelector('span');
+    if (isMet) {
+        el.className = "flex items-center gap-1.5 text-green-600 dark:text-green-400 font-medium transition-colors";
+        if (badge) {
+            badge.textContent = "✓";
+            badge.className = "w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-950 text-green-600 dark:text-green-400 text-[10px] font-bold";
+        }
+    } else {
+        el.className = "flex items-center gap-1.5 text-stone-400 transition-colors";
+        if (badge) {
+            badge.textContent = "○";
+            badge.className = "w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500 text-[9px] font-bold";
+        }
+    }
+}
+
+function validateSignupPasswordLive(value) {
+    const cond = evaluatePasswordConditions(value);
+    updatePasswordRuleUI('pwd-rule-length', cond.length);
+    updatePasswordRuleUI('pwd-rule-upper', cond.upper);
+    updatePasswordRuleUI('pwd-rule-lower', cond.lower);
+    updatePasswordRuleUI('pwd-rule-number', cond.number);
+    updatePasswordRuleUI('pwd-rule-special', cond.special);
+    validateSignupPasswordMatchLive();
+}
+
+function validateSignupPasswordMatchLive() {
+    const p1 = document.getElementById('signup-password')?.value || '';
+    const p2 = document.getElementById('signup-password-confirm')?.value || '';
+    const feedback = document.getElementById('signup-password-match-feedback');
+    if (!feedback) return;
+
+    if (!p2) {
+        feedback.classList.add('hidden');
+        return;
+    }
+    feedback.classList.remove('hidden');
+    if (p1 === p2) {
+        feedback.textContent = "✓ Les mots de passe correspondent";
+        feedback.className = "text-[11px] mt-1 text-green-600 dark:text-green-400 font-medium";
+    } else {
+        feedback.textContent = "Les mots de passe ne correspondent pas";
+        feedback.className = "text-[11px] mt-1 text-red-500 font-medium";
+    }
+}
+
+window.validateSignupEmailLive = validateSignupEmailLive;
+window.validateSignupPasswordLive = validateSignupPasswordLive;
+window.validateSignupPasswordMatchLive = validateSignupPasswordMatchLive;
+
 // --- Auth ---
 
 async function handleSignup() {
     if (!supabaseClient) return showToast("Erreur: Supabase non chargé.", "error");
-    const email    = document.getElementById('login-email').value.trim();
-    const password = document.getElementById('login-password').value;
+
     const username = (document.getElementById('signup-username')?.value || '').trim().toLowerCase();
+    const email = (document.getElementById('signup-email')?.value || '').trim();
+    const password = document.getElementById('signup-password')?.value || '';
+    const confirmPassword = document.getElementById('signup-password-confirm')?.value || '';
 
     if (!username) return showToast("Veuillez choisir un nom d'utilisateur.", "error");
-    if (!validateUsernameFormat(username)) return showToast("Format du nom d'utilisateur invalide.", "error");
+    if (!validateUsernameFormat(username)) return showToast("Format du nom d'utilisateur invalide (@lettres minuscules, chiffres, . - _).", "error");
 
-    const signupBtn = document.querySelector('#auth-panel-login button[onclick="handleSignup()"]');
+    if (!email) return showToast("Veuillez renseigner votre adresse email.", "error");
+    if (!isAllowedEmailDomain(email)) {
+        return showToast("Adresse email non autorisée. Utilisez un fournisseur fiable (Gmail, Outlook, iCloud, Yahoo, Bluewin, Proton).", "error");
+    }
+
+    const cond = evaluatePasswordConditions(password);
+    if (!cond.length || !cond.upper || !cond.lower || !cond.number || !cond.special) {
+        return showToast("Votre mot de passe doit respecter toutes les exigences de sécurité Renger.", "error");
+    }
+
+    if (password !== confirmPassword) {
+        return showToast("La confirmation du mot de passe ne correspond pas.", "error");
+    }
+
+    const signupBtn = document.getElementById('signup-submit-btn') || document.querySelector('#auth-panel-signup button[onclick*="handleSignup"]');
     if (signupBtn) signupBtn.disabled = true;
 
     try {
@@ -723,12 +853,28 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     const { data: trailers, error } = await query;
     let visibleTrailers = (trailers || []).filter(t => t.is_active !== false);
     
-    // Feature 1: Geolocation sorting
+    // Feature 1: Geolocation & Boost sorting
     if (userLat && userLon) {
         visibleTrailers.forEach(t => {
             t.distance = calculateDistance(userLat, userLon, t.latitude, t.longitude);
         });
-        visibleTrailers.sort((a, b) => a.distance - b.distance);
+        visibleTrailers.sort((a, b) => {
+            const aBoosted = (a.boost_end_date && new Date(a.boost_end_date) > new Date()) ? 1 : 0;
+            const bBoosted = (b.boost_end_date && new Date(b.boost_end_date) > new Date()) ? 1 : 0;
+            if (aBoosted !== bBoosted) {
+                return bBoosted - aBoosted; // Boosted items first
+            }
+            return a.distance - b.distance;
+        });
+    } else {
+        visibleTrailers.sort((a, b) => {
+            const aBoosted = (a.boost_end_date && new Date(a.boost_end_date) > new Date()) ? 1 : 0;
+            const bBoosted = (b.boost_end_date && new Date(b.boost_end_date) > new Date()) ? 1 : 0;
+            if (aBoosted !== bBoosted) {
+                return bBoosted - aBoosted; // Boosted items first
+            }
+            return 0;
+        });
     }
     
     // Feature 2: Analytics Impressions
@@ -797,6 +943,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
 
         const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
         const cat = CATEGORY_MAP[trailer.category];
+        const isBoosted = trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date();
 
         // CORRECTION XSS : L'URL n'est plus interpolée dans le HTML, l'élément img est rempli via .src
         card.innerHTML = `
@@ -804,6 +951,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
                 <img class="trailer-card-img w-full h-full object-cover" alt="">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
                 ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg">${cat.emoji} <span class="safe-cat"></span></div>` : ''}
+                ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2 py-1 rounded-lg text-xs font-bold text-white shadow">🚀 Sponsorisé</div>` : ''}
             </div>
             <div class="p-5">
                 <div class="flex justify-between items-start gap-2 mb-1">
@@ -1083,6 +1231,7 @@ async function checkStripeConnectStatus() {
         showToast("🎉 Vos coordonnées bancaires ont été enregistrées avec succès !", "success");
         if (currentUser) {
             openSettings();
+            if (typeof loadProfileSettings === 'function') loadProfileSettings();
         }
     } else if (stripeStatus === 'refresh') {
         showToast("Configuration bancaire interrompue. Vous pouvez la reprendre à tout moment.", "info");
@@ -1226,6 +1375,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     await checkUser();
     
     const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.get('pro_success') === 'true') {
+        showToast("👑 Abonnement Renger PRO activé avec succès !", "success");
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('pro_success');
+        window.history.replaceState({}, document.title, newUrl.pathname + (newUrl.search ? newUrl.search : ''));
+    }
+    
+    if (urlParams.get('boost_success') === 'true') {
+        showToast("🚀 Remorque boostée avec succès !", "success");
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('boost_success');
+        window.history.replaceState({}, document.title, newUrl.pathname + (newUrl.search ? newUrl.search : ''));
+    }
 
     // Initialisation sélecteur de dates accueil
     if (document.getElementById('hero-dates')) {

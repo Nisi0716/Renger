@@ -1,4 +1,4 @@
-﻿-- ==========================================
+-- ==========================================
 -- SCRIPT DE MIGRATION SUPABASE - RENGER PRO & TRACKING
 -- ==========================================
 -- ExÃ©cutez ce script dans l'Ã©diteur SQL de votre dashboard Supabase.
@@ -81,3 +81,7 @@ ALTER TABLE inspections ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public insert to inspections" ON inspections FOR INSERT TO public WITH CHECK (true);
 CREATE POLICY "Allow participants to read inspections" ON inspections FOR SELECT USING (true);
 
+
+-- 9. Ajout de la date de fin de boost pour les remorques
+ALTER TABLE trailers
+ADD COLUMN IF NOT EXISTS boost_end_date timestamp with time zone;

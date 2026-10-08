@@ -1481,6 +1481,8 @@ async function loadProfileSettings() {
         if (stripeBtnText) {
             stripeBtnText.textContent = "Modifier mes coordonnées bancaires";
         }
+        const alertEl = document.getElementById('stripe-success-alert');
+        if (alertEl) alertEl.classList.remove('hidden');
     } else {
         if (stripeBadge) {
             stripeBadge.innerHTML = `<span class="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 text-xs px-2.5 py-1 rounded-full font-bold inline-flex">
@@ -1490,6 +1492,8 @@ async function loadProfileSettings() {
         if (stripeBtnText) {
             stripeBtnText.textContent = "Configurer mes versements sécurisés";
         }
+        const alertEl = document.getElementById('stripe-success-alert');
+        if (alertEl) alertEl.classList.add('hidden');
     }
 }
 
