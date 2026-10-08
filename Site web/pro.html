@@ -85,39 +85,71 @@
         L'abonnement pensé pour les professionnels et les loueurs fréquents. Maximisez votre rentabilité avec 0% de commission sur vos locations.
     </p>
     
-    <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-xl border border-terracotta-500/20 p-8 max-w-md w-full relative overflow-hidden">
-        <div class="absolute top-0 right-0 bg-terracotta-500 text-white font-bold px-4 py-1 rounded-bl-xl text-sm">
-            Populaire
+    <div class="flex flex-col md:flex-row items-center justify-center gap-6 max-w-4xl mx-auto w-full">
+        <!-- Carte Mensuelle -->
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-xl border border-stone-200 dark:border-stone-700 p-8 w-full md:w-1/2 relative overflow-hidden transition hover:shadow-2xl hover:-translate-y-1">
+            <h2 class="text-2xl font-bold mb-2">Abonnement PRO</h2>
+            <div class="flex items-baseline justify-center gap-1 mb-6">
+                <span class="text-5xl font-extrabold">39</span>
+                <span class="text-xl font-medium text-stone-500">CHF / mois</span>
+            </div>
+            
+            <ul class="text-left space-y-4 mb-8">
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span><b>0% de commission</b> sur toutes vos locations (au lieu de 5%)</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span>Mise en avant prioritaire de vos annonces</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span>Badge "Loueur PRO" de confiance</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span>Support client prioritaire 7j/7</span>
+                </li>
+            </ul>
+            
+            <button onclick="handleSubscribePro('monthly')" class="w-full bg-stone-800 hover:bg-stone-900 text-white font-bold py-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
+                Payer 39 CHF / mois
+            </button>
+            <p class="text-xs text-stone-400 mt-4 text-center">Sans engagement, annulable à tout moment.</p>
         </div>
-        <h2 class="text-2xl font-bold mb-2">Abonnement PRO</h2>
-        <div class="flex items-baseline justify-center gap-1 mb-6">
-            <span class="text-5xl font-extrabold">39</span>
-            <span class="text-xl font-medium text-stone-500">CHF / mois</span>
+
+        <!-- Carte Annuelle -->
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl border-2 border-terracotta-500 p-8 w-full md:w-1/2 relative overflow-hidden transform md:-translate-y-4 transition hover:shadow-[0_20px_50px_rgba(216,81,16,0.2)] hover:-translate-y-5">
+            <div class="absolute top-0 right-0 bg-terracotta-500 text-white font-bold px-4 py-1 rounded-bl-xl text-sm">
+                2 mois offerts
+            </div>
+            <h2 class="text-2xl font-bold mb-2">PRO Annuel</h2>
+            <div class="flex items-baseline justify-center gap-1 mb-6">
+                <span class="text-5xl font-extrabold text-terracotta-500">390</span>
+                <span class="text-xl font-medium text-stone-500">CHF / an</span>
+            </div>
+            
+            <ul class="text-left space-y-4 mb-8">
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span><b>Tous les avantages du PRO mensuel</b></span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span><b>Économisez 78 CHF</b> par an</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500 font-bold">✓</span>
+                    <span>Paiement unique pour la tranquillité</span>
+                </li>
+            </ul>
+            
+            <button onclick="handleSubscribePro('annual')" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
+                Payer 390 CHF / an
+            </button>
+            <p class="text-xs text-stone-400 mt-4 text-center">Facturé annuellement.</p>
         </div>
-        
-        <ul class="text-left space-y-4 mb-8">
-            <li class="flex items-start gap-3">
-                <span class="text-green-500 font-bold">✓</span>
-                <span><b>0% de commission</b> sur toutes vos locations (au lieu de 5%)</span>
-            </li>
-            <li class="flex items-start gap-3">
-                <span class="text-green-500 font-bold">✓</span>
-                <span>Mise en avant prioritaire de vos annonces</span>
-            </li>
-            <li class="flex items-start gap-3">
-                <span class="text-green-500 font-bold">✓</span>
-                <span>Badge "Loueur PRO" de confiance</span>
-            </li>
-            <li class="flex items-start gap-3">
-                <span class="text-green-500 font-bold">✓</span>
-                <span>Support client prioritaire 7j/7</span>
-            </li>
-        </ul>
-        
-        <button onclick="handleSubscribePro()" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-xl transition shadow-lg hover:shadow-terracotta-500/30 transform hover:-translate-y-1">
-            Souscrire maintenant
-        </button>
-        <p class="text-xs text-stone-400 mt-4">Sans engagement, annulable à tout moment.</p>
     </div>
 </div>
 <footer class="w-full py-8 mt-16 border-t border-stone-200 dark:border-stone-800 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">

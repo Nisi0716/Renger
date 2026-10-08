@@ -449,6 +449,7 @@ async function processBooking() {
     isProcessingBooking = true;
 
     closeBookingConfirmModal();
+    if (window.showStripeLoading) window.showStripeLoading();
     showToast("Création de votre réservation sécurisée via Stripe...", "info");
 
     try {
@@ -467,9 +468,11 @@ async function processBooking() {
         if (stripeData.url) {
             window.location.href = stripeData.url; 
         } else {
+            if (window.hideStripeLoading) window.hideStripeLoading();
             showToast("Erreur Stripe : " + (stripeData.error || stripeData.message || "Lien de paiement introuvable."), "error");
         }
     } catch (err) {
+        if (window.hideStripeLoading) window.hideStripeLoading();
         showToast("Erreur de réservation : " + err.message, "error");
     } finally {
         isProcessingBooking = false;
@@ -559,6 +562,7 @@ async function handlePurchaseBoost() {
     if (btn) btn.disabled = true;
 
     try {
+        if (window.showStripeLoading) window.showStripeLoading();
         showToast("Création du paiement...", "info");
         const { data, error } = await supabaseClient.functions.invoke('stripe-boost-checkout', {
             body: { trailer_id: currentBoostTrailerId, plan: planEl.value }
@@ -568,33 +572,41 @@ async function handlePurchaseBoost() {
         if (data && data.url) {
             window.location.href = data.url;
         } else {
+            if (window.hideStripeLoading) window.hideStripeLoading();
             showToast("Erreur lors de l'initialisation du paiement.", "error");
         }
     } catch (err) {
+        if (window.hideStripeLoading) window.hideStripeLoading();
         showToast(err.message, "error");
     } finally {
         if (btn) btn.disabled = false;
     }
 }
 
-async function handleSubscribePro() {
+async function handleSubscribePro(plan = 'monthly') {
     if (!currentUser) {
         showToast("Vous devez être connecté.", "error");
         return;
     }
     try {
+        if (window.showStripeLoading) window.showStripeLoading();
         showToast("Redirection vers Stripe...", "info");
         const { data, error } = await supabaseClient.functions.invoke('stripe-pro-checkout', {
-            body: { user_id: currentUser.id }
+            body: { user_id: currentUser.id, plan: plan }
         });
 
-        if (error) throw error;
+        if (error) {
+            if (window.hideStripeLoading) window.hideStripeLoading();
+            throw error;
+        }
         if (data && data.url) {
             window.location.href = data.url;
         } else {
+            if (window.hideStripeLoading) window.hideStripeLoading();
             showToast("Erreur lors de l'initialisation de l'abonnement.", "error");
         }
     } catch (err) {
+        if (window.hideStripeLoading) window.hideStripeLoading();
         showToast(err.message, "error");
     }
 }
@@ -697,3 +709,38 @@ async function archiveTrailer() {
         alert('Erreur lors de l\'archivage de l\'annonce.');
     }
 }
+
+window.showStripeLoading = function() {
+    let loader = document.getElementById('stripe-loader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'stripe-loader';
+        loader.className = 'fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center hidden';
+        loader.innerHTML = `
+            <style>
+                @keyframes sand-flow {
+                    0% { transform: rotate(0deg); }
+                    40% { transform: rotate(180deg); }
+                    100% { transform: rotate(180deg); }
+                }
+                .hourglass-svg {
+                    animation: sand-flow 3s ease-in-out infinite;
+                }
+            </style>
+            <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center border border-terracotta-500/20">
+                <svg class="hourglass-svg w-16 h-16 text-terracotta-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4h16v2a6 6 0 01-6 6v0a6 6 0 016 6v2H4v-2a6 6 0 016-6v0a6 6 0 01-6-6V4z" />
+                </svg>
+                <h3 class="text-xl font-bold text-stone-800 dark:text-white mb-2">Connexion sécurisée</h3>
+                <p class="text-sm text-stone-500 dark:text-stone-400">Génération du lien Stripe en cours...</p>
+            </div>
+        `;
+        document.body.appendChild(loader);
+    }
+    loader.classList.remove('hidden');
+};
+
+window.hideStripeLoading = function() {
+    const loader = document.getElementById('stripe-loader');
+    if (loader) loader.classList.add('hidden');
+};

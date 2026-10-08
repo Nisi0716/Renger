@@ -551,7 +551,7 @@
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.2);
         doc.setTextColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
-        doc.text('🛡️ CERTIFIÉ PAR RENGER SUISSE', 22, currentY + 19);
+        doc.text('PREUVE NUMÉRIQUE CERTIFIÉE', 22, currentY + 19);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6.2);
         doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);
@@ -578,7 +578,7 @@
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.2);
         doc.setTextColor(SUCCESS_GREEN[0], SUCCESS_GREEN[1], SUCCESS_GREEN[2]);
-        doc.text('🔒 PAIEMENT & CAUTION STRIPE VALIDÉS', 116, currentY + 19);
+        doc.text('PAIEMENT & CAUTION STRIPE VALIDÉS', 116, currentY + 19);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6.2);
         doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);
@@ -831,7 +831,7 @@
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(7.5);
                 doc.setTextColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
-                doc.text('🛡️ PREUVE NUMÉRIQUE CERTIFIÉE', imgBoxX + (imgBoxW / 2), imgBoxY + 20, { align: 'center' });
+                doc.text('PREUVE NUMÉRIQUE CERTIFIÉE', imgBoxX + (imgBoxW / 2), imgBoxY + 20, { align: 'center' });
 
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(6.8);
@@ -851,17 +851,17 @@
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(6.8);
             doc.setTextColor(SUCCESS_GREEN[0], SUCCESS_GREEN[1], SUCCESS_GREEN[2]);
-            doc.text('✅ CLICHÉ CONFORME & CERTIFIÉ', pos.x + 3, metaY + 3);
+            doc.text('CLICHÉ CONFORME & CERTIFIÉ', pos.x + 3, metaY + 3);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(6.2);
             doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
             const swissTime = formatSwissDateTime(item.timestamp);
-            doc.text(`📅 Horodatage : ${swissTime}`, pos.x + 3, metaY + 8);
+            doc.text(`Horodatage : ${swissTime}`, pos.x + 3, metaY + 8);
 
             const gpsText = item.latitude && item.longitude
-                ? `📍 GPS : ${Number(item.latitude).toFixed(4)}°N, ${Number(item.longitude).toFixed(4)}°E (±${Math.round(item.accuracy || 5)}m)`
-                : '📍 GPS : Géolocalisation certifiée Suisse (±5m)';
+                ? `GPS : ${Number(item.latitude).toFixed(4)}°N, ${Number(item.longitude).toFixed(4)}°E (±${Math.round(item.accuracy || 5)}m)`
+                : 'GPS : Géolocalisation certifiée Suisse (±5m)';
             doc.text(gpsText, pos.x + 3, metaY + 13);
 
             doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);

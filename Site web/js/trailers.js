@@ -937,7 +937,7 @@ async function loadProfileData() {
         .from('bookings')
         .select('*, trailers(*)')
         .eq('renter_id', currentUser.id)
-        .eq('status', 'paye')
+        .in('status', ['paid', 'confirmed', 'paye'])
         .order('start_date', { ascending: false });
 
     const { data: myTrailersRaw } = await supabaseClient
@@ -951,7 +951,7 @@ async function loadProfileData() {
         .from('bookings')
         .select('*, trailers(*)')
         .eq('owner_id', currentUser.id)
-        .eq('status', 'paye')
+        .in('status', ['paid', 'confirmed', 'paye'])
         .order('start_date', { ascending: false });
     cachedSellerBookings = sellerBookings || [];
 
@@ -1173,6 +1173,15 @@ async function loadProfileData() {
                 const imgWrapper = document.createElement('div');
                 imgWrapper.className = 'h-32 bg-stone-200 dark:bg-stone-700 relative';
                 imgWrapper.appendChild(badge);
+                
+                const isBoosted = trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date();
+                if (isBoosted) {
+                    const boostBadge = document.createElement('span');
+                    boostBadge.className = 'absolute top-3 right-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2 py-1 rounded-lg text-xs font-bold text-white shadow';
+                    boostBadge.textContent = '🚀 Sponsorisé';
+                    imgWrapper.appendChild(boostBadge);
+                }
+                
                 imgWrapper.appendChild(img);
 
                 // Titre — textContent neutralise toute injection XSS
@@ -1197,6 +1206,38 @@ async function loadProfileData() {
                 const manageBtn = document.createElement('div');
                 manageBtn.className = 'w-full mt-2 bg-stone-100 dark:bg-stone-700 group-hover:bg-terracotta-50 dark:group-hover:bg-terracotta-900/40 group-hover:text-terracotta-600 dark:group-hover:text-terracotta-400 text-stone-700 dark:text-stone-200 text-xs font-bold py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm';
                 manageBtn.innerHTML = '<span>⚙️</span><span>Gérer l\'annonce (Modifier, Booster…)</span>';
+                
+                if (profile?.is_pro) {
+                    const adBookings = (sellerBookings || []).filter(b => b.trailer_id === trailer.id);
+                    let adRev = 0;
+                    let adDays = 0;
+                    let finished = 0;
+                    let cancelled = 0;
+                    adBookings.forEach(b => {
+                        if (b.status === 'cancelled') cancelled++;
+                        else if (b.status === 'paid' || b.status === 'confirmed') {
+                            const eDateStr = b.end_date ? b.end_date.split('T')[0] : '';
+                            if (todayStr > eDateStr) finished++;
+                            const s = new Date(b.start_date);
+                            const e = new Date(b.end_date);
+                            const d = Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
+                            adDays += d;
+                            adRev += (d * Number(trailer.price)) * 0.8;
+                        }
+                    });
+                    
+                    const statsDiv = document.createElement('div');
+                    statsDiv.className = 'mt-3 mb-2 p-3 bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-xs space-y-1.5 cursor-default';
+                    // Stop click propagation so clicking stats doesn't trigger card click
+                    statsDiv.onclick = (e) => e.stopPropagation();
+                    statsDiv.innerHTML = `
+                        <div class="flex justify-between"><span class="text-stone-500">Revenus nets</span><span class="font-bold text-terracotta-600">${adRev.toFixed(2)} CHF</span></div>
+                        <div class="flex justify-between"><span class="text-stone-500">Jours loués</span><span class="font-bold text-stone-700 dark:text-stone-300">${adDays} jours</span></div>
+                        <div class="flex justify-between"><span class="text-stone-500">Terminées / Annulées</span><span class="font-bold text-stone-700 dark:text-stone-300">${finished} / ${cancelled}</span></div>
+                    `;
+                    textDiv.appendChild(statsDiv);
+                }
+
                 textDiv.appendChild(manageBtn);
                 
                 infoDiv.appendChild(textDiv);
@@ -1391,11 +1432,13 @@ async function openPublicProfile(username) {
         card.onclick = () => openTrailerDetail(trailer);
         const imgUrl = trailer.image_url || 'https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger';
         const cat = CATEGORY_MAP[trailer.category];
+        const isBoosted = trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date();
         card.innerHTML = `
             <div class="h-40 bg-stone-200 dark:bg-stone-700 relative">
                 <img class="public-trailer-img w-full h-full object-cover" alt="">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
                 ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg">${cat.emoji} <span class="safe-cat"></span></div>` : ''}
+                ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2 py-1 rounded-lg text-xs font-bold text-white shadow">🚀 Sponsorisé</div>` : ''}
             </div>
             <div class="p-4">
                 <div class="flex justify-between items-start gap-2 mb-3">
@@ -1740,7 +1783,7 @@ function updateTrailersMap(trailers) {
 
             const loc = document.createElement('p');
             loc.className = 'text-[11px] text-stone-500 mb-2';
-            loc.textContent = `📍 ${trailer.location_city || trailer.location || 'Suisse'}`;
+            loc.textContent = `📍 ${trailer.location_city || 'Région masquée'}`;
             popup.appendChild(loc);
 
             const link = document.createElement('a');

@@ -84,7 +84,6 @@ function updateUserMenu(user) {
                     </span>
                     <span class="hidden md:inline" id="user-display-name"></span>
                 </a>
-                <a href="profil.html" class="text-stone-600 dark:text-stone-300 font-semibold text-sm hover:text-terracotta-500 transition hidden sm:block">Mon Espace</a>
                 <a href="profil.html?p=settings-page" class="text-stone-500 dark:text-stone-400 font-medium text-sm hover:text-terracotta-500 transition hidden lg:block">Paramètres</a>
                 <button onclick="handleLogout()" class="text-stone-400 hover:text-red-500 text-sm font-medium transition hover:underline">Déconnexion</button>
             </div>

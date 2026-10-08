@@ -271,6 +271,26 @@ function updateChatInspectionBar(messages) {
     const renterActions = document.getElementById('chat-renter-actions');
     if (!inspectionBar || !ownerActions || !renterActions || !currentUser || !currentTrailer) return;
 
+    const paidStatuses = ['paid', 'payé', 'paye', 'confirmed', 'active'];
+    if (!currentBookingContext || !paidStatuses.includes((currentBookingContext.status || '').toLowerCase())) {
+        inspectionBar.classList.add('hidden');
+        inspectionBar.classList.remove('flex');
+        return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(currentBookingContext.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(currentBookingContext.end_date);
+    endDate.setHours(0, 0, 0, 0);
+
+    if (today < startDate || today > endDate) {
+        inspectionBar.classList.add('hidden');
+        inspectionBar.classList.remove('flex');
+        return;
+    }
+
     let departureCount = 0;
     let returnCount = 0;
 
