@@ -93,7 +93,11 @@
             <!-- Colonne de gauche : Infos remorque -->
 
             <div class="lg:col-span-2">
-                <div class="h-96 bg-stone-200 rounded-3xl overflow-hidden mb-8 relative" id="detail-carousel-wrap">
+                <div class="h-96 bg-stone-200 dark:bg-stone-800 rounded-3xl overflow-hidden mb-8 relative" id="detail-carousel-wrap">
+                    <!-- Badge Boost Sponsorisé -->
+                    <div id="detail-boost-badge" class="hidden absolute top-4 left-4 bg-amber-500/90 backdrop-blur-sm text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-md z-10 flex items-center gap-1">
+                        <span>🚀</span><span>Sponsorisé</span>
+                    </div>
                     <!-- Image principale -->
                     <img id="detail-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" alt="Photo principale remorque" class="w-full h-full object-cover transition-opacity duration-300">
                     <!-- Flèches (cachées si 1 seule photo) -->
@@ -110,7 +114,11 @@
                     <!-- Compteur (ex: 2 / 5) -->
                     <div id="carousel-counter" class="hidden absolute top-4 right-4 bg-black/40 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full"></div>
                 </div>
-                <h2 id="detail-title" class="text-4xl font-bold mb-2 text-stone-900 dark:text-white">Titre</h2>
+                <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <h2 id="detail-title" class="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-white">Titre</h2>
+                    <span id="detail-verified-badge" class="hidden text-xs font-bold px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">✓ Vérifié</span>
+                    <span id="detail-owner-badge" class="hidden text-xs font-bold px-2.5 py-1 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-full border border-stone-200 dark:border-stone-700">Votre remorque</span>
+                </div>
                 <div id="detail-rating" class="flex items-center gap-3 mb-6"></div>
                 <div class="flex gap-4 mb-8">
                     <span class="bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">🔌 Prise <span id="detail-socket"></span></span>

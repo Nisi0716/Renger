@@ -171,6 +171,8 @@ document.addEventListener('keydown', (event) => {
             { id: 'chat-modal', close: closeChatModal },
             { id: 'booking-confirm-modal', close: closeBookingConfirmModal },
             { id: 'auth-modal', close: closeAuthModal },
+            { id: 'boost-modal', close: () => { if (typeof closeBoostModal === 'function') closeBoostModal(); } },
+            { id: 'inspection-success-modal', close: () => { if (typeof closeInspectionSuccessModal === 'function') closeInspectionSuccessModal(); } },
             { id: 'onboarding-modal', close: skipOnboarding }
         ];
 
@@ -829,8 +831,8 @@ function renderOnboardingStep() {
     ` : '';
 
     content.innerHTML = `
-        <div class="mb-5">
-            <div class="flex items-center justify-between mb-3">
+        <div class="mb-5 pt-4 sm:pt-0">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pr-24 sm:pr-0">
                 <span class="text-xs font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300">
                     ${trackData.badge} • Étape ${onboardingState.step}/3
                 </span>

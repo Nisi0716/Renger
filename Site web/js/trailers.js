@@ -217,6 +217,10 @@ function generateAutoDescription(force = false) {
     const title = (document.getElementById('ad-title')?.value || '').trim();
     const category = document.querySelector('input[name="category"]:checked')?.value || 'utilitaire';
     const payload = parseInt(document.getElementById('ad-payload')?.value, 10);
+    const ptac = parseInt(document.getElementById('ad-ptac')?.value, 10);
+    const lengthCm = parseInt(document.getElementById('ad-length')?.value, 10);
+    const widthCm = parseInt(document.getElementById('ad-width')?.value, 10);
+    const heightCm = parseInt(document.getElementById('ad-height')?.value, 10);
     const prise = document.querySelector('input[name="prise"]:checked')?.value || '7 broches';
     
     const equipmentCheckboxes = document.querySelectorAll('input[name="equipments"]:checked');
@@ -284,6 +288,22 @@ function generateAutoDescription(force = false) {
         upsellSentence = `Options disponibles sur demande : ${readableUpsells.join(', ')}.`;
     }
 
+    let specsSentence = '';
+    const specsParts = [];
+    if (ptac && !isNaN(ptac) && ptac > 0) {
+        specsParts.push(`PTAC : ${ptac} kg`);
+    }
+    if (lengthCm && !isNaN(lengthCm) && lengthCm > 0 && widthCm && !isNaN(widthCm) && widthCm > 0) {
+        if (heightCm && !isNaN(heightCm) && heightCm > 0) {
+            specsParts.push(`Dimensions utiles : ${lengthCm} x ${widthCm} x ${heightCm} cm`);
+        } else {
+            specsParts.push(`Dimensions utiles : ${lengthCm} x ${widthCm} cm`);
+        }
+    }
+    if (specsParts.length > 0) {
+        specsSentence = `Caractéristiques : ${specsParts.join(', ')}.`;
+    }
+
     // 6. Mention Légale Suisse (LCR / OAC)
     const isHeavy = (payload && payload > 750) || category === 'cheval' || category === 'voiture';
     const legalNotice = isHeavy
@@ -293,7 +313,7 @@ function generateAutoDescription(force = false) {
     // Assemblage final fluide
     const paragraphs = [
         intro,
-        [payloadSentence, socketSentence, equipSentence, upsellSentence].filter(Boolean).join(' '),
+        [payloadSentence, specsSentence, socketSentence, equipSentence, upsellSentence].filter(Boolean).join(' '),
         legalNotice
     ];
 
@@ -384,6 +404,16 @@ function initSellerPageDynamicTools() {
         cb.addEventListener('change', () => {
             generateAutoDescription(false);
         });
+    });
+
+    // Écouteurs sur les caractéristiques (PTAC et dimensions)
+    ['ad-ptac', 'ad-length', 'ad-width', 'ad-height'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', () => {
+                generateAutoDescription(false);
+            });
+        }
     });
 }
 
@@ -560,7 +590,15 @@ function initDetailCarousel(photos) {
     const dotsContainer = document.getElementById('carousel-dots');
     const counter = document.getElementById('carousel-counter');
 
-    if (img) img.src = detailCarouselPhotos[0];
+    const safePlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400' fill='%23e7e5e4'%3E%3Crect width='600' height='400' fill='%23e7e5e4'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%2378716c'%3ERenger%3C/text%3E%3C/svg%3E";
+
+    if (img) {
+        img.onerror = () => {
+            img.onerror = null;
+            img.src = safePlaceholder;
+        };
+        img.src = detailCarouselPhotos[0];
+    }
 
     const hasMultiple = detailCarouselPhotos.length > 1;
 
@@ -608,6 +646,10 @@ function goToCarouselSlide(index) {
 
     const img = document.getElementById('detail-img');
     if (img) {
+        img.onerror = () => {
+            img.onerror = null;
+            img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400' fill='%23e7e5e4'%3E%3Crect width='600' height='400' fill='%23e7e5e4'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%2378716c'%3ERenger%3C/text%3E%3C/svg%3E";
+        };
         img.src = detailCarouselPhotos[currentCarouselIndex];
     }
 
@@ -794,15 +836,15 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
 /**
  * Génère une carte pour l'historique des locations reçues par le propriétaire.
  */
-function createSellerRentalHistoryCard(booking, renterProfile, todayStr) {
+function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro = false) {
     const startDate = new Date(booking.start_date);
     const endDate = new Date(booking.end_date);
     const startStr = booking.start_date ? booking.start_date.split('T')[0] : '';
     const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
 
     const diffDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-    const baseRental = (booking.trailers && booking.trailers.price) ? (diffDays * Number(booking.trailers.price)) : Number(booking.total_price);
-    const netEarnings = (baseRental * 0.80).toFixed(2);
+    const baseRental = (booking.trailers && booking.trailers.price) ? (diffDays * Number(booking.trailers.price)) : (Number(booking.total_price) || 0);
+    const netEarnings = (baseRental * (isPro ? 1.0 : 0.80)).toFixed(2);
 
     // Badge statut
     const statusSpan = document.createElement('span');
@@ -903,7 +945,7 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr) {
 
     const priceSub = document.createElement('p');
     priceSub.className = 'text-[11px] text-stone-400 whitespace-nowrap';
-    priceSub.textContent = 'Net perçu (80%)';
+    priceSub.textContent = isPro ? 'Net perçu PRO (100%)' : 'Net perçu (80%)';
 
     priceDiv.appendChild(priceAmount);
     priceDiv.appendChild(priceSub);
@@ -1033,12 +1075,21 @@ async function loadProfileData() {
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
+    // Récupération préalable du profil pour le calcul des revenus nets (PRO = 100%, Standard = 80%)
+    let profile = null;
+    let isPro = false;
+    if (currentUser) {
+        const { data: profData } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+        profile = profData;
+        isPro = !!profile?.is_pro;
+    }
+
     if (sellerBookings) {
         sellerBookings.forEach(booking => {
             const sDate = new Date(booking.start_date);
             const eDate = new Date(booking.end_date);
             const days = Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24)) + 1;
-            const baseRental = (booking.trailers && booking.trailers.price) ? (days * Number(booking.trailers.price)) : Number(booking.total_price);
+            const baseRental = (booking.trailers && booking.trailers.price) ? (days * Number(booking.trailers.price)) : (Number(booking.total_price) || 0);
             
             // Calculer la commission historique uniquement sur les locations terminées (20%)
             const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
@@ -1046,9 +1097,9 @@ async function loadProfileData() {
                 totalLostCommission += (baseRental * 0.20);
             }
 
-            // Revenu mensuel
+            // Revenu mensuel : 100% pour PRO (0% commission), 80% pour Standard (20% commission)
             if (sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear) {
-                monthlyRevenue += (baseRental * 0.80);
+                monthlyRevenue += (baseRental * (isPro ? 1.0 : 0.80));
             }
         });
     }
@@ -1058,9 +1109,6 @@ async function loadProfileData() {
 
     // --- STATS DASHBOARD PRO ---
     if (currentUser) {
-        const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
-        const isPro = !!profile?.is_pro;
-
         if (isPro) {
             document.getElementById('pro-stats-blur')?.classList.add('hidden');
             
@@ -1209,7 +1257,7 @@ async function loadProfileData() {
                             const e = new Date(b.end_date);
                             const d = Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
                             adDays += d;
-                            adRev += (d * Number(trailer.price)) * 0.8;
+                            adRev += (d * Number(trailer.price)) * (isPro ? 1.0 : 0.8);
                         }
                     });
                     
@@ -1276,7 +1324,7 @@ async function loadProfileData() {
             const historyFragment = document.createDocumentFragment();
             sellerBookings.forEach(booking => {
                 const renterProfile = renterProfilesMap.get(booking.renter_id) || null;
-                historyFragment.appendChild(createSellerRentalHistoryCard(booking, renterProfile, todayStr));
+                historyFragment.appendChild(createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro));
             });
             historyList.appendChild(historyFragment);
         } else {
@@ -1752,8 +1800,8 @@ function updateTrailersMap(trailers) {
             const customIcon = L.divIcon({
                 className: 'renger-map-marker',
                 html: `<div style="background-color:#d85110; color:white; font-weight:bold; font-size:11px; padding:3px 8px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.3); border:2px solid white; white-space:nowrap; cursor:pointer;">${safePrice} CHF</div>`,
-                iconSize: [50, 24],
-                iconAnchor: [25, 12],
+                iconSize: [60, 26],
+                iconAnchor: [30, 13],
                 popupAnchor: [0, -14]
             });
 
@@ -1761,29 +1809,41 @@ function updateTrailersMap(trailers) {
 
             // Rendu sécurisé de la popup via createElement et textContent (immunité totale XSS)
             const popup = document.createElement('div');
-            popup.className = 'trailer-popup text-stone-800 font-sans p-1 max-w-[220px]';
+            popup.className = 'trailer-popup text-stone-800 dark:text-stone-100 font-sans p-1 max-w-[220px]';
 
             const imgDiv = document.createElement('div');
-            imgDiv.className = 'w-full h-24 rounded-lg overflow-hidden mb-2 bg-stone-100';
+            imgDiv.className = 'w-full h-24 rounded-lg overflow-hidden mb-2 bg-stone-100 dark:bg-stone-700';
             const img = document.createElement('img');
             img.src = trailer.image_url || 'https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger';
             img.alt = '';
             img.className = 'w-full h-full object-cover';
+            img.onerror = () => {
+                img.onerror = null;
+                img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400' fill='%23e7e5e4'%3E%3Crect width='600' height='400' fill='%23e7e5e4'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%2378716c'%3ERenger%3C/text%3E%3C/svg%3E";
+            };
             imgDiv.appendChild(img);
             popup.appendChild(imgDiv);
 
+            const isBoosted = !!(trailer.is_boosted || (trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date()));
+            if (isBoosted) {
+                const boostBadge = document.createElement('span');
+                boostBadge.className = 'inline-block bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mb-1';
+                boostBadge.textContent = '🚀 Sponsorisé';
+                popup.appendChild(boostBadge);
+            }
+
             const title = document.createElement('h4');
-            title.className = 'font-bold text-sm text-stone-900 leading-tight mb-1 truncate';
+            title.className = 'font-bold text-sm text-stone-900 dark:text-stone-100 leading-tight mb-1 truncate';
             title.textContent = trailer.title || 'Remorque';
             popup.appendChild(title);
 
             const price = document.createElement('p');
-            price.className = 'text-xs font-bold text-terracotta-600 mb-1';
+            price.className = 'text-xs font-bold text-terracotta-600 dark:text-terracotta-400 mb-1';
             price.textContent = `${trailer.price || 0} CHF / jour`;
             popup.appendChild(price);
 
             const loc = document.createElement('p');
-            loc.className = 'text-[11px] text-stone-500 mb-2';
+            loc.className = 'text-[11px] text-stone-500 dark:text-stone-400 mb-2';
             loc.textContent = `📍 ${trailer.location_city || 'Région masquée'}`;
             popup.appendChild(loc);
 
@@ -1851,6 +1911,13 @@ function setViewMode(mode) {
             if (leafletMap && typeof leafletMap.invalidateSize === 'function') {
                 leafletMap.invalidateSize();
                 fitMapToTrailers(lastRenderedTrailers);
+                if (typeof setTimeout !== 'undefined') {
+                    setTimeout(() => {
+                        if (leafletMap && typeof leafletMap.invalidateSize === 'function') {
+                            leafletMap.invalidateSize();
+                        }
+                    }, 80);
+                }
             }
         }
         if (listBtn) {

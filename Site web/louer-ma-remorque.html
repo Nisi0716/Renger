@@ -178,6 +178,38 @@
                     </div>
                 </div>
 
+                <!-- Caractéristiques techniques : PTAC et Dimensions utiles (optionnels) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">PTAC (Poids Total en Charge)</label>
+                            <span class="text-[11px] text-stone-400 font-medium">Optionnel</span>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="ad-ptac" placeholder="750" min="100" max="3500" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-base focus:border-terracotta-500 focus:outline-none transition pr-12">
+                            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm pointer-events-none">kg</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">Dimensions utiles (L x l x h)</label>
+                            <span class="text-[11px] text-stone-400 font-medium">Optionnel (cm)</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="relative">
+                                <input type="number" id="ad-length" placeholder="200" min="50" max="1000" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-sm focus:border-terracotta-500 focus:outline-none transition" title="Longueur en cm">
+                            </div>
+                            <div class="relative">
+                                <input type="number" id="ad-width" placeholder="130" min="50" max="300" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-sm focus:border-terracotta-500 focus:outline-none transition" title="Largeur en cm">
+                            </div>
+                            <div class="relative">
+                                <input type="number" id="ad-height" placeholder="40" min="10" max="300" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-bold text-sm focus:border-terracotta-500 focus:outline-none transition" title="Hauteur en cm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- GÉNÉRATEUR AUTOMATIQUE DE DESCRIPTION -->
                 <div>
                     <div class="flex items-center justify-between mb-2">
@@ -571,6 +603,18 @@
 
                 const payloadEl = document.getElementById('ad-payload');
                 if (payloadEl) payloadEl.value = trailer.payload ?? '';
+
+                const ptacEl = document.getElementById('ad-ptac');
+                if (ptacEl && trailer.ptac !== undefined && trailer.ptac !== null) ptacEl.value = trailer.ptac;
+
+                const lengthEl = document.getElementById('ad-length');
+                if (lengthEl && trailer.length !== undefined && trailer.length !== null) lengthEl.value = trailer.length;
+
+                const widthEl = document.getElementById('ad-width');
+                if (widthEl && trailer.width !== undefined && trailer.width !== null) widthEl.value = trailer.width;
+
+                const heightEl = document.getElementById('ad-height');
+                if (heightEl && trailer.height !== undefined && trailer.height !== null) heightEl.value = trailer.height;
 
                 const descEl = document.getElementById('ad-desc') || document.getElementById('ad-description');
                 if (descEl) descEl.value = trailer.description || '';

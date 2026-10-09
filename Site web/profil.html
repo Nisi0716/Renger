@@ -707,9 +707,9 @@
             </div>
         </div>
     </div>
-<div id="boost-modal" class="hidden fixed inset-0 bg-stone-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+<div id="boost-modal" class="hidden fixed inset-0 bg-stone-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onclick="handleBoostModalBackdrop(event)">
 
-        <div class="bg-white dark:bg-stone-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+        <div class="bg-white dark:bg-stone-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col" onclick="event.stopPropagation()">
 
             <div class="p-6 border-b border-stone-200 dark:border-stone-800 flex justify-between items-start">
 

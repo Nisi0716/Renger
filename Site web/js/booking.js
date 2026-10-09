@@ -25,6 +25,25 @@ async function openTrailerDetail(trailer) {
     document.getElementById('detail-socket').innerText = trailer.socket;
     document.getElementById('detail-payload').innerText = trailer.payload + " kg";
 
+    // Badges d'état de l'annonce (Boost, Vérifié, Propriétaire)
+    const isBoosted = !!(trailer?.is_boosted || (trailer?.boost_end_date && new Date(trailer.boost_end_date) > new Date()));
+    const boostBadge = document.getElementById('detail-boost-badge');
+    if (boostBadge && boostBadge.classList) {
+        if (isBoosted) boostBadge.classList.remove('hidden');
+        else boostBadge.classList.add('hidden');
+    }
+    const isVerified = !!(trailer?.is_verified || trailer?.verified);
+    const verifiedBadge = document.getElementById('detail-verified-badge');
+    if (verifiedBadge && verifiedBadge.classList) {
+        if (isVerified) verifiedBadge.classList.remove('hidden');
+        else verifiedBadge.classList.add('hidden');
+    }
+    const ownerBadge = document.getElementById('detail-owner-badge');
+    if (ownerBadge && ownerBadge.classList) {
+        if (currentUser && currentUser.id === trailer?.owner_id) ownerBadge.classList.remove('hidden');
+        else ownerBadge.classList.add('hidden');
+    }
+
     // Mise à jour dynamique des métadonnées SEO
     document.title = trailer.title + " - Location sur Renger";
     const metaDesc = document.querySelector('meta[name="description"]');
@@ -552,6 +571,13 @@ function closeBoostModal() {
     if (modal) modal.classList.add('hidden');
 }
 
+function handleBoostModalBackdrop(event) {
+    if (event.target === document.getElementById('boost-modal')) {
+        closeBoostModal();
+    }
+}
+window.handleBoostModalBackdrop = handleBoostModalBackdrop;
+
 async function handlePurchaseBoost() {
     if (!currentUser) {
         showToast("Vous devez être connecté.", "error");
@@ -754,7 +780,7 @@ function openManageTrailer(trailer, city) {
             const todayStr = new Date().toISOString().split('T')[0];
             bookingsToCount.forEach(b => {
                 const bEnd = b.end_date ? b.end_date.split('T')[0] : '';
-                if (b.trailer_id === trailer.id && b.status === 'paye' && bEnd < todayStr) {
+                if (b.trailer_id === trailer.id && (b.status === 'paye' || b.status === 'paid' || b.status === 'confirmed') && bEnd < todayStr) {
                     totalRevenue += Number(b.total_price || 0);
                     totalRentals += 1;
                 }

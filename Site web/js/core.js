@@ -199,14 +199,14 @@ function showToast(message, type = 'success') {
     text.innerText = message;
     
     if (type === 'success') {
-        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-green-500 pointer-events-none";
+        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-green-500 pointer-events-none";
         icon.innerText = "🎉";
     } else if (type === 'error') {
-        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-red-500 pointer-events-none";
+        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-red-500 pointer-events-none";
         icon.innerText = "⚠️";
     } else {
-        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-stone-800 pointer-events-none";
-        icon.innerText = "⏳";
+        toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-stone-800 dark:bg-stone-700 pointer-events-none border border-stone-700 dark:border-stone-600";
+        icon.innerText = "ℹ️";
     }
 
     toastTimer = setTimeout(() => {
@@ -936,12 +936,42 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
     }
 
     if (error || !visibleTrailers || visibleTrailers.length === 0) {
-        const msg = document.createElement('p');
-        msg.className = 'col-span-3 text-center text-stone-400 italic py-12';
-        msg.textContent = cleanSearch
-            ? `Aucun résultat pour "${cleanSearch}". Essayez un autre terme.`
-            : 'Aucune remorque disponible dans cette catégorie pour le moment.';
-        grid.appendChild(msg);
+        const emptyContainer = document.createElement('div');
+        emptyContainer.className = 'col-span-full flex flex-col items-center justify-center py-16 px-4 text-center';
+        
+        const emptyIcon = document.createElement('div');
+        emptyIcon.className = 'w-16 h-16 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-400 text-3xl flex items-center justify-center mb-4';
+        emptyIcon.textContent = '🔍';
+        
+        const emptyTitle = document.createElement('h3');
+        emptyTitle.className = 'text-lg font-bold text-stone-800 dark:text-stone-100 mb-1';
+        emptyTitle.textContent = 'Aucune remorque trouvée';
+
+        const emptyDesc = document.createElement('p');
+        emptyDesc.className = 'text-sm text-stone-500 dark:text-stone-400 max-w-sm mb-5';
+        emptyDesc.textContent = cleanSearch
+            ? `Aucun résultat pour "${cleanSearch}". Essayez un autre terme ou réinitialisez les dates.`
+            : 'Aucune remorque disponible pour ces critères ou dates pour le moment.';
+
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'px-5 py-2.5 rounded-xl bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold text-sm transition shadow-sm active:scale-95';
+        resetBtn.textContent = 'Voir toutes les remorques';
+        resetBtn.onclick = () => {
+            const clearDatesBtn = document.getElementById('catalog-clear-dates');
+            if (clearDatesBtn && !clearDatesBtn.classList.contains('hidden')) {
+                clearDatesBtn.click();
+            } else {
+                currentStartDate = null;
+                currentEndDate = null;
+            }
+            setFilter('all');
+        };
+
+        emptyContainer.appendChild(emptyIcon);
+        emptyContainer.appendChild(emptyTitle);
+        emptyContainer.appendChild(emptyDesc);
+        emptyContainer.appendChild(resetBtn);
+        grid.appendChild(emptyContainer);
         return;
     }
 
@@ -1102,7 +1132,7 @@ function renderPhotoGrid() {
         // Bouton supprimer
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
-        removeBtn.className = 'absolute top-1.5 right-1.5 w-7 h-7 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-bold transition opacity-0 group-hover:opacity-100';
+        removeBtn.className = 'absolute top-1.5 right-1.5 w-7 h-7 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-bold transition opacity-90 sm:opacity-0 sm:group-hover:opacity-100 shadow-sm active:scale-90';
         removeBtn.textContent = '×';
         removeBtn.onclick = () => removePhoto(index);
 
@@ -1269,6 +1299,7 @@ function initHeroDateFilter() {
                 dateFormat: 'Y-m-d',
                 altInput: true,
                 altFormat: 'd.m.Y',
+                altInputClass: 'w-full py-2.5 px-2 bg-transparent text-stone-800 dark:text-stone-100 placeholder-stone-400 text-sm font-medium focus:outline-none cursor-pointer',
                 locale: (flatpickr.l10ns && flatpickr.l10ns.fr) ? flatpickr.l10ns.fr : undefined,
                 onChange: (selectedDates) => {
                     if (selectedDates && selectedDates.length === 2) {
@@ -1326,6 +1357,7 @@ function initCatalogDateFilter() {
                 dateFormat: 'Y-m-d',
                 altInput: true,
                 altFormat: 'd.m.Y',
+                altInputClass: 'w-full pl-11 pr-10 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm cursor-pointer text-sm font-medium',
                 locale: (flatpickr.l10ns && flatpickr.l10ns.fr) ? flatpickr.l10ns.fr : undefined,
                 defaultDate: (currentStartDate && currentEndDate) ? [currentStartDate, currentEndDate] : undefined,
                 onChange: (selectedDates) => {

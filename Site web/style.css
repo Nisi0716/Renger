@@ -8,14 +8,36 @@
     scrollbar-width: none;
 }
 
-/* Style pour masquer les cases à cocher standards et utiliser nos couleurs Tailwind */
-input[type="checkbox"]:checked + div {
-    border-color: #d16a54;
-    background-color: #fcf4f2;
-    color: #d16a54;
-}
+/* Style pour masquer les cases à cocher et radios standards avec couleur Terracotta officielle */
+input[type="checkbox"]:checked + div,
 input[type="radio"]:checked + div {
-    border-color: #d16a54;
-    background-color: #fcf4f2;
-    color: #d16a54;
+    border-color: #d85110;
+    background-color: #fff4f0;
+    color: #d85110;
+}
+
+html.dark input[type="checkbox"]:checked + div,
+html.dark input[type="radio"]:checked + div {
+    border-color: #d85110;
+    background-color: rgba(216, 81, 16, 0.15);
+    color: #f5f5f4;
+}
+
+/* Leaflet Popups & Map en Mode Sombre */
+html.dark .leaflet-popup-content-wrapper,
+html.dark .leaflet-popup-tip {
+    background: #292524 !important;
+    color: #f5f5f4 !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+}
+html.dark .leaflet-popup-content-wrapper h4 {
+    color: #ffffff !important;
+}
+html.dark .leaflet-popup-content-wrapper p {
+    color: #d6d3d1 !important;
+}
+
+/* Garantie de z-index pour Flatpickr au-dessus des headers et des barres fixes */
+.flatpickr-calendar {
+    z-index: 1000 !important;
 }
