@@ -86,10 +86,10 @@ function parseTestOutput(stdout, stderr) {
     const combined = (stdout || '') + '\n' + (stderr || '');
 
     // Extraction des totaux node:test
-    const testsMatch = combined.match(/ℹ tests\s+(\d+)/);
-    const passMatch = combined.match(/ℹ pass\s+(\d+)/);
-    const failMatch = combined.match(/ℹ fail\s+(\d+)/);
-    const durationMatch = combined.match(/ℹ duration_ms\s+([\d.]+)/);
+    const testsMatch = combined.match(/(?:ℹ|#)\s+tests\s+(\d+)/);
+    const passMatch = combined.match(/(?:ℹ|#)\s+pass\s+(\d+)/);
+    const failMatch = combined.match(/(?:ℹ|#)\s+fail\s+(\d+)/);
+    const durationMatch = combined.match(/(?:ℹ|#)\s+duration_ms\s+([\d.]+)/);
 
     const total = testsMatch ? parseInt(testsMatch[1], 10) : 0;
     const passed = passMatch ? parseInt(passMatch[1], 10) : 0;

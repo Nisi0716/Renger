@@ -39,7 +39,8 @@ function showPage(pageId) {
             'inspection-page': 'inspection.html',
             'profile-page': 'profil.html?p=profile-page',
             'settings-page': 'profil.html?p=settings-page',
-            'public-profile-page': 'profil.html?p=public-profile-page'
+            'public-profile-page': 'profil.html?p=public-profile-page',
+            'stats-page': 'stats.html'
         };
         if (pageMap[pageId]) {
             window.location.href = pageMap[pageId];

@@ -19,7 +19,8 @@ describe('Tier 1: JavaScript Syntax Validation (node --check)', () => {
         'chat.js',
         'components.js',
         'inspection.js',
-        'tracking.js'
+        'tracking.js',
+        'stats.js'
     ];
 
     for (const fileName of jsFiles) {
@@ -52,7 +53,8 @@ describe('Tier 1: HTML Structure, Well-Formedness & Artifact Cleanup', () => {
         'inspection.html',
         'pro.html',
         'cgu.html',
-        'politique-confidentialite.html'
+        'politique-confidentialite.html',
+        'stats.html'
     ];
 
     for (const fileName of htmlFiles) {

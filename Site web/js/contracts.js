@@ -851,7 +851,7 @@
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(6.8);
             doc.setTextColor(SUCCESS_GREEN[0], SUCCESS_GREEN[1], SUCCESS_GREEN[2]);
-            doc.text('CLICHÉ CONFORME & CERTIFIÉ', pos.x + 3, metaY + 3);
+            doc.text('✅ CLICHÉ CONFORME & CERTIFIÉ', pos.x + 3, metaY + 3);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(6.2);

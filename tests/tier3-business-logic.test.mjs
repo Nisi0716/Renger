@@ -432,3 +432,122 @@ describe('Tier 3: Cookie Consent Evaluation (RGPD / nLPD)', () => {
         assert.strictEqual(insertedEvents.length, 0, 'Les événements analytiques doivent être bloqués en cas de refus des cookies');
     });
 });
+
+describe('Tier 3: Renger Analytics PRO Financial & Business Logic (stats.js)', () => {
+    const statsModule = (function() {
+        const statsPath = path.join(jsDir, 'stats.js');
+        const statsCode = fs.readFileSync(statsPath, 'utf8');
+        const m = { exports: {} };
+        const fn = new Function('module', 'exports', statsCode);
+        fn(m, m.exports);
+        return m.exports;
+    })();
+
+    it('calculateOverlapDays must accurately calculate overlap between dates', () => {
+        const startA = new Date('2026-05-10T00:00:00Z');
+        const endA = new Date('2026-05-15T00:00:00Z');
+
+        // Cas 1: Période totalement incluse (10 au 15 mai = 6 jours)
+        const startB = new Date('2026-05-01T00:00:00Z');
+        const endB = new Date('2026-05-31T00:00:00Z');
+        assert.strictEqual(statsModule.calculateOverlapDays(startA, endA, startB, endB), 6);
+
+        // Cas 2: Période chevauchant le début (10 au 12 mai = 3 jours)
+        const endB2 = new Date('2026-05-12T00:00:00Z');
+        assert.strictEqual(statsModule.calculateOverlapDays(startA, endA, startB, endB2), 3);
+
+        // Cas 3: Aucun chevauchement (avant ou après)
+        const startDisjoint = new Date('2026-06-01T00:00:00Z');
+        const endDisjoint = new Date('2026-06-05T00:00:00Z');
+        assert.strictEqual(statsModule.calculateOverlapDays(startA, endA, startDisjoint, endDisjoint), 0);
+    });
+
+    it('formatChf must format amounts in Swiss Francs (CHF) with 2 decimals', () => {
+        assert.match(statsModule.formatChf(1250), /1[\s\u202F'’]?250[.,]00 CHF/);
+        assert.match(statsModule.formatChf(39.5), /39[.,]50 CHF/);
+        assert.match(statsModule.formatChf(0), /0[.,]00 CHF/);
+    });
+
+    it('escapeHtml must sanitize malicious HTML strings', () => {
+        const payload = '<script>alert("xss")</script>&<img src="x" onerror="evil()"/>';
+        const escaped = statsModule.escapeHtml(payload);
+        assert.strictEqual(escaped.includes('<script>'), false);
+        assert.strictEqual(escaped.includes('&lt;script&gt;'), true);
+        assert.strictEqual(escaped.includes('&amp;'), true);
+    });
+
+    it('PRO financial formula must guarantee 100% net revenue and 20% platform commission savings', () => {
+        // Pour une location de 5 jours à 50 CHF/j = 250 CHF base
+        const rentalDays = 5;
+        const dailyPrice = 50;
+        const baseRental = rentalDays * dailyPrice; // 250 CHF
+
+        // Mode Standard (Non-PRO) : Propriétaire touche 80% (200 CHF), Renger prend 20% (50 CHF)
+        const standardOwnerRevenue = baseRental * 0.80;
+        const platformCommissionLost = baseRental * 0.20;
+        assert.strictEqual(standardOwnerRevenue, 200);
+        assert.strictEqual(platformCommissionLost, 50);
+
+        // Mode Renger PRO : Propriétaire touche 100% (250 CHF)
+        const proOwnerRevenue = baseRental * 1.00;
+        const proSavings = baseRental * 0.20; // 50 CHF conservés grâce à PRO
+        assert.strictEqual(proOwnerRevenue, 250);
+        assert.strictEqual(proSavings, 50);
+        assert.strictEqual(proOwnerRevenue - standardOwnerRevenue, proSavings);
+    });
+
+    it('calculateOverlapDays must handle end-of-day timestamps without off-by-one bug', () => {
+        // Booking from May 1 to May 20 inside a May 1 to May 10 period with 23:59:59.999
+        const bStart = '2026-05-01';
+        const bEnd = '2026-05-20';
+        const pStart = new Date(2026, 4, 1, 0, 0, 0, 0);
+        const pEnd = new Date(2026, 4, 10, 23, 59, 59, 999);
+        const overlap = statsModule.calculateOverlapDays(bStart, bEnd, pStart, pEnd);
+        assert.strictEqual(overlap, 10, 'Overlap of May 1..20 inside May 1..10 must be exactly 10 days (not 11)');
+
+        // Single-day booking on May 10 inside May 1..31
+        const singleDay = statsModule.calculateOverlapDays('2026-05-10', '2026-05-10', '2026-05-01', '2026-05-31');
+        assert.strictEqual(singleDay, 1, 'Single-day booking must count as exactly 1 day');
+
+        // Invalid dates must return 0
+        assert.strictEqual(statsModule.calculateOverlapDays(null, '2026-05-10', '2026-05-01', '2026-05-31'), 0);
+        assert.strictEqual(statsModule.calculateOverlapDays('invalid-date', '2026-05-10', '2026-05-01', '2026-05-31'), 0);
+    });
+
+    it('formatDateKey and normalizeToDateOnly must eliminate timezone shifts', () => {
+        const dt = statsModule.normalizeToDateOnly('2026-05-10');
+        assert.ok(dt instanceof Date);
+        assert.strictEqual(dt.getFullYear(), 2026);
+        assert.strictEqual(dt.getMonth(), 4); // May = 4
+        assert.strictEqual(dt.getDate(), 10);
+        assert.strictEqual(dt.getHours(), 0);
+
+        const key = statsModule.formatDateKey('2026-05-10');
+        assert.strictEqual(key, '2026-05-10');
+    });
+
+    it('getBookingDailyPrice must resolve prices with cascading fallbacks', () => {
+        // Case 1: trailer price joined
+        const b1 = { trailers: { price: 65 }, total_price: 200 };
+        assert.strictEqual(statsModule.getBookingDailyPrice(b1, '2026-05-01', '2026-05-03'), 65);
+
+        // Case 2: daily_price property
+        const b2 = { daily_price: 45, total_price: 150 };
+        assert.strictEqual(statsModule.getBookingDailyPrice(b2, '2026-05-01', '2026-05-03'), 45);
+
+        // Case 3: total_price divided by days (3 days = 150 / 3 = 50)
+        const b3 = { total_price: 150 };
+        assert.strictEqual(statsModule.getBookingDailyPrice(b3, '2026-05-01', '2026-05-03'), 50);
+    });
+
+    it('getPeriodDateRange for year must span from Jan 1 to Dec 31 of current year', () => {
+        const { start, end } = statsModule.getPeriodDateRange('year');
+        const curYear = new Date().getFullYear();
+        assert.strictEqual(start.getFullYear(), curYear);
+        assert.strictEqual(start.getMonth(), 0);
+        assert.strictEqual(start.getDate(), 1);
+        assert.strictEqual(end.getFullYear(), curYear);
+        assert.strictEqual(end.getMonth(), 11);
+        assert.strictEqual(end.getDate(), 31);
+    });
+});

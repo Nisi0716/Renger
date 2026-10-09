@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renger Analytics PRO — Cockpit & Statistiques Propriétaire</title>
+    <meta name="description" content="Tableau de bord financier et statistiques avancées pour les propriétaires Renger PRO en Suisse. Suivi des revenus, taux d'occupation et comparateur de remorques.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="https://renger.ch/stats.html">
+    
+    <meta property="og:title" content="Renger Analytics PRO — Cockpit Propriétaire">
+    <meta property="og:description" content="Tableau de bord financier et statistiques avancées pour propriétaires Renger PRO.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://renger.ch/stats.html">
+    <meta property="og:image" content="https://renger.ch/Renger_Logo_SVG.svg">
+    
+    <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg?v=2">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://npmcdn.com https://js.stripe.com https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://unpkg.com; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com;">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        terracotta: {
+                            50: '#fff4f0',
+                            100: '#ffe8e0',
+                            200: '#ffd1c2',
+                            300: '#ffa78e',
+                            400: '#f8714b',
+                            500: '#d85110',
+                            600: '#bc450b',
+                            700: '#993508',
+                            800: '#7b2b0c',
+                            900: '#64260f'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-100 font-sans relative pb-28 transition-colors duration-300 antialiased min-h-screen">
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 -translate-y-24 opacity-0 transition-all duration-500 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white pointer-events-none">
+        <span id="toast-icon" class="text-2xl"></span>
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="sticky top-0 w-full bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 p-4 sm:p-5 flex justify-between items-center z-40 transition-colors">
+        <!-- Logo & Titre Cockpit -->
+        <div class="flex items-center gap-3 sm:gap-4">
+            <a href="index.html" class="flex items-center gap-3 cursor-pointer group" title="Renger - Accueil">
+                <div class="w-10 h-10 rounded-xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200/80 dark:border-stone-700 p-1 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105">
+                    <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+                </div>
+                <span class="text-2xl font-extrabold text-terracotta-500 tracking-tight transition-colors group-hover:text-terracotta-600">Renger</span>
+            </a>
+            <span class="hidden md:inline-block w-px h-6 bg-stone-300 dark:bg-stone-700"></span>
+            <span class="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-terracotta-50 dark:bg-terracotta-900/30 text-terracotta-600 dark:text-terracotta-300 font-extrabold text-xs border border-terracotta-200 dark:border-terracotta-700/50">
+                👑 Analytics PRO
+            </span>
+        </div>
+
+        <!-- Menu Navigation & Paramètres -->
+        <div class="flex items-center gap-3 sm:gap-4">
+            <a href="profil.html" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition py-2 px-3 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800">
+                <span>←</span> Mon Espace
+            </a>
+            <a href="remorques.html" class="hidden lg:inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition py-2 px-3 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800">
+                Catalogue
+            </a>
+
+            <!-- Dark Mode Toggle -->
+            <button onclick="toggleTheme()" class="text-stone-600 dark:text-stone-300 hover:text-terracotta-500 transition p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800" title="Mode sombre/clair">
+                <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+                <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+            </button>
+
+            <!-- Language Selector -->
+            <select id="lang-selector" onchange="changeLanguage(this.value)" class="bg-transparent dark:bg-stone-900 font-bold text-xs text-stone-600 dark:text-stone-300 focus:outline-none cursor-pointer py-1 px-2 rounded-lg border border-stone-200 dark:border-stone-700">
+                <option value="fr">FR</option>
+                <option value="de">DE</option>
+                <option value="en">EN</option>
+            </select>
+
+            <!-- User Menu Container (Supabase Auth) -->
+            <div id="user-menu-container">
+                <button onclick="openAuthModal()" class="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:text-terracotta-500 font-bold text-xs py-2 px-3.5 rounded-xl shadow-sm transition">
+                    <span data-i18n="login">Se connecter</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENEUR PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+
+        <!-- 1. ÉTAT DE CHARGEMENT -->
+        <div id="stats-loading-state" class="py-24 text-center">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-terracotta-500 border-t-transparent mb-4"></div>
+            <p class="text-base font-semibold text-stone-600 dark:text-stone-300">Synchronisation des données financières & réservations...</p>
+            <p class="text-xs text-stone-400 dark:text-stone-500 mt-1">Calcul des KPIs et des graphiques en cours</p>
+        </div>
+
+        <!-- 2. ÉCRAN D'UPSELL / TEASER PRO (Quand utilisateur non connecté ou non-PRO) -->
+        <div id="stats-upsell-container" class="hidden py-12">
+            <!-- Bannière d'alerte / intro -->
+            <div class="text-center max-w-3xl mx-auto mb-10">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-terracotta-100 dark:bg-terracotta-900/40 text-terracotta-600 dark:text-terracotta-300 text-sm font-bold mb-4">
+                    <span>👑</span> Espace Exclusif Renger PRO
+                </div>
+                <h1 class="text-3xl sm:text-5xl font-extrabold text-stone-900 dark:text-white tracking-tight leading-tight">
+                    Pilotez votre activité avec <span class="text-terracotta-500">Renger Analytics PRO</span>
+                </h1>
+                <p class="text-base sm:text-lg text-stone-600 dark:text-stone-300 mt-4 leading-relaxed">
+                    Débloquez le cockpit professionnel complet conçu pour les loueurs suisses exigeants. Analysez vos encaissements nets, suivez l'évolution de vos réservations et calculez vos économies de commission en temps réel.
+                </p>
+                <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <a href="pro.html" class="w-full sm:w-auto bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-extrabold py-4 px-8 rounded-2xl shadow-xl transition flex items-center justify-center gap-2 text-base">
+                        <span>🚀 Débloquer avec Renger PRO (39 CHF/mois)</span>
+                    </a>
+                    <a href="profil.html" class="w-full sm:w-auto bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 font-bold py-4 px-6 rounded-2xl transition text-center text-sm">
+                        Retour à mon profil
+                    </a>
+                </div>
+            </div>
+
+            <!-- Grille des avantages PRO -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
+                <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700/80 rounded-3xl p-6 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl font-bold mb-4">
+                        💰
+                    </div>
+                    <h3 class="text-lg font-bold text-stone-900 dark:text-white mb-2">0% de commission plateforme</h3>
+                    <p class="text-sm text-stone-600 dark:text-stone-300">
+                        Conservez 100% de la valeur de vos locations. Un compteur interactif chiffre au centime près les commissions de 20% épargnées chaque mois.
+                    </p>
+                </div>
+
+                <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700/80 rounded-3xl p-6 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl font-bold mb-4">
+                        📈
+                    </div>
+                    <h3 class="text-lg font-bold text-stone-900 dark:text-white mb-2">Graphiques & Tendances de Revenus</h3>
+                    <p class="text-sm text-stone-600 dark:text-stone-300">
+                        Visualisez l'évolution de vos gains par jour, par mois et par année. Identifiez vos pics saisonniers et anticipez les demandes récurrentes.
+                    </p>
+                </div>
+
+                <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700/80 rounded-3xl p-6 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 rounded-2xl bg-terracotta-50 dark:bg-terracotta-950/40 text-terracotta-600 dark:text-terracotta-400 flex items-center justify-center text-2xl font-bold mb-4">
+                        🚚
+                    </div>
+                    <h3 class="text-lg font-bold text-stone-900 dark:text-white mb-2">Comparateur & Taux d'Occupation</h3>
+                    <p class="text-sm text-stone-600 dark:text-stone-300">
+                        Analysez la rentabilité de chaque remorque de votre flotte, son taux de remplissage calendrier et optimisez vos tarifs journaliers en conséquence.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Aperçu flouté du tableau de bord (Teaser visuel) -->
+            <div class="relative max-w-5xl mx-auto rounded-3xl overflow-hidden border border-stone-200 dark:border-stone-700 shadow-2xl">
+                <div class="absolute inset-0 bg-stone-900/50 backdrop-blur-md z-10 flex flex-col items-center justify-center p-6 text-center text-white">
+                    <span class="text-5xl mb-3">🔒</span>
+                    <h4 class="text-2xl font-extrabold mb-2">Cockpit verrouillé</h4>
+                    <p class="text-stone-200 text-sm max-w-md mb-6">
+                        Souscrivez à Renger PRO pour activer l'affichage temps réel de vos graphiques et données réelles de location.
+                    </p>
+                    <a href="pro.html" class="bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">
+                        Souscrire à Renger PRO (39 CHF)
+                    </a>
+                </div>
+
+                <!-- Simulation d'interface en arrière-plan -->
+                <div class="p-6 bg-stone-100 dark:bg-stone-950 opacity-60 pointer-events-none select-none">
+                    <div class="grid grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm"><p class="text-xs text-stone-400">Revenus nets</p><p class="text-2xl font-bold text-terracotta-500">2'450.00 CHF</p></div>
+                        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm"><p class="text-xs text-stone-400">Taux d'occupation</p><p class="text-2xl font-bold text-blue-500">68.5%</p></div>
+                        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm"><p class="text-xs text-stone-400">Réservations</p><p class="text-2xl font-bold text-emerald-500">18</p></div>
+                        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl shadow-sm"><p class="text-xs text-stone-400">Économies PRO</p><p class="text-2xl font-bold text-amber-500">+490.00 CHF</p></div>
+                    </div>
+                    <div class="h-64 bg-white dark:bg-stone-800 rounded-2xl p-4 flex items-center justify-center">
+                        <div class="w-full h-full border-2 border-dashed border-stone-300 dark:border-stone-700 rounded-xl flex items-center justify-center text-stone-400 font-medium">
+                            Graphique interactif d'évolution du chiffre d'affaires
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. COCKPIT PRO DÉDIÉ (Visible uniquement pour is_pro === true) -->
+        <div id="stats-dashboard-container" class="hidden space-y-8">
+
+            <!-- En-tête du Dashboard -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-6">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-white tracking-tight">
+                            Cockpit Renger Analytics PRO
+                        </h1>
+                        <span class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-300 dark:border-emerald-800">
+                            ● 0% Commission
+                        </span>
+                    </div>
+                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                        Analysez vos performances de location, optimisez vos prix et maximisez la rentabilité de votre flotte.
+                    </p>
+                </div>
+
+                <!-- Actions rapides -->
+                <div class="flex items-center gap-3">
+                    <button onclick="refreshStats()" id="stats-refresh-btn" class="inline-flex items-center gap-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 text-stone-700 dark:text-stone-200 text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95" title="Actualiser les statistiques">
+                        <svg id="refresh-spinner" class="w-4 h-4 text-stone-500 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>Actualiser</span>
+                    </button>
+                    <button onclick="exportStatsToCsv()" class="inline-flex items-center gap-2 bg-stone-900 hover:bg-black dark:bg-stone-800 dark:hover:bg-stone-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95" title="Exporter les données au format CSV">
+                        <svg class="w-4 h-4 text-terracotta-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- BARRE DE FILTRES INTERACTIFS -->
+            <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <!-- Sélecteur de remorque -->
+                <div class="flex-1 min-w-[240px]">
+                    <label for="stats-trailer-select" class="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">
+                        Flotte analysée
+                    </label>
+                    <div class="relative">
+                        <select id="stats-trailer-select" onchange="onTrailerFilterChange(this.value)" class="w-full bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-2.5 text-sm font-semibold text-stone-800 dark:text-stone-100 focus:outline-none focus:border-terracotta-500 transition cursor-pointer appearance-none">
+                            <option value="all">Toutes mes remorques (Vue consolidée)</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sélecteur de période temporelle -->
+                <div>
+                    <label class="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1.5">
+                        Période temporelle
+                    </label>
+                    <div id="stats-period-filters" class="inline-flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-700">
+                        <button type="button" onclick="setPeriodFilter('7d')" data-period="7d" class="period-btn px-3.5 py-1.5 text-xs font-bold rounded-lg transition text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
+                            7 jours
+                        </button>
+                        <button type="button" onclick="setPeriodFilter('30d')" data-period="30d" class="period-btn px-3.5 py-1.5 text-xs font-bold rounded-lg transition bg-white dark:bg-stone-800 text-terracotta-600 dark:text-terracotta-400 shadow-sm">
+                            30 jours
+                        </button>
+                        <button type="button" onclick="setPeriodFilter('year')" data-period="year" class="period-btn px-3.5 py-1.5 text-xs font-bold rounded-lg transition text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
+                            Cette année
+                        </button>
+                        <button type="button" onclick="setPeriodFilter('all')" data-period="all" class="period-btn px-3.5 py-1.5 text-xs font-bold rounded-lg transition text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
+                            Tout l'historique
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENCART VALEUR AJOUTÉE & ROI PRO (GAIN FINANCIER RÉEL) -->
+            <div class="bg-gradient-to-r from-stone-900 via-stone-800 to-terracotta-950 border border-terracotta-500/40 rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden">
+                <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-terracotta-500/20 border border-terracotta-500/30 flex items-center justify-center text-3xl shadow-inner flex-shrink-0">
+                            👑
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-xl font-extrabold text-white">Impact Financier Renger PRO</h3>
+                                <span class="bg-terracotta-500 text-white text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full">Rentabilité Maximale</span>
+                            </div>
+                            <p class="text-sm text-stone-300 mt-1 max-w-2xl leading-relaxed">
+                                En tant que membre PRO, la commission standard plateforme de 20% est intégralement supprimée. Vous conservez <strong class="text-white">100%</strong> de vos gains locatifs.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Compteur de gain -->
+                    <div class="flex-shrink-0 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl px-6 py-4 text-center md:text-right w-full md:w-auto">
+                        <p class="text-xs uppercase tracking-wider font-bold text-terracotta-300 mb-0.5">Économies nettes conservées</p>
+                        <p id="kpi-roi-counter" class="text-3xl font-extrabold text-emerald-400 tracking-tight">+0.00 CHF</p>
+                        <p id="kpi-roi-subtext" class="text-[11px] text-stone-300 mt-1">par rapport au barème standard (20%)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOP KPI CARDS (4 CARTES CLÉS) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- Card 1: Revenus Nets -->
+                <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm flex flex-col justify-between transition hover:shadow-md">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Revenus Nets Perçus</span>
+                            <div class="w-9 h-9 rounded-xl bg-terracotta-50 dark:bg-stone-700 text-terracotta-500 flex items-center justify-center font-bold text-base">
+                                💰
+                            </div>
+                        </div>
+                        <p id="kpi-net-earnings" class="text-3xl font-extrabold text-stone-900 dark:text-white tracking-tight">0.00 CHF</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700/60 flex items-center justify-between text-xs">
+                        <span class="text-stone-500 dark:text-stone-400">100% de la valeur locative</span>
+                        <span class="font-bold text-terracotta-600 dark:text-terracotta-400">0% frais</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Taux d'occupation -->
+                <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm flex flex-col justify-between transition hover:shadow-md">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Taux d'Occupation</span>
+                            <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-stone-700 text-blue-500 flex items-center justify-center font-bold text-base">
+                                📅
+                            </div>
+                        </div>
+                        <p id="kpi-occupancy-rate" class="text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">0.0%</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700/60 flex items-center justify-between text-xs">
+                        <span class="text-stone-500 dark:text-stone-400"><span id="kpi-rented-days-count" class="font-bold text-stone-800 dark:text-stone-200">0</span> j. loués</span>
+                        <span class="text-stone-400 dark:text-stone-500">sur <span id="kpi-total-available-days">0</span> j. flotte</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Réservations Confirmées -->
+                <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm flex flex-col justify-between transition hover:shadow-md">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Réservations Payées</span>
+                            <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-stone-700 text-emerald-500 flex items-center justify-center font-bold text-base">
+                                🤝
+                            </div>
+                        </div>
+                        <p id="kpi-total-bookings" class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">0</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700/60 flex items-center justify-between text-xs">
+                        <span class="text-stone-500 dark:text-stone-400">Panier moyen</span>
+                        <span id="kpi-avg-basket" class="font-bold text-stone-800 dark:text-stone-200">0.00 CHF</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Taux de Conversion -->
+                <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm flex flex-col justify-between transition hover:shadow-md">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Conversion Clics → Résa</span>
+                            <div class="w-9 h-9 rounded-xl bg-purple-50 dark:bg-stone-700 text-purple-500 flex items-center justify-center font-bold text-base">
+                                🎯
+                            </div>
+                        </div>
+                        <p id="kpi-conversion-rate" class="text-3xl font-extrabold text-purple-600 dark:text-purple-400 tracking-tight">0.0%</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700/60 flex items-center justify-between text-xs">
+                        <span class="text-stone-500 dark:text-stone-400"><span id="kpi-clicks-count" class="font-bold text-stone-800 dark:text-stone-200">0</span> clics</span>
+                        <span class="text-stone-400 dark:text-stone-500"><span id="kpi-impressions-count">0</span> vues catalogue</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION DES GRAPHIQUES CHART.JS -->
+            <div class="space-y-8">
+
+                <!-- ROW 1: Évolution CA temporel + Donut d'occupation -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Graphique 1: Évolution des revenus nets & volume (Col span 2) -->
+                    <div class="lg:col-span-2 bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+                            <div>
+                                <h3 class="text-lg font-bold text-stone-900 dark:text-white flex items-center gap-2">
+                                    <span>📈</span> Évolution des Revenus Nets & Volumes de Réservations
+                                </h3>
+                                <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                                    Courbe chronologique des encaissements en Francs Suisses (CHF)
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-4 text-xs font-bold">
+                                <span class="flex items-center gap-1.5 text-terracotta-500">
+                                    <span class="w-3 h-3 rounded-full bg-terracotta-500"></span> CA Net (CHF)
+                                </span>
+                                <span class="flex items-center gap-1.5 text-stone-500 dark:text-stone-300">
+                                    <span class="w-3 h-3 rounded-full bg-stone-400"></span> Réservations
+                                </span>
+                            </div>
+                        </div>
+                        <div class="relative h-72 sm:h-80 w-full">
+                            <canvas id="revenueTrendChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Graphique 3: Donut Répartition Jours & Taux d'occupation (Col span 1) -->
+                    <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-stone-900 dark:text-white flex items-center gap-2 mb-1">
+                                <span>📅</span> Répartition Calendrier
+                            </h3>
+                            <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">
+                                Jours réservés vs Disponibilité résiduelle sur la période
+                            </p>
+                            <div class="relative h-56 w-full flex items-center justify-center">
+                                <canvas id="occupancyDoughnutChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Détail sous le donut -->
+                        <div class="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-stone-100 dark:border-stone-700/60">
+                            <div class="bg-stone-50 dark:bg-stone-900 p-3 rounded-2xl text-center">
+                                <p class="text-[11px] text-stone-500 dark:text-stone-400 font-bold uppercase">Jours Loués</p>
+                                <p id="donut-rented-label" class="text-xl font-extrabold text-terracotta-500">0 j</p>
+                            </div>
+                            <div class="bg-stone-50 dark:bg-stone-900 p-3 rounded-2xl text-center">
+                                <p class="text-[11px] text-stone-500 dark:text-stone-400 font-bold uppercase">Jours Disponibles</p>
+                                <p id="donut-free-label" class="text-xl font-extrabold text-stone-700 dark:text-stone-200">0 j</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROW 2: Comparatif par Remorque + Entonnoir de conversion -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Graphique 2: Comparatif par Remorque -->
+                    <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-stone-900 dark:text-white flex items-center gap-2">
+                                    <span>🚚</span> Performance Comparative par Remorque
+                                </h3>
+                                <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                                    Classement de rentabilité : CA Net généré et jours d'utilisation
+                                </p>
+                            </div>
+                        </div>
+                        <div class="relative h-72 sm:h-80 w-full">
+                            <canvas id="trailerComparisonChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Graphique 4: Entonnoir d'acquisition et conversion -->
+                    <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-stone-900 dark:text-white flex items-center gap-2 mb-1">
+                                <span>🎯</span> Entonnoir de Conversion & Visibilité
+                            </h3>
+                            <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">
+                                Des impressions dans la grille jusqu'à la location payée
+                            </p>
+                            <div class="relative h-56 sm:h-64 w-full">
+                                <canvas id="conversionFunnelChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Métriques détaillées sous l'entonnoir -->
+                        <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-stone-100 dark:border-stone-700/60 text-center">
+                            <div class="p-2 bg-stone-50 dark:bg-stone-900 rounded-xl">
+                                <p class="text-[10px] text-stone-400 font-bold uppercase">1. Impressions</p>
+                                <p id="funnel-imp-count" class="text-base font-extrabold text-stone-800 dark:text-white">0</p>
+                            </div>
+                            <div class="p-2 bg-stone-50 dark:bg-stone-900 rounded-xl">
+                                <p class="text-[10px] text-stone-400 font-bold uppercase">2. Clics Détail</p>
+                                <p id="funnel-clk-count" class="text-base font-extrabold text-blue-600 dark:text-blue-400">0</p>
+                            </div>
+                            <div class="p-2 bg-stone-50 dark:bg-stone-900 rounded-xl">
+                                <p class="text-[10px] text-stone-400 font-bold uppercase">3. Réservations</p>
+                                <p id="funnel-bk-count" class="text-base font-extrabold text-emerald-600 dark:text-emerald-400">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TABLEAU DÉTAILLÉ DE RENTABILITÉ PAR ANNONCE AVEC TRI -->
+            <div class="bg-white dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-3xl p-6 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-stone-900 dark:text-white flex items-center gap-2">
+                            <span>📋</span> Récapitulatif Détaillé de Flotte
+                        </h3>
+                        <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                            Tableau interactif : cliquez sur les en-têtes pour trier par revenu, jours ou occupation
+                        </p>
+                    </div>
+
+                    <!-- Barre de recherche locale -->
+                    <div class="relative w-full sm:w-64">
+                        <input type="text" id="stats-table-search" oninput="filterStatsTable(this.value)" placeholder="Rechercher une remorque..." class="w-full bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-4 py-2 text-xs text-stone-800 dark:text-stone-100 focus:outline-none focus:border-terracotta-500 transition">
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-400">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="overflow-x-auto rounded-2xl border border-stone-200 dark:border-stone-700">
+                    <table class="min-w-full divide-y divide-stone-200 dark:divide-stone-700 text-left text-xs">
+                        <thead class="bg-stone-100 dark:bg-stone-900/80 text-stone-600 dark:text-stone-300 font-extrabold uppercase tracking-wider select-none">
+                            <tr>
+                                <th scope="col" class="py-3.5 px-4 cursor-pointer hover:text-terracotta-500" onclick="sortStatsTable('title')">
+                                    <div class="flex items-center gap-1.5">
+                                        <span>Remorque</span>
+                                        <span id="sort-icon-title" class="text-stone-400 text-[10px]">⇅</span>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3.5 px-4 cursor-pointer hover:text-terracotta-500" onclick="sortStatsTable('price')">
+                                    <div class="flex items-center gap-1.5">
+                                        <span>Tarif/j</span>
+                                        <span id="sort-icon-price" class="text-stone-400 text-[10px]">⇅</span>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3.5 px-4 cursor-pointer hover:text-terracotta-500 text-center" onclick="sortStatsTable('bookings')">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span>Réservations</span>
+                                        <span id="sort-icon-bookings" class="text-stone-400 text-[10px]">⇅</span>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3.5 px-4 cursor-pointer hover:text-terracotta-500 text-center" onclick="sortStatsTable('days')">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span>Jours loués</span>
+                                        <span id="sort-icon-days" class="text-stone-400 text-[10px]">⇅</span>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3.5 px-4 cursor-pointer hover:text-terracotta-500 text-center" onclick="sortStatsTable('occupancy')">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <span>Occupation</span>
+                                        <span id="sort-icon-occupancy" class="text-stone-400 text-[10px]">⇅</span>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3.5 px-4 cursor-pointer hover:text-terracotta-500 text-right" onclick="sortStatsTable('revenue')">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <span>CA Net (CHF)</span>
+                                        <span id="sort-icon-revenue" class="text-terracotta-500 text-[10px]">▼</span>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3.5 px-4 cursor-pointer hover:text-terracotta-500 text-right" onclick="sortStatsTable('savings')">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <span>Économie PRO</span>
+                                        <span id="sort-icon-savings" class="text-stone-400 text-[10px]">⇅</span>
+                                    </div>
+                                </th>
+                                <th scope="col" class="py-3.5 px-4 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-table-body" class="divide-y divide-stone-100 dark:divide-stone-700/60 bg-white dark:bg-stone-800">
+                            <!-- Injected dynamically via stats.js -->
+                            <tr>
+                                <td colspan="8" class="text-center py-8 text-stone-400 italic">Chargement des données de la flotte...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- AUTH MODAL (Réutilisée si déconnecté) -->
+    <div id="auth-modal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden" onclick="handleAuthModalBackdrop(event)">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-stone-200 dark:border-stone-700 relative transition-all" onclick="event.stopPropagation()">
+            <button onclick="closeAuthModal()" class="absolute top-5 right-5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xl font-bold transition">✕</button>
+            <div class="flex justify-center mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-white dark:bg-stone-800 shadow-md border border-stone-200/80 dark:border-stone-700 p-2 flex items-center justify-center overflow-hidden">
+                    <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+                </div>
+            </div>
+
+            <!-- Onglets Connexion / Inscription -->
+            <div id="auth-modal-tabs" class="flex p-1 bg-stone-100 dark:bg-stone-900 rounded-2xl mb-5">
+                <button id="auth-tab-login" type="button" onclick="switchAuthTab('login')" class="flex-1 py-2 text-sm font-bold rounded-xl transition bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm">
+                    Connexion
+                </button>
+                <button id="auth-tab-signup" type="button" onclick="switchAuthTab('signup')" class="flex-1 py-2 text-sm font-bold rounded-xl transition text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-white">
+                    S'inscrire
+                </button>
+            </div>
+
+            <!-- PANNEAU 1 : CONNEXION -->
+            <div id="auth-panel-login">
+                <h2 data-i18n="auth_title" class="text-2xl font-bold mb-4 text-stone-800 dark:text-white text-center">Bon retour sur Renger</h2>
+
+                <!-- Bouton Google -->
+                <button id="google-login-btn" type="button" data-action="google-login" onclick="handleGoogleLogin(event)" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-100 font-semibold py-3 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-600 transition shadow-sm mb-4 cursor-pointer">
+                    <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continuer avec Google
+                </button>
+
+                <!-- Séparateur ou -->
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                    <span class="text-xs text-stone-400 font-medium">ou par email</span>
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">Email</label>
+                    <input type="email" id="login-email" placeholder="Votre email" autocomplete="email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-2.5 text-sm focus:border-terracotta-500 focus:outline-none">
+                </div>
+
+                <div class="mb-2">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300">Mot de passe</label>
+                        <button type="button" onclick="showResetPanel()" class="text-xs text-terracotta-500 hover:underline font-medium">Mot de passe oublié ?</button>
+                    </div>
+                    <input type="password" id="login-password" placeholder="Votre mot de passe" autocomplete="current-password" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-2.5 text-sm focus:border-terracotta-500 focus:outline-none">
+                </div>
+
+                <div class="mt-4 mb-4">
+                    <button type="button" onclick="handleLogin()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition shadow-sm">Connexion</button>
+                </div>
+
+                <p class="text-center text-xs text-stone-500 dark:text-stone-400">
+                    Nouveau sur Renger ?
+                    <button type="button" onclick="switchAuthTab('signup')" class="text-terracotta-500 hover:underline font-bold ml-1">Créer un compte</button>
+                </p>
+            </div>
+
+            <!-- PANNEAU 2 : S'INSCRIRE -->
+            <div id="auth-panel-signup" class="hidden">
+                <h2 class="text-2xl font-bold mb-4 text-stone-800 dark:text-white text-center">Créer un compte</h2>
+
+                <!-- Bouton Google -->
+                <button type="button" data-action="google-login" onclick="handleGoogleLogin(event)" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-700 dark:text-stone-100 font-semibold py-3 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-600 transition shadow-sm mb-4 cursor-pointer">
+                    <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    S'inscrire avec Google
+                </button>
+
+                <!-- Séparateur ou -->
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                    <span class="text-xs text-stone-400 font-medium">ou par email</span>
+                    <div class="flex-1 h-px bg-stone-200 dark:bg-stone-700"></div>
+                </div>
+
+                <!-- Nom d'utilisateur -->
+                <div class="mb-3">
+                    <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">Nom d'utilisateur</label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">@</span>
+                        <input
+                            type="text"
+                            id="signup-username"
+                            placeholder="nom_utilisateur"
+                            oninput="checkUsernameAvailability(this.value)"
+                            maxlength="20"
+                            class="w-full pl-8 pr-10 py-2.5 border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl focus:border-terracotta-500 focus:outline-none transition text-sm"
+                        >
+                        <span id="username-status-icon" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4"></span>
+                    </div>
+                    <p id="username-feedback" class="text-[11px] mt-1 text-stone-400">Lettres minuscules, chiffres, . - _ (1 à 20 caractères)</p>
+                </div>
+
+                <!-- Email -->
+                <div class="mb-3">
+                    <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">Adresse email</label>
+                    <input
+                        type="email"
+                        id="signup-email"
+                        placeholder="nom@gmail.com"
+                        autocomplete="email"
+                        oninput="validateSignupEmailLive(this.value)"
+                        class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-terracotta-500 focus:outline-none"
+                    >
+                    <p id="signup-email-feedback" class="text-[11px] mt-1 text-stone-400">Domaines acceptés : Gmail, Outlook, Hotmail, iCloud, Yahoo, Bluewin, Proton</p>
+                </div>
+
+                <!-- Mot de passe -->
+                <div class="mb-3">
+                    <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">Mot de passe</label>
+                    <input
+                        type="password"
+                        id="signup-password"
+                        placeholder="Créer un mot de passe"
+                        autocomplete="new-password"
+                        oninput="validateSignupPasswordLive(this.value)"
+                        class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-terracotta-500 focus:outline-none"
+                    >
+                </div>
+
+                <!-- Confirmer le mot de passe -->
+                <div class="mb-3">
+                    <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">Confirmer le mot de passe</label>
+                    <input
+                        type="password"
+                        id="signup-password-confirm"
+                        placeholder="Répéter le mot de passe"
+                        autocomplete="new-password"
+                        oninput="validateSignupPasswordMatchLive()"
+                        class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-3.5 py-2.5 text-sm focus:border-terracotta-500 focus:outline-none"
+                    >
+                    <p id="signup-password-match-feedback" class="text-[11px] mt-1 text-stone-400 hidden"></p>
+                </div>
+
+                <!-- Conditions de mot de passe validées par Renger -->
+                <div class="mb-4 p-3 bg-stone-50 dark:bg-stone-900/60 rounded-xl border border-stone-200 dark:border-stone-700">
+                    <p class="text-xs font-bold text-stone-700 dark:text-stone-200 mb-2">Exigences de sécurité Renger :</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                        <div id="pwd-rule-length" class="flex items-center gap-1.5 text-stone-400 transition-colors">
+                            <span class="w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500 text-[9px] font-bold">○</span> 8 caractères min.
+                        </div>
+                        <div id="pwd-rule-upper" class="flex items-center gap-1.5 text-stone-400 transition-colors">
+                            <span class="w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500 text-[9px] font-bold">○</span> 1 majuscule (A-Z)
+                        </div>
+                        <div id="pwd-rule-lower" class="flex items-center gap-1.5 text-stone-400 transition-colors">
+                            <span class="w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500 text-[9px] font-bold">○</span> 1 minuscule (a-z)
+                        </div>
+                        <div id="pwd-rule-number" class="flex items-center gap-1.5 text-stone-400 transition-colors">
+                            <span class="w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500 text-[9px] font-bold">○</span> 1 chiffre (0-9)
+                        </div>
+                        <div id="pwd-rule-special" class="flex items-center gap-1.5 text-stone-400 transition-colors col-span-1 sm:col-span-2">
+                            <span class="w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500 text-[9px] font-bold">○</span> 1 caractère spécial (!@#$%^&*...)
+                        </div>
+                    </div>
+                </div>
+
+                <button id="signup-submit-btn" type="button" onclick="handleSignup()" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold py-3 rounded-xl transition shadow-sm mb-4">S'inscrire</button>
+
+                <p class="text-center text-xs text-stone-500 dark:text-stone-400">
+                    Vous avez déjà un compte ?
+                    <button type="button" onclick="switchAuthTab('login')" class="text-terracotta-500 hover:underline font-bold ml-1">Se connecter</button>
+                </p>
+            </div>
+
+            <!-- PANNEAU 3 : MOT DE PASSE OUBLIÉ -->
+            <div id="auth-panel-reset" class="hidden">
+                <button type="button" onclick="showLoginPanel()" class="text-terracotta-500 font-semibold mb-4 flex items-center gap-1 hover:underline text-sm">← Retour</button>
+                <h2 class="text-2xl font-bold mb-3 text-stone-800 dark:text-white text-center">Réinitialiser le mot de passe</h2>
+                <p class="text-stone-500 dark:text-stone-400 text-sm mb-5 text-center">Entrez votre email. Nous vous enverrons un lien sécurisé pour créer un nouveau mot de passe.</p>
+                <div class="mb-4">
+                    <input type="email" id="reset-email" placeholder="Votre email" class="w-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl px-4 py-3 text-sm focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <button type="button" onclick="handleResetPassword()" class="w-full bg-terracotta-500 text-white font-semibold py-3 rounded-xl hover:bg-terracotta-600 transition">Envoyer le lien de réinitialisation</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION BAR (Mobile) -->
+    <nav class="fixed bottom-0 left-0 w-full bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex justify-around items-center pb-6 pt-3 z-50 md:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <a href="remorques.html" id="mobile-nav-explore" class="mobile-nav-btn flex flex-col items-center gap-1 w-20 text-stone-400 hover:text-terracotta-500 transition-transform active:scale-95">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <span class="text-[10px] font-bold tracking-wide">Explorer</span>
+        </a>
+        <a href="profil.html" id="mobile-nav-bookings" class="mobile-nav-btn flex flex-col items-center gap-1 w-20 text-terracotta-500 transition-transform active:scale-95">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <span class="text-[10px] font-bold tracking-wide">Mon Espace</span>
+        </a>
+        <a href="profil.html?p=settings-page" id="mobile-nav-settings" class="mobile-nav-btn flex flex-col items-center gap-1 w-20 text-stone-400 hover:text-terracotta-500 transition-transform active:scale-95">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            <span class="text-[10px] font-bold tracking-wide">Profil</span>
+        </a>
+    </nav>
+
+    <!-- CDN Librairies tierces -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="https://js.stripe.com/v3/" defer></script>
+
+    <!-- Modules Renger -->
+    <script src="js/core.js?v=6" defer></script>
+    <script src="js/components.js?v=6" defer></script>
+    <script src="js/stats.js?v=1" defer></script>
+    <script src="js/tracking.js"></script>
+</body>
+</html>

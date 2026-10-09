@@ -109,7 +109,8 @@ describe('Tier 2: Mobile Navigation Settings Link Destination', () => {
         'inspection.html',
         'pro.html',
         'cgu.html',
-        'politique-confidentialite.html'
+        'politique-confidentialite.html',
+        'stats.html'
     ];
 
     for (const fileName of htmlFiles) {
@@ -146,5 +147,56 @@ describe('Tier 2: Essential Form & Detail Interactive Elements', () => {
         assert.ok(hasElementWithId(content, 'ad-price'), `louer-ma-remorque.html doit contenir #ad-price`);
         assert.ok(hasElementWithId(content, 'ad-location'), `louer-ma-remorque.html doit contenir #ad-location`);
         assert.ok(hasElementWithId(content, 'ad-description') || hasElementWithId(content, 'ad-desc'), `louer-ma-remorque.html doit contenir #ad-description ou #ad-desc`);
+    });
+});
+
+describe('Tier 2: Renger Analytics PRO DOM Contracts (stats.html & profil.html)', () => {
+    it('profil.html must contain prominent link to stats.html', () => {
+        const filePath = path.join(siteWebDir, 'profil.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'btn-access-stats-pro'), `profil.html doit inclure #btn-access-stats-pro`);
+        const href = getHrefForId(content, 'btn-access-stats-pro');
+        assert.strictEqual(href, 'stats.html', `Le bouton #btn-access-stats-pro doit pointer vers 'stats.html'`);
+    });
+
+    it('stats.html must contain access guard, upsell screen, and dashboard containers', () => {
+        const filePath = path.join(siteWebDir, 'stats.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'stats-loading-state'), `stats.html doit inclure #stats-loading-state`);
+        assert.ok(hasElementWithId(content, 'stats-upsell-container'), `stats.html doit inclure #stats-upsell-container`);
+        assert.ok(hasElementWithId(content, 'stats-dashboard-container'), `stats.html doit inclure #stats-dashboard-container`);
+    });
+
+    it('stats.html must contain interactive filter controls (trailer select & period filters)', () => {
+        const filePath = path.join(siteWebDir, 'stats.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'stats-trailer-select'), `stats.html doit inclure #stats-trailer-select`);
+        assert.ok(hasElementWithId(content, 'stats-period-filters'), `stats.html doit inclure #stats-period-filters`);
+    });
+
+    it('stats.html must contain 4 top KPI cards and PRO ROI counter', () => {
+        const filePath = path.join(siteWebDir, 'stats.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'kpi-net-earnings'), `stats.html doit inclure #kpi-net-earnings`);
+        assert.ok(hasElementWithId(content, 'kpi-occupancy-rate'), `stats.html doit inclure #kpi-occupancy-rate`);
+        assert.ok(hasElementWithId(content, 'kpi-total-bookings'), `stats.html doit inclure #kpi-total-bookings`);
+        assert.ok(hasElementWithId(content, 'kpi-conversion-rate'), `stats.html doit inclure #kpi-conversion-rate`);
+        assert.ok(hasElementWithId(content, 'kpi-roi-counter'), `stats.html doit inclure #kpi-roi-counter`);
+    });
+
+    it('stats.html must contain 4 Chart.js canvas elements', () => {
+        const filePath = path.join(siteWebDir, 'stats.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'revenueTrendChart'), `stats.html doit inclure canvas #revenueTrendChart`);
+        assert.ok(hasElementWithId(content, 'trailerComparisonChart'), `stats.html doit inclure canvas #trailerComparisonChart`);
+        assert.ok(hasElementWithId(content, 'occupancyDoughnutChart'), `stats.html doit inclure canvas #occupancyDoughnutChart`);
+        assert.ok(hasElementWithId(content, 'conversionFunnelChart'), `stats.html doit inclure canvas #conversionFunnelChart`);
+    });
+
+    it('stats.html must contain fleet breakdown table and search input', () => {
+        const filePath = path.join(siteWebDir, 'stats.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'stats-table-search'), `stats.html doit inclure #stats-table-search`);
+        assert.ok(hasElementWithId(content, 'stats-table-body'), `stats.html doit inclure #stats-table-body`);
     });
 });
