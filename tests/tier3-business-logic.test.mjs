@@ -626,5 +626,36 @@ describe('Tier 3: Stripe Customer Portal & Subscription Lifecycle Contracts', ()
         assert.ok(migrationsCode.includes('CREATE TABLE IF NOT EXISTS rate_limits'), 'supabase_migrations.sql doit créer la table rate_limits');
         assert.ok(migrationsCode.includes('ENABLE ROW LEVEL SECURITY') && migrationsCode.includes('rate_limits'), 'rate_limits doit activer RLS');
     });
+
+    it('components.js must declare complete ONBOARDING_TRACKS with renter and owner 3-step tracks', () => {
+        const componentsPath = path.join(siteWebDir, 'js', 'components.js');
+        const code = fs.readFileSync(componentsPath, 'utf8');
+        assert.ok(code.includes('ONBOARDING_TRACKS'), 'components.js doit définir ONBOARDING_TRACKS');
+        assert.ok(code.includes('renter:'), 'ONBOARDING_TRACKS doit contenir le parcours renter');
+        assert.ok(code.includes('owner:'), 'ONBOARDING_TRACKS doit contenir le parcours owner');
+        assert.ok(code.includes('B vs BE'), 'parcours locataire doit mentionner permis B vs BE');
+        assert.ok(code.includes('caution non débitée') || code.includes('non débitée'), 'parcours locataire doit mentionner caution non débitée');
+        assert.ok(code.includes('géolocalisé'), 'parcours locataire doit mentionner état des lieux géolocalisé');
+        assert.ok(code.includes('Stripe Connect'), 'parcours propriétaire doit mentionner Stripe Connect');
+        assert.ok(code.includes('0% de commission') || code.includes('0% commission'), 'parcours propriétaire doit mentionner 0% de commission PRO');
+    });
+
+    it('components.js must bind all onboarding controls to window and handle localStorage persistence', () => {
+        const componentsPath = path.join(siteWebDir, 'js', 'components.js');
+        const code = fs.readFileSync(componentsPath, 'utf8');
+        assert.ok(code.includes('window.openOnboardingModal = openOnboardingModal'), 'openOnboardingModal doit être exposé');
+        assert.ok(code.includes('window.skipOnboarding = skipOnboarding'), 'skipOnboarding doit être exposé');
+        assert.ok(code.includes('window.selectOnboardingTrack = selectOnboardingTrack'), 'selectOnboardingTrack doit être exposé');
+        assert.ok(code.includes('window.nextOnboardingStep = nextOnboardingStep'), 'nextOnboardingStep doit être exposé');
+        assert.ok(code.includes('window.prevOnboardingStep = prevOnboardingStep'), 'prevOnboardingStep doit être exposé');
+        assert.ok(code.includes('renger_onboarding_completed'), 'doit persister renger_onboarding_completed dans localStorage');
+    });
+
+    it('trailers.js must manage PRO active and upsell cards inside loadProfileSettings and bind to window', () => {
+        const trailersPath = path.join(siteWebDir, 'js', 'trailers.js');
+        const code = fs.readFileSync(trailersPath, 'utf8');
+        assert.ok(code.includes('settings-pro-upsell-card'), 'loadProfileSettings doit manipuler settings-pro-upsell-card');
+        assert.ok(code.includes('window.loadProfileSettings = loadProfileSettings'), 'loadProfileSettings doit être exposé sur window');
+    });
 });
 

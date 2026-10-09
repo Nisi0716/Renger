@@ -941,6 +941,68 @@ describe('Adversarial Stress Suite 5: Paid Products, Boosts & Stripe Lifecycle R
         assert.strictEqual(toastMsg, "Rate limit exceeded. Please try again later.", "Le message précis du backend doit être affiché");
     });
 
+    it('handleOpenStripePortal must display user-friendly message when Edge Function stripe-portal is not deployed (FunctionsFetchError)', async () => {
+        let toastMsg = null;
+        let loadingHidden = false;
+
+        const { ctx } = loadBookingContext({
+            currentUser: { id: 'usr-pro-789' },
+            showToast: (msg, type) => {
+                if (type === 'error') toastMsg = msg;
+            },
+            supabaseClient: {
+                functions: {
+                    invoke: async () => {
+                        const err = new Error("Failed to send a request to the Edge Function");
+                        err.name = "FunctionsFetchError";
+                        return { data: null, error: err };
+                    }
+                }
+            }
+        });
+
+        ctx.window.showStripeLoading = () => {};
+        ctx.window.hideStripeLoading = () => { loadingHidden = true; };
+
+        await ctx.handleOpenStripePortal();
+
+        assert.strictEqual(loadingHidden, true, "hideStripeLoading doit être exécuté");
+        assert.ok(toastMsg.includes("Le portail Stripe n'est pas encore déployé sur Supabase"), "Message convivial sur le déploiement manquant");
+    });
+
+    it('handleOpenStripePortal must display user-friendly message when Edge Function returns FunctionsHttpError with 404 status (Undeployed Function Gateway response)', async () => {
+        let toastMsg = null;
+        let loadingHidden = false;
+
+        const { ctx } = loadBookingContext({
+            currentUser: { id: 'usr-pro-404' },
+            showToast: (msg, type) => {
+                if (type === 'error') toastMsg = msg;
+            },
+            supabaseClient: {
+                functions: {
+                    invoke: async () => {
+                        const err = new Error("Edge Function returned a non-2xx status code");
+                        err.name = "FunctionsHttpError";
+                        err.context = {
+                            status: 404,
+                            json: async () => ({ message: "Function not found" })
+                        };
+                        return { data: null, error: err };
+                    }
+                }
+            }
+        });
+
+        ctx.window.showStripeLoading = () => {};
+        ctx.window.hideStripeLoading = () => { loadingHidden = true; };
+
+        await ctx.handleOpenStripePortal();
+
+        assert.strictEqual(loadingHidden, true, "hideStripeLoading doit être exécuté");
+        assert.ok(toastMsg.includes("Le portail Stripe n'est pas encore déployé sur Supabase"), "Message convivial sur le déploiement manquant requis pour HTTP 404");
+    });
+
     it('handleSubscribePro must prevent duplicate subscriptions when user is already PRO', async () => {
         let toastMsg = null;
         let portalOpened = false;
@@ -994,5 +1056,131 @@ describe('Adversarial Stress Suite 5: Paid Products, Boosts & Stripe Lifecycle R
         assert.strictEqual(toastType, 'error');
         assert.ok(toastMsg.includes('connecté'));
         assert.strictEqual(authModalOpened, true);
+    });
+});
+
+describe('Adversarial Stress Suite 6: Onboarding Guide State Machine & Navigation Lifecycle', () => {
+    function loadComponentsSandbox() {
+        const componentsCode = fs.readFileSync(path.join(jsDir, 'components.js'), 'utf8');
+        const storage = new Map();
+        const elements = new Map();
+
+        const createMockEl = (id) => ({
+            id,
+            classList: {
+                _classes: new Set(['hidden']),
+                add(c) { this._classes.add(c); },
+                remove(c) { this._classes.delete(c); },
+                contains(c) { return this._classes.has(c); }
+            },
+            innerHTML: '',
+            textContent: '',
+            setAttribute() {},
+            appendChild(child) { elements.set(child.id, child); }
+        });
+
+        const modalEl = createMockEl('onboarding-modal');
+        const contentEl = createMockEl('onboarding-content');
+        const prevBtn = createMockEl('onboarding-prev-btn');
+        const nextBtn = createMockEl('onboarding-next-btn');
+        const dotsEl = createMockEl('onboarding-dots');
+
+        elements.set('onboarding-modal', modalEl);
+        elements.set('onboarding-content', contentEl);
+        elements.set('onboarding-prev-btn', prevBtn);
+        elements.set('onboarding-next-btn', nextBtn);
+        elements.set('onboarding-dots', dotsEl);
+
+        const sandbox = {
+            window: {},
+            document: {
+                getElementById: (id) => elements.get(id) || null,
+                querySelectorAll: () => [],
+                createElement: (tag) => createMockEl('dynamic-' + Math.random()),
+                body: { appendChild: (el) => elements.set(el.id, el) },
+                addEventListener: () => {}
+            },
+            localStorage: {
+                getItem: (k) => storage.get(k) || null,
+                setItem: (k, v) => storage.set(k, String(v)),
+                removeItem: (k) => storage.delete(k)
+            },
+            showToast: () => {},
+            setTimeout: (fn) => fn(),
+            console: { warn: () => {}, error: () => {}, log: () => {} }
+        };
+
+        sandbox.window = sandbox;
+        const ctx = vm.createContext(sandbox);
+        vm.runInContext(componentsCode, ctx);
+
+        return { ctx, elements, storage };
+    }
+
+    it('openOnboardingModal resets to Step 0 and reveals modal', () => {
+        const { ctx, elements } = loadComponentsSandbox();
+        ctx.openOnboardingModal();
+
+        const modal = elements.get('onboarding-modal');
+        assert.strictEqual(modal.classList.contains('hidden'), false, "La modale doit être affichée");
+        const content = elements.get('onboarding-content');
+        assert.ok(content.innerHTML.includes('Bienvenue sur Renger'), "L étape 0 doit souhaiter la bienvenue");
+        assert.ok(content.innerHTML.includes('selectOnboardingTrack(\'renter\')'), "Choix locataire présent");
+        assert.ok(content.innerHTML.includes('selectOnboardingTrack(\'owner\')'), "Choix propriétaire présent");
+    });
+
+    it('selectOnboardingTrack advances to track step 1 and handles step progression and reversal', () => {
+        const { ctx, elements } = loadComponentsSandbox();
+        ctx.openOnboardingModal();
+        ctx.selectOnboardingTrack('renter');
+
+        const content = elements.get('onboarding-content');
+        const nextBtn = elements.get('onboarding-next-btn');
+        const prevBtn = elements.get('onboarding-prev-btn');
+
+        assert.ok(content.innerHTML.includes('permis (B vs BE)'), "Étape 1 locataire affichée");
+        assert.strictEqual(nextBtn.classList.contains('hidden'), false);
+
+        // Advance to Step 2
+        ctx.nextOnboardingStep();
+        assert.ok(elements.get('onboarding-content').innerHTML.includes('caution non débitée'), "Étape 2 locataire affichée");
+
+        // Advance to Step 3
+        ctx.nextOnboardingStep();
+        assert.ok(elements.get('onboarding-content').innerHTML.includes('4/4'), "Étape 3 locataire affichée");
+
+        // Reversal back to Step 2
+        ctx.prevOnboardingStep();
+        assert.ok(elements.get('onboarding-content').innerHTML.includes('caution non débitée'), "Retour à l étape 2 réussi");
+
+        // Reversal back to Step 1
+        ctx.prevOnboardingStep();
+        assert.ok(elements.get('onboarding-content').innerHTML.includes('permis (B vs BE)'), "Retour à l étape 1 réussi");
+
+        // Reversal back to Step 0 (track reset)
+        ctx.prevOnboardingStep();
+        assert.ok(elements.get('onboarding-content').innerHTML.includes('Bienvenue sur Renger'), "Retour au choix du profil");
+    });
+
+    it('skipOnboarding hides modal and writes renger_onboarding_completed to localStorage', () => {
+        const { ctx, elements, storage } = loadComponentsSandbox();
+        ctx.openOnboardingModal();
+        assert.strictEqual(elements.get('onboarding-modal').classList.contains('hidden'), false);
+
+        ctx.skipOnboarding();
+        assert.strictEqual(elements.get('onboarding-modal').classList.contains('hidden'), true, "La modale doit être masquée après skip");
+        assert.strictEqual(storage.get('renger_onboarding_completed'), 'true', "Le flag localStorage doit être enregistré");
+    });
+
+    it('completeOnboarding on Step 3 completes and writes renger_onboarding_completed', () => {
+        const { ctx, elements, storage } = loadComponentsSandbox();
+        ctx.openOnboardingModal();
+        ctx.selectOnboardingTrack('owner');
+        ctx.nextOnboardingStep(); // step 2
+        ctx.nextOnboardingStep(); // step 3
+        ctx.nextOnboardingStep(); // complete
+
+        assert.strictEqual(elements.get('onboarding-modal').classList.contains('hidden'), true, "La modale doit être fermée à la fin");
+        assert.strictEqual(storage.get('renger_onboarding_completed'), 'true', "Le flag localStorage doit être enregistré");
     });
 });

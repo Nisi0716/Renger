@@ -1056,18 +1056,12 @@ async function loadProfileData() {
     const revenueElement = document.getElementById('seller-monthly-revenue');
     if (revenueElement) revenueElement.textContent = monthlyRevenue.toFixed(2) + ' CHF';
 
-    // --- STATS DASHBOARD PRO & GESTION PRO ---
-    const proBanner = document.getElementById('pro-banner-container');
-    const proActiveCard = document.getElementById('pro-active-card');
-    const lostCommEl = document.getElementById('lost-commission-amount');
-
+    // --- STATS DASHBOARD PRO ---
     if (currentUser) {
         const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
         const isPro = !!profile?.is_pro;
 
         if (isPro) {
-            if (proBanner) proBanner.classList.add('hidden');
-            if (proActiveCard) proActiveCard.classList.remove('hidden');
             document.getElementById('pro-stats-blur')?.classList.add('hidden');
             
             const sellerTrailers = myTrailers || [];
@@ -1531,6 +1525,19 @@ async function loadProfileSettings() {
         const alertEl = document.getElementById('stripe-success-alert');
         if (alertEl) alertEl.classList.add('hidden');
     }
+
+    // Statut Abonnement PRO dans Paramètres
+    const proActiveCard = document.getElementById('pro-active-card');
+    const proUpsellCard = document.getElementById('settings-pro-upsell-card');
+    const isPro = !!profile.is_pro;
+
+    if (isPro) {
+        if (proActiveCard) proActiveCard.classList.remove('hidden');
+        if (proUpsellCard) proUpsellCard.classList.add('hidden');
+    } else {
+        if (proActiveCard) proActiveCard.classList.add('hidden');
+        if (proUpsellCard) proUpsellCard.classList.remove('hidden');
+    }
 }
 
 // Sauvegarde les modifications de profil (username)
@@ -1665,6 +1672,7 @@ async function handleChangePassword(event) {
 window.openProfile = openProfile;
 window.switchProfileTab = switchProfileTab;
 window.loadProfileData = loadProfileData;
+window.loadProfileSettings = loadProfileSettings;
 
 
 async function geocodeCity(cityOrZip) {

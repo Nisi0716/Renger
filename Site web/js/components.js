@@ -160,22 +160,35 @@ function handleBookingConfirmModalBackdrop(event) {
     }
 }
 
-// Écouteur global pour fermer la modale active avec la touche Échap
+// Écouteur global pour fermer la modale active avec la touche Échap et navigation clavier
 document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
+    const onboardingModal = document.getElementById('onboarding-modal');
+    const isOnboardingOpen = onboardingModal && !onboardingModal.classList.contains('hidden');
 
-    const modals = [
-        { id: 'review-modal', close: closeReviewModal },
-        { id: 'chat-modal', close: closeChatModal },
-        { id: 'booking-confirm-modal', close: closeBookingConfirmModal },
-        { id: 'auth-modal', close: closeAuthModal }
-    ];
+    if (event.key === 'Escape') {
+        const modals = [
+            { id: 'review-modal', close: closeReviewModal },
+            { id: 'chat-modal', close: closeChatModal },
+            { id: 'booking-confirm-modal', close: closeBookingConfirmModal },
+            { id: 'auth-modal', close: closeAuthModal },
+            { id: 'onboarding-modal', close: skipOnboarding }
+        ];
 
-    for (const m of modals) {
-        const el = document.getElementById(m.id);
-        if (el && !el.classList.contains('hidden')) {
-            m.close();
-            break;
+        for (const m of modals) {
+            const el = document.getElementById(m.id);
+            if (el && !el.classList.contains('hidden')) {
+                m.close();
+                break;
+            }
+        }
+        return;
+    }
+
+    if (isOnboardingOpen && typeof onboardingState !== 'undefined' && onboardingState.track) {
+        if (event.key === 'ArrowRight') {
+            nextOnboardingStep();
+        } else if (event.key === 'ArrowLeft') {
+            prevOnboardingStep();
         }
     }
 });
@@ -587,18 +600,29 @@ async function submitReview() {
         if (submitBtn) submitBtn.disabled = false;
     }
 }
-document.addEventListener('DOMContentLoaded', () => {
-    const path = window.location.pathname;
+function initPageUIState() {
+    if (typeof window === 'undefined') return;
+    const path = (window.location && window.location.pathname) || '';
+    const search = (window.location && window.location.search) || '';
     let pageId = 'welcome-screen';
     if (path.includes('remorques.html') || path.includes('remorque.html')) pageId = 'buyer-page';
     else if (path.includes('louer-ma-remorque.html')) pageId = 'seller-page';
     else if (path.includes('profil.html')) {
-        pageId = window.location.search.includes('settings') ? 'settings-page' : 'profile-page';
+        pageId = search.includes('settings') ? 'settings-page' : 'profile-page';
     }
     if (typeof updateMobileNavState === 'function') {
         updateMobileNavState(pageId);
     }
-});
+    checkAndTriggerOnboarding();
+}
+
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPageUIState);
+    } else {
+        initPageUIState();
+    }
+}
 
 
 // Aliases & fallbacks for backwards compatibility
@@ -614,4 +638,338 @@ function subscribePro() {
 // Initialisation immédiate du menu utilisateur si l'état auth a déjà été résolu
 if (typeof currentUser !== 'undefined' && currentUser) {
     updateUserMenu(currentUser);
+}
+
+// ==========================================
+// GUIDE NOUVEAUX UTILISATEURS (ONBOARDING)
+// ==========================================
+const ONBOARDING_TRACKS = {
+    renter: {
+        title: "Guide Locataire",
+        badge: "🚗 Je cherche une remorque (Locataire)",
+        steps: [
+            {
+                number: 1,
+                emoji: "🔍",
+                title: "1. Recherche par canton & permis (B vs BE)",
+                description: "Explorez les remorques disponibles dans votre région (Vaud, Genève, Valais, etc.). Chaque annonce précise explicitement si votre permis de conduire voiture standard (catégorie B, pour les remorques ≤ 750 kg ou ensembles ≤ 3'500 kg) suffit, ou si le permis remorque (BE) est requis.",
+                tip: "💡 <strong>Astuce Suisse :</strong> Filtrez par canton ou activez la vue carte Leaflet pour voir instantanément les remorques les plus proches de chez vous."
+            },
+            {
+                number: 2,
+                emoji: "💳",
+                title: "2. Réservation & caution non débitée",
+                description: "Réservez vos dates en toute sérénité. Votre paiement est sécurisé par Stripe. La caution légale (de 200 à 400 CHF selon le gabarit de la remorque) fait l'objet d'une simple empreinte bancaire non débitée : aucun centime n'est prélevé de votre compte bancaire.",
+                tip: "🔒 <strong>Zéro avance :</strong> L'empreinte bancaire Stripe est libérée automatiquement après restitution conforme de la remorque."
+            },
+            {
+                number: 3,
+                emoji: "📸",
+                title: "3. État des lieux photo 4/4 géolocalisé au départ et au retour",
+                description: "Au départ comme au retour de la location, prenez 4 photos guidées (avant, arrière, côté gauche, côté droit). Vos clichés sont certifiés avec coordonnées GPS et horodatage suisse infalsifiable pour vous protéger à 100% contre tout litige injustifié.",
+                tip: "📄 <strong>Protection juridique :</strong> Votre contrat de bail suisse (CO art. 253) et votre rapport d'état des lieux (CO art. 257a) sont téléchargeables en PDF certifié à tout moment."
+            }
+        ]
+    },
+    owner: {
+        title: "Guide Propriétaire",
+        badge: "🚜 Je loue ma remorque (Propriétaire)",
+        steps: [
+            {
+                number: 1,
+                emoji: "📝",
+                title: "1. Publication d'annonce en 2 minutes",
+                description: "Déposez votre remorque en quelques clics : photos, dimensions utiles, PTAC, charge utile et tarif journalier. Notre système vous suggère un tarif optimisé en fonction du marché suisse local pour rentabiliser immédiatement votre équipement.",
+                tip: "💡 <strong>Mise en ligne instantanée :</strong> Votre remorque apparaît dès publication auprès des locataires de votre région."
+            },
+            {
+                number: 2,
+                emoji: "🏦",
+                title: "2. Liaison bancaire Stripe Connect pour les virements",
+                description: "Renseignez votre IBAN suisse dans vos Paramètres grâce à notre intégration Stripe Connect certifiée. À chaque location réalisée, vos gains (80% net, ou 100% avec Renger PRO) sont transférés automatiquement sur votre compte bancaire sans aucune démarche manuelle.",
+                tip: "⚡ <strong>Virements 100% automatisés :</strong> Stripe gère la conformité bancaire et effectue vos virements directement."
+            },
+            {
+                number: 3,
+                emoji: "👑",
+                title: "3. Validation de l'état des lieux & 0% commission avec le mode PRO",
+                description: "La validation de l'état des lieux photo de départ débloque la réservation et sécurise vos fonds. Pour maximiser vos revenus, passez au mode Renger PRO (39 CHF/mois) pour conserver 100% de vos gains (0% de commission) et débloquer le cockpit Renger Analytics PRO.",
+                tip: "🚀 <strong>Rentabilité maximale :</strong> Avec Renger PRO, votre abonnement est amorti dès deux locations par mois !"
+            }
+        ]
+    }
+};
+
+let onboardingState = {
+    track: null,
+    step: 0
+};
+
+function ensureOnboardingModalExists() {
+    let modal = document.getElementById('onboarding-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'onboarding-modal';
+        modal.className = 'hidden fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto';
+        modal.onclick = handleOnboardingBackdrop;
+        modal.innerHTML = `
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl max-w-xl w-full p-6 sm:p-8 relative border border-stone-200 dark:border-stone-700 my-auto" onclick="event.stopPropagation()">
+            <button id="onboarding-skip-btn" onclick="skipOnboarding()" class="absolute top-5 right-5 text-xs font-bold text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 px-3 py-1.5 rounded-full transition flex items-center gap-1.5 active:scale-95" aria-label="Passer le guide">
+                <span>Passer le guide</span>
+                <span class="text-sm">✕</span>
+            </button>
+            <div id="onboarding-content"></div>
+            <div id="onboarding-footer" class="mt-8 pt-4 border-t border-stone-100 dark:border-stone-700 flex items-center justify-between gap-4">
+                <button id="onboarding-prev-btn" onclick="prevOnboardingStep()" class="text-sm font-bold text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 px-4 py-2 rounded-xl transition hidden">
+                    ← Précédent
+                </button>
+                <div id="onboarding-dots" class="flex items-center gap-2 mx-auto"></div>
+                <button id="onboarding-next-btn" onclick="nextOnboardingStep()" class="bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition shadow-md active:scale-95 hidden">
+                    Suivant →
+                </button>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+    return modal;
+}
+
+function renderOnboardingStep() {
+    const content = document.getElementById('onboarding-content');
+    const prevBtn = document.getElementById('onboarding-prev-btn');
+    const nextBtn = document.getElementById('onboarding-next-btn');
+    const dots = document.getElementById('onboarding-dots');
+    if (!content) return;
+
+    if (onboardingState.step === 0 || !onboardingState.track) {
+        if (prevBtn) prevBtn.classList.add('hidden');
+        if (nextBtn) nextBtn.classList.add('hidden');
+        if (dots) dots.innerHTML = '';
+
+        content.innerHTML = `
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-2xl bg-terracotta-50 dark:bg-stone-700 text-terracotta-500 text-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    👋
+                </div>
+                <h3 class="text-2xl font-black text-stone-900 dark:text-white tracking-tight">Bienvenue sur Renger !</h3>
+                <p class="text-stone-500 dark:text-stone-400 text-sm mt-1.5">Découvrez comment utiliser Renger pas-à-pas en moins d'une minute.</p>
+                <p class="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mt-2">Choisissez votre profil pour commencer :</p>
+            </div>
+
+            <div class="space-y-3.5">
+                <button type="button" id="onboarding-choice-renter" onclick="selectOnboardingTrack('renter')" class="w-full text-left p-5 rounded-2xl border-2 border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 bg-stone-50/50 dark:bg-stone-900/50 hover:bg-terracotta-50/30 dark:hover:bg-terracotta-950/20 transition group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform shadow-xs">
+                            🚗
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-extrabold text-stone-900 dark:text-white group-hover:text-terracotta-500 transition-colors">🚗 Je cherche une remorque (Locataire)</h4>
+                                <span class="text-terracotta-500 font-bold text-lg group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">Recherche par canton & permis (B vs BE), réservation avec caution non débitée et état des lieux photo 4/4 géolocalisé.</p>
+                        </div>
+                    </div>
+                </button>
+
+                <button type="button" id="onboarding-choice-owner" onclick="selectOnboardingTrack('owner')" class="w-full text-left p-5 rounded-2xl border-2 border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 bg-stone-50/50 dark:bg-stone-900/50 hover:bg-terracotta-50/30 dark:hover:bg-terracotta-950/20 transition group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform shadow-xs">
+                            🚜
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-extrabold text-stone-900 dark:text-white group-hover:text-terracotta-500 transition-colors">🚜 Je loue ma remorque (Propriétaire)</h4>
+                                <span class="text-terracotta-500 font-bold text-lg group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">Publication d'annonce en 2 min, liaison bancaire Stripe Connect pour les virements et 0% de commission avec le mode PRO.</p>
+                        </div>
+                    </div>
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    const trackData = ONBOARDING_TRACKS[onboardingState.track];
+    if (!trackData) return;
+    const currentStepIndex = onboardingState.step - 1;
+    const stepInfo = trackData.steps[currentStepIndex];
+    if (!stepInfo) return;
+
+    if (prevBtn) {
+        prevBtn.classList.remove('hidden');
+        prevBtn.textContent = onboardingState.step === 1 ? '← Changer de profil' : '← Précédent';
+    }
+    if (nextBtn) {
+        nextBtn.classList.remove('hidden');
+        nextBtn.textContent = onboardingState.step === 3 ? 'Terminer et explorer 🎉' : 'Suivant →';
+    }
+
+    if (dots) {
+        dots.innerHTML = trackData.steps.map((s, idx) => `
+            <button onclick="goToOnboardingStep(${idx + 1})" class="h-2 rounded-full transition-all ${idx === currentStepIndex ? 'w-6 bg-terracotta-500' : 'w-2 bg-stone-200 dark:bg-stone-700 hover:bg-stone-400'}" aria-label="Étape ${idx + 1}"></button>
+        `).join('');
+    }
+
+    const actionCtaHtml = onboardingState.step === 3 ? `
+        <div class="pt-2">
+            ${onboardingState.track === 'renter' ? `
+                <a href="remorques.html" onclick="completeOnboarding()" class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold rounded-xl shadow-md transition text-sm active:scale-95">
+                    <span>🔍 Trouver une remorque disponible</span>
+                    <span>→</span>
+                </a>
+            ` : `
+                <a href="louer-ma-remorque.html" onclick="completeOnboarding()" class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold rounded-xl shadow-md transition text-sm active:scale-95">
+                    <span>➕ Publier une annonce en 2 min</span>
+                    <span>→</span>
+                </a>
+            `}
+        </div>
+    ` : '';
+
+    content.innerHTML = `
+        <div class="mb-5">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300">
+                    ${trackData.badge} • Étape ${onboardingState.step}/3
+                </span>
+                <button type="button" onclick="selectOnboardingTrack('${onboardingState.track === 'renter' ? 'owner' : 'renter'}')" class="text-xs text-terracotta-600 dark:text-terracotta-400 hover:underline font-bold transition">
+                    Basculer côté ${onboardingState.track === 'renter' ? 'Propriétaire 🚜' : 'Locataire 🚗'}
+                </button>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-terracotta-500/10 text-terracotta-500 text-2xl flex items-center justify-center flex-shrink-0 shadow-inner">
+                    ${stepInfo.emoji}
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-stone-900 dark:text-white">${stepInfo.title}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <p class="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">${stepInfo.description}</p>
+            <div class="bg-stone-50 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-700 rounded-2xl p-4 text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+                ${stepInfo.tip}
+            </div>
+            ${actionCtaHtml}
+        </div>
+    `;
+}
+
+function selectOnboardingTrack(role) {
+    if (role !== 'renter' && role !== 'owner') return;
+    onboardingState.track = role;
+    onboardingState.step = 1;
+    renderOnboardingStep();
+}
+
+function nextOnboardingStep() {
+    if (onboardingState.step === 0) return;
+    if (onboardingState.step < 3) {
+        onboardingState.step += 1;
+        renderOnboardingStep();
+    } else {
+        completeOnboarding();
+    }
+}
+
+function prevOnboardingStep() {
+    if (onboardingState.step <= 1) {
+        onboardingState.step = 0;
+        onboardingState.track = null;
+        renderOnboardingStep();
+    } else {
+        onboardingState.step -= 1;
+        renderOnboardingStep();
+    }
+}
+
+function goToOnboardingStep(stepNumber) {
+    if (onboardingState.track && stepNumber >= 1 && stepNumber <= 3) {
+        onboardingState.step = stepNumber;
+        renderOnboardingStep();
+    }
+}
+
+function openOnboardingModal(preferredTrack = null) {
+    ensureOnboardingModalExists();
+    const modal = document.getElementById('onboarding-modal');
+    if (!modal) return;
+    if (preferredTrack && (preferredTrack === 'renter' || preferredTrack === 'owner')) {
+        onboardingState.track = preferredTrack;
+        onboardingState.step = 1;
+    } else {
+        onboardingState.track = null;
+        onboardingState.step = 0;
+    }
+    renderOnboardingStep();
+    modal.classList.remove('hidden');
+}
+
+function closeOnboardingModal(markCompleted = false) {
+    const modal = document.getElementById('onboarding-modal');
+    if (modal) modal.classList.add('hidden');
+    if (markCompleted) {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('renger_onboarding_completed', 'true');
+            }
+        } catch (_) {}
+    }
+}
+
+function skipOnboarding() {
+    closeOnboardingModal(true);
+    if (typeof showToast === 'function') {
+        showToast("Guide ignoré. Vous pouvez le retrouver à tout moment dans vos Paramètres.", "info");
+    }
+}
+
+function completeOnboarding() {
+    closeOnboardingModal(true);
+    if (typeof showToast === 'function') {
+        showToast("Guide terminé ! Bonne route avec Renger.", "success");
+    }
+}
+
+function handleOnboardingBackdrop(event) {
+    if (event.target === document.getElementById('onboarding-modal')) {
+        skipOnboarding();
+    }
+}
+
+function checkAndTriggerOnboarding() {
+    try {
+        if (typeof window === 'undefined' || !window.localStorage) return;
+        const completed = localStorage.getItem('renger_onboarding_completed');
+        if (completed) return;
+
+        const path = (window.location && window.location.pathname) || '';
+        const search = (window.location && window.location.search) || '';
+        if (path.includes('inspection.html') || search.includes('stripe=') || search.includes('code=') || search.includes('token=')) {
+            return;
+        }
+
+        setTimeout(() => {
+            if (!localStorage.getItem('renger_onboarding_completed')) {
+                openOnboardingModal();
+            }
+        }, 700);
+    } catch (_) {}
+}
+
+if (typeof window !== 'undefined') {
+    window.openOnboardingModal = openOnboardingModal;
+    window.closeOnboardingModal = closeOnboardingModal;
+    window.skipOnboarding = skipOnboarding;
+    window.completeOnboarding = completeOnboarding;
+    window.selectOnboardingTrack = selectOnboardingTrack;
+    window.nextOnboardingStep = nextOnboardingStep;
+    window.prevOnboardingStep = prevOnboardingStep;
+    window.goToOnboardingStep = goToOnboardingStep;
+    window.handleOnboardingBackdrop = handleOnboardingBackdrop;
+    window.checkAndTriggerOnboarding = checkAndTriggerOnboarding;
+    window.ONBOARDING_TRACKS = ONBOARDING_TRACKS;
 }

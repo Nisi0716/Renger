@@ -658,13 +658,51 @@ async function handleOpenStripePortal() {
 
         if (error) {
             let errorMsg = error.message;
+            let unpacked = false;
+            const unpackedStatus = error.context?.status || error.status || null;
             try {
                 if (error.context && typeof error.context.json === 'function') {
                     const errorBody = await error.context.json();
-                    if (errorBody && errorBody.error) errorMsg = errorBody.error;
+                    if (errorBody) {
+                        if (errorBody.error) {
+                            errorMsg = errorBody.error;
+                            unpacked = true;
+                        } else if (errorBody.message) {
+                            errorMsg = errorBody.message;
+                            unpacked = true;
+                        }
+                    }
                 }
             } catch (_) {}
             if (window.hideStripeLoading) window.hideStripeLoading();
+
+            const isDeployError = (
+                error.name === 'FunctionsFetchError' ||
+                error.name === 'FunctionsRelayError' ||
+                unpackedStatus === 404 ||
+                error.status === 404 ||
+                (error.context && error.context.status === 404) ||
+                (typeof errorMsg === 'string' && (
+                    errorMsg.includes('Failed to send a request') ||
+                    errorMsg.includes('FunctionsFetchError') ||
+                    errorMsg.includes('Function not found') ||
+                    errorMsg.includes('not found') ||
+                    errorMsg.includes('404')
+                )) ||
+                (error.message && (
+                    error.message.includes('Failed to send a request') ||
+                    error.message.includes('FunctionsFetchError') ||
+                    error.message.includes('Function not found') ||
+                    error.message.includes('not found') ||
+                    error.message.includes('404') ||
+                    (error.message.includes('non-2xx') && (unpackedStatus === 404 || !unpacked))
+                ))
+            );
+
+            if (isDeployError) {
+                errorMsg = "Le portail Stripe n'est pas encore déployé sur Supabase. Veuillez déployer la fonction stripe-portal depuis votre tableau de bord Supabase.";
+            }
+
             throw new Error(errorMsg || "Impossible d'accéder au portail de facturation.");
         }
         if (data && data.url) {
@@ -676,7 +714,22 @@ async function handleOpenStripePortal() {
     } catch (err) {
         if (window.hideStripeLoading) window.hideStripeLoading();
         console.error("Erreur portail Stripe:", err);
-        showToast(err.message || "Erreur lors de l'accès au portail.", "error");
+        let errorMsg = err.message || "";
+        if (
+            err.name === 'FunctionsFetchError' ||
+            err.name === 'FunctionsRelayError' ||
+            err.status === 404 ||
+            (err.context && err.context.status === 404) ||
+            errorMsg.includes('Failed to send a request') ||
+            errorMsg.includes('FunctionsFetchError') ||
+            errorMsg.includes('Function not found') ||
+            errorMsg.includes('not found') ||
+            errorMsg.includes('404') ||
+            errorMsg.includes('non-2xx')
+        ) {
+            errorMsg = "Le portail Stripe n'est pas encore déployé sur Supabase. Veuillez déployer la fonction stripe-portal depuis votre tableau de bord Supabase.";
+        }
+        showToast(errorMsg || "Erreur lors de l'accès au portail.", "error");
     }
 }
 window.handleOpenStripePortal = handleOpenStripePortal;

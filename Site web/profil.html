@@ -78,14 +78,20 @@
         </div>
     </header>
 <div id="profile-page" class="min-h-screen p-6 pt-24 max-w-5xl mx-auto">
-        <div class="flex items-center gap-3.5 mb-8">
-            <div class="w-11 h-11 rounded-2xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200/80 dark:border-stone-700 p-1.5 flex items-center justify-center overflow-hidden flex-shrink-0">
-                <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-white dark:bg-stone-800 shadow-sm border border-stone-200/80 dark:border-stone-700 p-1.5 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold text-stone-900 dark:text-white leading-tight">Mon Espace Renger</h2>
+                    <p class="text-xs text-stone-400 dark:text-stone-500">Gestion de vos locations et de votre parc de remorques</p>
+                </div>
             </div>
-            <div>
-                <h2 class="text-3xl font-bold text-stone-900 dark:text-white leading-tight">Mon Espace Renger</h2>
-                <p class="text-xs text-stone-400 dark:text-stone-500">Gestion de vos locations et de votre parc de remorques</p>
-            </div>
+            <a href="profil.html?p=settings-page" id="btn-goto-settings" onclick="if (typeof showPage === 'function' && document.getElementById('settings-page')) { event.preventDefault(); showPage('settings-page'); if (typeof loadProfileSettings === 'function') loadProfileSettings(); history.pushState({}, '', 'profil.html?p=settings-page'); }" class="inline-flex items-center gap-2 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-sm font-bold py-2.5 px-4 rounded-xl border border-stone-200 dark:border-stone-700 shadow-sm transition active:scale-95 whitespace-nowrap self-start sm:self-auto">
+                <span>⚙️ Paramètres du compte</span>
+                <span>→</span>
+            </a>
         </div>
         
         <div class="flex gap-6 mb-8 border-b border-stone-200 dark:border-stone-700">
@@ -118,36 +124,6 @@
         </div>
 
         <div id="profile-seller-section" class="hidden">
-            <!-- Bannière Renger PRO -->
-            <div id="pro-banner-container" class="mb-6 bg-gradient-to-r from-stone-900 to-terracotta-900 rounded-3xl p-6 text-white shadow-lg border border-terracotta-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 hidden">
-                <div>
-                    <h3 class="text-xl font-bold flex items-center gap-2"><span>👑</span> Renger PRO</h3>
-                    <p class="text-sm text-stone-300 mt-1">Vous avez payé <span id="lost-commission-amount" class="font-bold text-terracotta-300">0 CHF</span> de commission depuis votre inscription. Avec Renger PRO, conservez 100% de vos gains pour seulement 39 CHF/mois.</p>
-                </div>
-                <button onclick="handleSubscribePro()" class="flex-shrink-0 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 px-6 rounded-xl shadow-md transition active:scale-95 whitespace-nowrap">
-                    Passer PRO
-                </button>
-            </div>
-
-            <!-- Carte Statut Abonnement PRO Actif & Gestion Portail Stripe -->
-            <div id="pro-active-card" class="mb-6 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 rounded-3xl p-6 text-white shadow-xl border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 hidden">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
-                        👑
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-emerald-500 text-white text-xs uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full shadow-sm">👑 Abonnement Renger PRO actif</span>
-                            <span class="text-xs text-stone-300 font-medium">0% de commission</span>
-                        </div>
-                        <p class="text-sm text-stone-300 mt-1">Vous conservez 100% de vos revenus de location. Gérez vos factures, moyen de paiement et résiliation en toute autonomie.</p>
-                    </div>
-                </div>
-                <button id="pro-portal-btn" onclick="handleOpenStripePortal()" class="flex-shrink-0 bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95 flex items-center gap-2 whitespace-nowrap text-sm">
-                    <span>⚙️ Gérer mon abonnement (Factures, Résiliation)</span>
-                </button>
-            </div>
-
             <!-- BANNIÈRE PROMINENTE RENGER ANALYTICS PRO -->
             <div class="mb-6 bg-gradient-to-r from-stone-900 via-stone-800 to-terracotta-950 border border-terracotta-500/30 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-5">
                 <div class="flex items-center gap-4">
@@ -275,7 +251,14 @@
         </div>
     </div>
 <div id="settings-page" class="hidden min-h-screen p-6 pt-24 max-w-4xl mx-auto mb-24 md:mb-0">
-        <button onclick="showWelcomeScreen()" class="text-terracotta-600 font-semibold mb-8 hover:text-terracotta-500 transition">← Retour à l'accueil</button>
+        <div class="flex items-center justify-between gap-4 mb-8">
+            <button onclick="if (typeof showPage === 'function' && document.getElementById('profile-page')) { showPage('profile-page'); if (typeof loadProfileData === 'function') loadProfileData(); history.pushState({}, '', 'profil.html'); } else { window.location.href = 'profil.html'; }" id="btn-back-to-profile" class="text-terracotta-600 font-semibold hover:text-terracotta-500 transition inline-flex items-center gap-1.5">
+                <span>← Retour à Mon Espace</span>
+            </button>
+            <button onclick="showWelcomeScreen()" class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 text-sm font-medium transition">
+                ← Retour à l'accueil
+            </button>
+        </div>
         
         <div class="mb-10">
             <div class="flex items-center gap-3.5 mb-3">
@@ -339,6 +322,50 @@
             </form>
         </div>
 
+        <!-- SECTION ABONNEMENT RENGER PRO & FACTURES -->
+        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
+            <div class="mb-6">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">👑</span>
+                    <h3 class="text-2xl font-bold text-stone-800 dark:text-white">Abonnement Renger PRO & Factures</h3>
+                </div>
+                <p class="text-stone-500 dark:text-stone-400 text-sm mt-1">Gérez votre formule d'abonnement loueur, téléchargez vos factures ou activez le 0% de commission.</p>
+            </div>
+
+            <!-- Carte Statut Abonnement PRO Actif & Gestion Portail Stripe (si is_pro === true) -->
+            <div id="pro-active-card" class="bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 rounded-2xl p-6 text-white shadow-xl border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 hidden">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                        👑
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="bg-emerald-500 text-white text-xs uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full shadow-sm">👑 Abonnement Renger PRO actif (0% de commission)</span>
+                        </div>
+                        <p class="text-sm text-stone-300 mt-1">Vous conservez 100% de vos revenus de location (0% de commission Renger). Gérez vos factures, moyen de paiement et résiliation en toute autonomie via le portail Stripe.</p>
+                    </div>
+                </div>
+                <button id="pro-portal-btn" onclick="handleOpenStripePortal()" class="flex-shrink-0 bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95 flex items-center gap-2 whitespace-nowrap text-sm">
+                    <span>⚙️ Gérer mon abonnement (Factures, Résiliation)</span>
+                </button>
+            </div>
+
+            <!-- Carte Upsell PRO (si is_pro === false) -->
+            <div id="settings-pro-upsell-card" class="bg-gradient-to-r from-stone-900 to-terracotta-900 rounded-2xl p-6 text-white shadow-lg border border-terracotta-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xl">🚀</span>
+                        <h4 class="text-lg font-bold">Passez à Renger PRO</h4>
+                        <span class="bg-terracotta-500 text-white text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full">39 CHF / mois</span>
+                    </div>
+                    <p class="text-sm text-stone-300">Conservez 100% de vos gains de location (0% de commission) et débloquez toutes les fonctionnalités avancées de gestion de flotte.</p>
+                </div>
+                <a href="pro.html" id="settings-upgrade-pro-btn" class="flex-shrink-0 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 px-6 rounded-xl shadow-md transition active:scale-95 whitespace-nowrap text-sm inline-flex items-center gap-2">
+                    <span>Passer en mode PRO →</span>
+                </a>
+            </div>
+        </div>
+
         <div class="bg-gradient-to-br from-white to-stone-50 dark:from-stone-800 dark:to-stone-900 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8 relative overflow-hidden">
             <div class="absolute -right-6 -top-6 text-9xl opacity-5 pointer-events-none">🏦</div>
 
@@ -383,6 +410,21 @@
                 <span id="settings-stripe-btn-text">Configurer mes versements sécurisés</span>
                 <span class="text-xl">➔</span>
             </button>
+        </div>
+
+        <!-- SECTION GUIDE & PRISE EN MAIN -->
+        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-2xl font-bold text-stone-800 dark:text-white mb-1 flex items-center gap-2">
+                        <span>📖</span> Guide & Prise en main
+                    </h3>
+                    <p class="text-stone-500 dark:text-stone-400 text-sm">Découvrez pas-à-pas le fonctionnement de Renger selon votre profil (Locataire ou Propriétaire).</p>
+                </div>
+                <button type="button" id="settings-open-guide-btn" onclick="openOnboardingModal()" class="flex-shrink-0 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-800 dark:text-stone-100 font-bold py-3.5 px-5 rounded-xl transition active:scale-95 flex items-center gap-2 text-sm shadow-sm border border-stone-200 dark:border-stone-600 whitespace-nowrap">
+                    <span>📖 Ouvrir le guide d'utilisation Renger</span>
+                </button>
+            </div>
         </div>
 
         <div class="border-t border-stone-200 dark:border-stone-700 pt-8 mt-8">
@@ -879,6 +921,31 @@
                 </button>
                 <button onclick="closeInspectionWarningModal()" class="text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 underline pt-1 block mx-auto">
                     Annuler et retourner au chat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE GUIDE NOUVEAUX UTILISATEURS (ONBOARDING) -->
+    <div id="onboarding-modal" class="hidden fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onclick="handleOnboardingBackdrop(event)">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl max-w-xl w-full p-6 sm:p-8 relative border border-stone-200 dark:border-stone-700 my-auto" onclick="event.stopPropagation()">
+            <!-- Bouton Passer en haut à droite -->
+            <button id="onboarding-skip-btn" onclick="skipOnboarding()" class="absolute top-5 right-5 text-xs font-bold text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 px-3 py-1.5 rounded-full transition flex items-center gap-1.5 active:scale-95" aria-label="Passer le guide">
+                <span>Passer le guide</span>
+                <span class="text-sm">✕</span>
+            </button>
+
+            <!-- Contenu dynamique du guide -->
+            <div id="onboarding-content"></div>
+
+            <!-- Barre de navigation inférieure -->
+            <div id="onboarding-footer" class="mt-8 pt-4 border-t border-stone-100 dark:border-stone-700 flex items-center justify-between gap-4">
+                <button id="onboarding-prev-btn" onclick="prevOnboardingStep()" class="text-sm font-bold text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 px-4 py-2 rounded-xl transition hidden">
+                    ← Précédent
+                </button>
+                <div id="onboarding-dots" class="flex items-center gap-2 mx-auto"></div>
+                <button id="onboarding-next-btn" onclick="nextOnboardingStep()" class="bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition shadow-md active:scale-95 hidden">
+                    Suivant →
                 </button>
             </div>
         </div>

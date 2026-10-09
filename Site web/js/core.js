@@ -59,6 +59,16 @@ if (supabaseClient) {
             if (typeof updateUserMenu === 'function') {
                 updateUserMenu(session?.user || null);
             }
+
+            // Rafraîchissement automatique des données profil/settings dès résolution auth
+            if (currentUser && typeof window !== 'undefined' && window.location.pathname.includes('profil.html')) {
+                const params = new URLSearchParams(window.location.search || '');
+                if (params.get('p') === 'settings-page' && typeof loadProfileSettings === 'function') {
+                    loadProfileSettings();
+                } else if (typeof loadProfileData === 'function') {
+                    loadProfileData();
+                }
+            }
         } catch (err) {
             console.warn("Erreur dans onAuthStateChange:", err);
         }

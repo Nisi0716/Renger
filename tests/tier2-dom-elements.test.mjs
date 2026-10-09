@@ -242,5 +242,42 @@ describe('Tier 2: Paid Products, Subscriptions & Boost Legal Contracts (profil.h
         assert.ok(content.includes('p_7_2:'), 'cgu.html doit définir p_7_2 dans les traductions');
         assert.ok(content.includes('p_7_3:'), 'cgu.html doit définir p_7_3 dans les traductions');
     });
+
+    it('profil.html must isolate fleet management in #profile-seller-section (zero subscription banner)', () => {
+        const filePath = path.join(siteWebDir, 'profil.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        const sellerSectionMatch = content.match(/<div id="profile-seller-section"[\s\S]*?<!-- BANNIÈRE PROMINENTE RENGER ANALYTICS PRO -->/);
+        assert.ok(sellerSectionMatch, 'profil.html doit comporter #profile-seller-section');
+        assert.ok(!sellerSectionMatch[0].includes('id="pro-banner-container"'), '#profile-seller-section ne doit plus contenir #pro-banner-container');
+        assert.ok(!sellerSectionMatch[0].includes('id="pro-active-card"'), '#profile-seller-section ne doit plus contenir #pro-active-card');
+    });
+
+    it('profil.html #settings-page must contain PRO subscription and Onboarding guide sections', () => {
+        const filePath = path.join(siteWebDir, 'profil.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'settings-pro-upsell-card'), '#settings-page doit contenir #settings-pro-upsell-card');
+        assert.ok(content.includes('👑 Abonnement Renger PRO actif (0% de commission)'), 'badge PRO actif complet requis');
+        assert.ok(content.includes('Passer en mode PRO →'), 'bouton passer en mode pro requis');
+        assert.ok(content.includes('openOnboardingModal()'), 'bouton d ouverture du guide requis');
+        assert.ok(content.includes('📖 Ouvrir le guide d\'utilisation Renger'), 'libellé d ouverture du guide requis');
+    });
+
+    it('profil.html must contain complete #onboarding-modal structure', () => {
+        const filePath = path.join(siteWebDir, 'profil.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'onboarding-modal'), 'profil.html doit inclure #onboarding-modal');
+        assert.ok(hasElementWithId(content, 'onboarding-skip-btn'), 'doit inclure #onboarding-skip-btn');
+        assert.ok(hasElementWithId(content, 'onboarding-content'), 'doit inclure #onboarding-content');
+        assert.ok(hasElementWithId(content, 'onboarding-prev-btn'), 'doit inclure #onboarding-prev-btn');
+        assert.ok(hasElementWithId(content, 'onboarding-next-btn'), 'doit inclure #onboarding-next-btn');
+        assert.ok(hasElementWithId(content, 'onboarding-dots'), 'doit inclure #onboarding-dots');
+    });
+
+    it('profil.html must provide seamless navigation links between Mon Espace and Paramètres', () => {
+        const filePath = path.join(siteWebDir, 'profil.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'btn-goto-settings'), '#profile-page doit contenir #btn-goto-settings pour accéder aux paramètres');
+        assert.ok(hasElementWithId(content, 'btn-back-to-profile'), '#settings-page doit contenir #btn-back-to-profile pour retourner à Mon Espace');
+    });
 });
 
