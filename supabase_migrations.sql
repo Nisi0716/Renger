@@ -88,3 +88,26 @@ CREATE POLICY "Allow participants and owners to read inspections" ON inspections
 -- 9. Ajout de la date de fin de boost pour les remorques
 ALTER TABLE trailers
 ADD COLUMN IF NOT EXISTS boost_end_date timestamp with time zone;
+
+-- 10. Ajout des colonnes Stripe & PRO sur profiles (Abonnements PRO & Portail Stripe)
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS is_pro boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS stripe_customer_id text,
+ADD COLUMN IF NOT EXISTS stripe_subscription_id text;
+
+CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer ON profiles(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_stripe_subscription ON profiles(stripe_subscription_id);
+
+-- 11. Table de contrôle de débit (Rate Limiting anti-DDoS / Stripe abuse)
+CREATE TABLE IF NOT EXISTS rate_limits (
+    id uuid default gen_random_uuid() primary key,
+    user_id uuid references auth.users(id) on delete cascade not null,
+    action text not null,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_user_action ON rate_limits(user_id, action, created_at);
+
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to read own rate limits" ON rate_limits FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Allow authenticated users to insert own rate limits" ON rate_limits FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);

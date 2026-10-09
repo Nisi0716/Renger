@@ -551,3 +551,80 @@ describe('Tier 3: Renger Analytics PRO Financial & Business Logic (stats.js)', (
         assert.strictEqual(end.getDate(), 31);
     });
 });
+
+describe('Tier 3: Stripe Customer Portal & Subscription Lifecycle Contracts', () => {
+    const portalFnPath = path.join(projectRoot, 'supabase', 'functions', 'stripe-portal', 'index.ts');
+    const webhookFnPath = path.join(projectRoot, 'supabase', 'functions', 'stripe-webhook', 'index.ts');
+
+    it('stripe-portal/index.ts must exist, enforce auth, rate limiting, and billingPortal creation', () => {
+        assert.ok(fs.existsSync(portalFnPath), 'stripe-portal/index.ts doit exister');
+        const code = fs.readFileSync(portalFnPath, 'utf8');
+
+        // Check authentication
+        assert.ok(code.includes('auth.getUser'), 'stripe-portal doit vérifier le token avec auth.getUser');
+        assert.ok(code.includes('Missing Authorization header') || code.includes('Unauthorized'), 'stripe-portal doit rejeter les requêtes non autorisées');
+
+        // Check rate limiting
+        assert.ok(code.includes('rate_limits'), 'stripe-portal doit vérifier la table rate_limits');
+        assert.ok(code.includes('Rate limit exceeded'), 'stripe-portal doit bloquer au-delà du quota de requêtes');
+
+        // Check customer resolution & portal session
+        assert.ok(code.includes('stripe_customer_id'), 'stripe-portal doit interroger/enregistrer stripe_customer_id');
+        assert.ok(code.includes('stripe.customers.list'), 'stripe-portal doit avoir un fallback Stripe customer search par email');
+        assert.ok(code.includes('stripe.billingPortal.sessions.create'), 'stripe-portal doit appeler stripe.billingPortal.sessions.create');
+        assert.ok(code.includes('profil.html'), 'stripe-portal return_url doit renvoyer vers profil.html');
+    });
+
+    it('stripe-webhook/index.ts must record customer/subscription IDs on pro checkout and revoke is_pro on subscription deletion', () => {
+        assert.ok(fs.existsSync(webhookFnPath), 'stripe-webhook/index.ts doit exister');
+        const code = fs.readFileSync(webhookFnPath, 'utf8');
+
+        // Check pro subscription completion updates
+        assert.ok(code.includes('stripe_customer_id'), 'stripe-webhook doit sauvegarder stripe_customer_id');
+        assert.ok(code.includes('stripe_subscription_id'), 'stripe-webhook doit sauvegarder stripe_subscription_id');
+
+        // Check customer.subscription.deleted event
+        assert.ok(code.includes('customer.subscription.deleted'), 'stripe-webhook doit intercepter customer.subscription.deleted');
+        assert.ok(code.includes('is_pro: false'), 'stripe-webhook doit passer is_pro à false lors de la suppression');
+    });
+
+    it('booking.js must declare handleOpenStripePortal and bind to window', () => {
+        const bookingCode = fs.readFileSync(path.join(jsDir, 'booking.js'), 'utf8');
+        assert.ok(bookingCode.includes('function handleOpenStripePortal'), 'booking.js doit définir handleOpenStripePortal');
+        assert.ok(bookingCode.includes('window.handleOpenStripePortal = handleOpenStripePortal'), 'booking.js doit exposer handleOpenStripePortal sur window');
+        assert.ok(bookingCode.includes("'stripe-portal'"), 'handleOpenStripePortal doit invoquer la fonction stripe-portal');
+        assert.ok(bookingCode.includes('showStripeLoading'), 'handleOpenStripePortal doit déclencher le loader Stripe');
+    });
+
+    it('stripe-boost-checkout and stripe-webhook must calculate exact duration_days for weekend vs week boosts', () => {
+        const boostCheckoutCode = fs.readFileSync(path.join(projectRoot, 'supabase', 'functions', 'stripe-boost-checkout', 'index.ts'), 'utf8');
+        const webhookCode = fs.readFileSync(webhookFnPath, 'utf8');
+
+        // Check boost checkout metadata includes duration_days
+        assert.ok(boostCheckoutCode.includes('duration_days: isWeek ? "7" : "3"'), 'stripe-boost-checkout doit définir duration_days dans les métadonnées (7 ou 3)');
+        
+        // Check webhook parses duration_days and respects weekend duration
+        assert.ok(webhookCode.includes('parseInt(metadata.duration_days, 10)'), 'stripe-webhook doit parser duration_days de metadata');
+        assert.ok(webhookCode.includes("metadata.plan === 'weekend' ? 3 : 7"), 'stripe-webhook doit avoir un repli propre à 3 jours pour le plan weekend');
+    });
+
+    it('stripe-pro-checkout must guard against duplicate active pro subscriptions', () => {
+        const proCheckoutCode = fs.readFileSync(path.join(projectRoot, 'supabase', 'functions', 'stripe-pro-checkout', 'index.ts'), 'utf8');
+        assert.ok(proCheckoutCode.includes('is_pro'), 'stripe-pro-checkout doit vérifier le statut is_pro du profil');
+        assert.ok(proCheckoutCode.includes('profile?.is_pro'), 'stripe-pro-checkout doit bloquer un nouvel abonnement si déjà PRO');
+    });
+
+    it('stripe-portal must sanitize origin to prevent path duplication', () => {
+        const portalCode = fs.readFileSync(portalFnPath, 'utf8');
+        assert.ok(portalCode.includes('new URL('), 'stripe-portal doit parser l origin avec new URL() pour éviter /profil.html/profil.html');
+    });
+
+    it('supabase_migrations.sql must include is_pro column and rate_limits table with RLS', () => {
+        const migrationsPath = path.join(projectRoot, 'supabase_migrations.sql');
+        const migrationsCode = fs.readFileSync(migrationsPath, 'utf8');
+        assert.ok(migrationsCode.includes('is_pro boolean'), 'supabase_migrations.sql doit définir is_pro sur profiles');
+        assert.ok(migrationsCode.includes('CREATE TABLE IF NOT EXISTS rate_limits'), 'supabase_migrations.sql doit créer la table rate_limits');
+        assert.ok(migrationsCode.includes('ENABLE ROW LEVEL SECURITY') && migrationsCode.includes('rate_limits'), 'rate_limits doit activer RLS');
+    });
+});
+

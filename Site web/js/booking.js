@@ -553,7 +553,11 @@ function closeBoostModal() {
 }
 
 async function handlePurchaseBoost() {
-    if (!currentUser) return;
+    if (!currentUser) {
+        showToast("Vous devez être connecté.", "error");
+        if (typeof openAuthModal === 'function') openAuthModal('login');
+        return;
+    }
     if (!currentBoostTrailerId) return;
     const planEl = document.querySelector('input[name="boost_plan"]:checked');
     if (!planEl) return;
@@ -568,7 +572,16 @@ async function handlePurchaseBoost() {
             body: { trailer_id: currentBoostTrailerId, plan: planEl.value }
         });
         
-        if (error) throw error;
+        if (error) {
+            let errorMsg = error.message;
+            try {
+                if (error.context && typeof error.context.json === 'function') {
+                    const errBody = await error.context.json();
+                    if (errBody && errBody.error) errorMsg = errBody.error;
+                }
+            } catch (_) {}
+            throw new Error(errorMsg || "Erreur lors de l'initialisation du paiement.");
+        }
         if (data && data.url) {
             window.location.href = data.url;
         } else {
@@ -586,9 +599,23 @@ async function handlePurchaseBoost() {
 async function handleSubscribePro(plan = 'monthly') {
     if (!currentUser) {
         showToast("Vous devez être connecté.", "error");
+        if (typeof openAuthModal === 'function') openAuthModal('login');
         return;
     }
     try {
+        // Prévention des doublons : vérifier si l'utilisateur est déjà PRO
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('is_pro')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+
+        if (profile?.is_pro) {
+            showToast("Vous bénéficiez déjà d'un abonnement Renger PRO actif.", "info");
+            handleOpenStripePortal();
+            return;
+        }
+
         if (window.showStripeLoading) window.showStripeLoading();
         showToast("Redirection vers Stripe...", "info");
         const { data, error } = await supabaseClient.functions.invoke('stripe-pro-checkout', {
@@ -596,8 +623,15 @@ async function handleSubscribePro(plan = 'monthly') {
         });
 
         if (error) {
+            let errorMsg = error.message;
+            try {
+                if (error.context && typeof error.context.json === 'function') {
+                    const errBody = await error.context.json();
+                    if (errBody && errBody.error) errorMsg = errBody.error;
+                }
+            } catch (_) {}
             if (window.hideStripeLoading) window.hideStripeLoading();
-            throw error;
+            throw new Error(errorMsg || "Erreur lors de l'initialisation de l'abonnement.");
         }
         if (data && data.url) {
             window.location.href = data.url;
@@ -610,6 +644,42 @@ async function handleSubscribePro(plan = 'monthly') {
         showToast(err.message, "error");
     }
 }
+
+async function handleOpenStripePortal() {
+    if (!currentUser) {
+        showToast("Vous devez être connecté.", "error");
+        if (typeof openAuthModal === 'function') openAuthModal('login');
+        return;
+    }
+    try {
+        if (window.showStripeLoading) window.showStripeLoading();
+        showToast("Ouverture de votre espace abonnement...", "info");
+        const { data, error } = await supabaseClient.functions.invoke('stripe-portal');
+
+        if (error) {
+            let errorMsg = error.message;
+            try {
+                if (error.context && typeof error.context.json === 'function') {
+                    const errorBody = await error.context.json();
+                    if (errorBody && errorBody.error) errorMsg = errorBody.error;
+                }
+            } catch (_) {}
+            if (window.hideStripeLoading) window.hideStripeLoading();
+            throw new Error(errorMsg || "Impossible d'accéder au portail de facturation.");
+        }
+        if (data && data.url) {
+            window.location.href = data.url;
+        } else {
+            if (window.hideStripeLoading) window.hideStripeLoading();
+            showToast("Impossible d'ouvrir le portail de facturation.", "error");
+        }
+    } catch (err) {
+        if (window.hideStripeLoading) window.hideStripeLoading();
+        console.error("Erreur portail Stripe:", err);
+        showToast(err.message || "Erreur lors de l'accès au portail.", "error");
+    }
+}
+window.handleOpenStripePortal = handleOpenStripePortal;
 
 // --- GESTION DE L'ANNONCE ---
 let currentManagedTrailer = null;

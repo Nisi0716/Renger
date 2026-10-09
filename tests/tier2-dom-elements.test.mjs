@@ -200,3 +200,47 @@ describe('Tier 2: Renger Analytics PRO DOM Contracts (stats.html & profil.html)'
         assert.ok(hasElementWithId(content, 'stats-table-body'), `stats.html doit inclure #stats-table-body`);
     });
 });
+
+describe('Tier 2: Paid Products, Subscriptions & Boost Legal Contracts (profil.html, pro.html, cgu.html)', () => {
+    it('profil.html must contain #pro-active-card with handleOpenStripePortal() trigger', () => {
+        const filePath = path.join(siteWebDir, 'profil.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'pro-active-card'), 'profil.html doit inclure #pro-active-card');
+        assert.ok(content.includes('handleOpenStripePortal()'), 'profil.html doit comporter un bouton appelant handleOpenStripePortal()');
+        assert.ok(content.includes('Gérer mon abonnement (Factures, Résiliation)'), 'profil.html doit inclure le libellé de gestion d abonnement');
+    });
+
+    it('profil.html must contain #boost-legal-disclaimer in #boost-modal with non-refundable conditions', () => {
+        const filePath = path.join(siteWebDir, 'profil.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'boost-legal-disclaimer'), 'profil.html doit inclure #boost-legal-disclaimer');
+        assert.ok(content.includes('non remboursable'), 'boost-modal doit mentionner le caractère non remboursable');
+        assert.ok(content.includes('activation immédiate'), 'boost-modal doit mentionner l activation immédiate');
+    });
+
+    it('pro.html must contain #pro-legal-terms with automatic renewal, 1-click cancellation, and no pro-rata refund', () => {
+        const filePath = path.join(siteWebDir, 'pro.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(hasElementWithId(content, 'pro-legal-terms'), 'pro.html doit inclure #pro-legal-terms');
+        assert.ok(hasElementWithId(content, 'pro-already-subscribed-banner'), 'pro.html doit inclure #pro-already-subscribed-banner');
+        assert.ok(content.includes('Reconduction tacite') || content.includes('Renouvellement automatique'), 'pro.html doit mentionner la reconduction/renouvellement');
+        assert.ok(content.includes('Résiliation en 1 clic'), 'pro.html doit mentionner la résiliation en 1 clic');
+        assert.ok(content.includes('prorata') || content.includes('remboursement'), 'pro.html doit stipuler l absence de remboursement prorata');
+    });
+
+    it('cgu.html must contain Article 7 for PRO & Boosts with full fr, de, and en translations', () => {
+        const filePath = path.join(siteWebDir, 'cgu.html');
+        const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(content.includes('data-i18n="h2_7"'), 'cgu.html doit contenir la balise data-i18n="h2_7"');
+        assert.ok(content.includes('data-i18n="p_7_1"'), 'cgu.html doit contenir la balise data-i18n="p_7_1" (Renger PRO)');
+        assert.ok(content.includes('data-i18n="p_7_2"'), 'cgu.html doit contenir la balise data-i18n="p_7_2" (Boosts)');
+        assert.ok(content.includes('data-i18n="p_7_3"'), 'cgu.html doit contenir la balise data-i18n="p_7_3" (Paiements Stripe)');
+
+        // Check translation dictionaries
+        assert.ok(content.includes('h2_7:'), 'cgu.html doit définir h2_7 dans les traductions');
+        assert.ok(content.includes('p_7_1:'), 'cgu.html doit définir p_7_1 dans les traductions');
+        assert.ok(content.includes('p_7_2:'), 'cgu.html doit définir p_7_2 dans les traductions');
+        assert.ok(content.includes('p_7_3:'), 'cgu.html doit définir p_7_3 dans les traductions');
+    });
+});
+

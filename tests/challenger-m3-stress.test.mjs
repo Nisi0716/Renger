@@ -856,3 +856,143 @@ describe('Adversarial Stress Suite 4: Booked Dates Fallback & Mock Offline / Err
         assert.strictEqual(capturedDisable.length, 0, "En mode hors-ligne, disabledDates doit être une liste vide sans lever d'exception");
     });
 });
+
+describe('Adversarial Stress Suite 5: Paid Products, Boosts & Stripe Lifecycle Resilience', () => {
+    it('handleOpenStripePortal must reject cleanly when unauthenticated without throwing unhandled exceptions', async () => {
+        let toastMsg = null;
+        let toastType = null;
+        let authModalOpened = false;
+
+        const { ctx } = loadBookingContext({
+            currentUser: null,
+            showToast: (msg, type) => {
+                toastMsg = msg;
+                toastType = type;
+            },
+            openAuthModal: () => {
+                authModalOpened = true;
+            }
+        });
+
+        await assert.doesNotReject(async () => {
+            await ctx.handleOpenStripePortal();
+        });
+
+        assert.strictEqual(toastType, 'error');
+        assert.ok(toastMsg.includes('connecté'));
+        assert.strictEqual(authModalOpened, true);
+    });
+
+    it('handleOpenStripePortal must show loading state, invoke stripe-portal, and redirect on valid URL', async () => {
+        let loadingShown = false;
+        let loadingHidden = false;
+        let invokedFunction = null;
+
+        const { ctx } = loadBookingContext({
+            currentUser: { id: 'usr-pro-123' },
+            supabaseClient: {
+                functions: {
+                    invoke: async (fnName) => {
+                        invokedFunction = fnName;
+                        return { data: { url: 'https://billing.stripe.com/p/session/test_123' }, error: null };
+                    }
+                }
+            }
+        });
+
+        ctx.window.showStripeLoading = () => { loadingShown = true; };
+        ctx.window.hideStripeLoading = () => { loadingHidden = true; };
+
+        await ctx.handleOpenStripePortal();
+
+        assert.strictEqual(loadingShown, true, "showStripeLoading doit être appelé");
+        assert.strictEqual(invokedFunction, 'stripe-portal', "La fonction stripe-portal doit être invoquée");
+        assert.strictEqual(ctx.window.location.href, 'https://billing.stripe.com/p/session/test_123', "Redirection vers l URL du portail");
+    });
+
+    it('handleOpenStripePortal must unpack specific error message from error.context.json() when available', async () => {
+        let toastMsg = null;
+        let loadingHidden = false;
+
+        const { ctx } = loadBookingContext({
+            currentUser: { id: 'usr-pro-456' },
+            showToast: (msg, type) => {
+                if (type === 'error') toastMsg = msg;
+            },
+            supabaseClient: {
+                functions: {
+                    invoke: async () => {
+                        const err = new Error("Edge Function returned a non-2xx status code");
+                        err.context = {
+                            json: async () => ({ error: "Rate limit exceeded. Please try again later." })
+                        };
+                        return { data: null, error: err };
+                    }
+                }
+            }
+        });
+
+        ctx.window.showStripeLoading = () => {};
+        ctx.window.hideStripeLoading = () => { loadingHidden = true; };
+
+        await ctx.handleOpenStripePortal();
+
+        assert.strictEqual(loadingHidden, true, "hideStripeLoading doit être exécuté en cas d erreur");
+        assert.strictEqual(toastMsg, "Rate limit exceeded. Please try again later.", "Le message précis du backend doit être affiché");
+    });
+
+    it('handleSubscribePro must prevent duplicate subscriptions when user is already PRO', async () => {
+        let toastMsg = null;
+        let portalOpened = false;
+        let checkoutInvoked = false;
+
+        const { ctx } = loadBookingContext({
+            currentUser: { id: 'usr-already-pro' },
+            showToast: (msg) => { toastMsg = msg; },
+            supabaseClient: {
+                from: (table) => ({
+                    select: () => ({
+                        eq: () => ({
+                            maybeSingle: async () => ({ data: { is_pro: true } })
+                        })
+                    })
+                }),
+                functions: {
+                    invoke: async () => {
+                        checkoutInvoked = true;
+                        return { data: { url: 'https://stripe.com' }, error: null };
+                    }
+                }
+            }
+        });
+
+        ctx.handleOpenStripePortal = async () => { portalOpened = true; };
+
+        await ctx.handleSubscribePro('monthly');
+
+        assert.strictEqual(checkoutInvoked, false, "stripe-pro-checkout ne doit PAS être appelé si déjà PRO");
+        assert.strictEqual(portalOpened, true, "handleOpenStripePortal doit être déclenché pour redirection");
+        assert.ok(toastMsg.includes('déjà') || toastMsg.includes('actif'), "Un avertissement d abonnement actif doit être affiché");
+    });
+
+    it('handlePurchaseBoost must notify unauthenticated user with error toast', async () => {
+        let toastMsg = null;
+        let toastType = null;
+        let authModalOpened = false;
+
+        const { ctx } = loadBookingContext({
+            currentUser: null,
+            showToast: (msg, type) => {
+                toastMsg = msg;
+                toastType = type;
+            },
+            openAuthModal: () => { authModalOpened = true; }
+        });
+
+        await ctx.handlePurchaseBoost();
+
+        assert.strictEqual(toastType, 'error');
+        assert.ok(toastMsg.includes('connecté'));
+        assert.strictEqual(authModalOpened, true);
+    });
+});

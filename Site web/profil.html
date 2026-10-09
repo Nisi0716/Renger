@@ -129,6 +129,25 @@
                 </button>
             </div>
 
+            <!-- Carte Statut Abonnement PRO Actif & Gestion Portail Stripe -->
+            <div id="pro-active-card" class="mb-6 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 rounded-3xl p-6 text-white shadow-xl border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 hidden">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                        👑
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-emerald-500 text-white text-xs uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full shadow-sm">👑 Abonnement Renger PRO actif</span>
+                            <span class="text-xs text-stone-300 font-medium">0% de commission</span>
+                        </div>
+                        <p class="text-sm text-stone-300 mt-1">Vous conservez 100% de vos revenus de location. Gérez vos factures, moyen de paiement et résiliation en toute autonomie.</p>
+                    </div>
+                </div>
+                <button id="pro-portal-btn" onclick="handleOpenStripePortal()" class="flex-shrink-0 bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95 flex items-center gap-2 whitespace-nowrap text-sm">
+                    <span>⚙️ Gérer mon abonnement (Factures, Résiliation)</span>
+                </button>
+            </div>
+
             <!-- BANNIÈRE PROMINENTE RENGER ANALYTICS PRO -->
             <div class="mb-6 bg-gradient-to-r from-stone-900 via-stone-800 to-terracotta-950 border border-terracotta-500/30 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-5">
                 <div class="flex items-center gap-4">
@@ -701,6 +720,12 @@
                 </label>
 
                 
+
+                <!-- Mentions Légales & Conditions de Vente Boost -->
+                <div id="boost-legal-disclaimer" class="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3.5 text-xs text-amber-900 dark:text-amber-200 leading-relaxed flex items-start gap-2.5">
+                    <span class="text-base flex-shrink-0">⚖️</span>
+                    <p><strong>Conditions d'achat :</strong> Achat ferme et non remboursable dès activation immédiate. La mise en avant s'applique exclusivement à cette annonce pour la durée sélectionnée sans possibilité de report ou de transfert.</p>
+                </div>
 
                 <button onclick="handlePurchaseBoost()" id="purchase-boost-btn" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-xl mt-2 shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
 

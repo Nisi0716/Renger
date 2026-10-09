@@ -1053,32 +1053,24 @@ async function loadProfileData() {
         });
     }
 
-    // Affichage de la bannière PRO si l'utilisateur n'est pas PRO (on assume que la table profiles a un champ is_pro, ou que par défaut ils ne le sont pas)
-    const proBanner = document.getElementById('pro-banner-container');
-    const lostCommEl = document.getElementById('lost-commission-amount');
-    
-    // Pour simplifier l'accès, on vérifie dynamiquement si l'user est pro via une requête rapide
-    if (proBanner && lostCommEl && currentUser) {
-        supabaseClient.from('profiles').select('is_pro').eq('id', currentUser.id).maybeSingle().then(({ data }) => {
-            if (data && data.is_pro) {
-                proBanner.classList.add('hidden');
-            } else {
-                lostCommEl.textContent = totalLostCommission.toFixed(2) + ' CHF';
-                proBanner.classList.remove('hidden');
-            }
-        });
-    }
-
     const revenueElement = document.getElementById('seller-monthly-revenue');
     if (revenueElement) revenueElement.textContent = monthlyRevenue.toFixed(2) + ' CHF';
 
-        // --- STATS DASHBOARD PRO ---
-        const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
-        const sellerTrailers = myTrailers || [];
+    // --- STATS DASHBOARD PRO & GESTION PRO ---
+    const proBanner = document.getElementById('pro-banner-container');
+    const proActiveCard = document.getElementById('pro-active-card');
+    const lostCommEl = document.getElementById('lost-commission-amount');
 
-        if (profile?.is_pro) {
+    if (currentUser) {
+        const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+        const isPro = !!profile?.is_pro;
+
+        if (isPro) {
+            if (proBanner) proBanner.classList.add('hidden');
+            if (proActiveCard) proActiveCard.classList.remove('hidden');
             document.getElementById('pro-stats-blur')?.classList.add('hidden');
             
+            const sellerTrailers = myTrailers || [];
             if (sellerTrailers.length > 0) {
                 // Fetch Impressions
                 const { count: impCount } = await supabaseClient.from('impressions')
@@ -1130,6 +1122,7 @@ async function loadProfileData() {
             const statOcc = document.getElementById('stat-occupancy');
             if (statOcc) statOcc.textContent = "-%";
         }
+    }
 
 
     // 2.2 État de ma flotte
