@@ -1,5 +1,16 @@
 # Sentinel-Backend Journal
 
+## 2026-03-31 - Overly Permissive Row-Level Security on Analytics Events Table
+
+**Vulnerability:**
+The `analytics_events` table was protected by `CREATE POLICY "Allow authenticated to read analytics" ON analytics_events FOR SELECT TO authenticated USING (true);`. This permitted any authenticated user to query and extract all analytics records across the platform, exposing sensitive tracking information such as user IDs, session IDs, and browsing history (`page_url`, `event_name`).
+
+**Learning:**
+Initial boilerplate SQL used `USING (true)` for reading analytics under the assumption that all authenticated users or admins could read global events, without enforcing individual ownership or role restrictions.
+
+**Prevention:**
+Always restrict RLS `SELECT` policies on analytics or tracking tables storing user/session identifiers to `auth.uid() = user_id`. Global read access on sensitive telemetry data should never be granted to `authenticated` users via `USING (true)`.
+
 ## 2026-03-30 - Overly Permissive Row-Level Security on Inspections Table
 
 **Vulnerability:**

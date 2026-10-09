@@ -54,7 +54,8 @@ CREATE POLICY "Allow owners to read clicks" ON clicks FOR SELECT USING (
 );
 
 -- Seul l'admin (ou authentifiÃ©) peut lire les analytics_events (Ã  ajuster selon vos rÃ´les)
-CREATE POLICY "Allow authenticated to read analytics" ON analytics_events FOR SELECT TO authenticated USING (true);
+-- Seul l'utilisateur peut lire ses propres analytics_events
+CREATE POLICY "Allow users to read own analytics" ON analytics_events FOR SELECT TO authenticated USING (auth.uid() = user_id);
 
 -- ==========================================
 -- FIN DU SCRIPT
