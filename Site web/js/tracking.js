@@ -3,6 +3,7 @@
 // ==========================================
 
 const COOKIE_CONSENT_KEY = 'renger_cookie_consent';
+const COOKIE_SESSION_REFUSED_KEY = 'renger_cookie_session_refused';
 
 function initCookieBanner() {
     const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
@@ -19,16 +20,48 @@ function renderCookieBanner() {
 
     const banner = document.createElement('div');
     banner.id = 'cookie-banner';
-    banner.className = 'fixed bottom-0 left-0 w-full bg-stone-900 text-stone-300 p-4 md:p-6 shadow-2xl z-[100] flex flex-col md:flex-row items-center justify-between gap-4 border-t border-stone-800';
+    banner.className = 'fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-md bg-stone-900/95 text-stone-200 p-5 md:p-6 shadow-2xl z-[100] rounded-3xl border border-stone-700/80 backdrop-blur-md flex flex-col gap-4';
     
     banner.innerHTML = `
-        <div class="text-sm">
-            <h4 class="text-white font-bold mb-1">Confidentialité & Cookies (nLPD/RGPD)</h4>
-            <p>Nous utilisons des cookies analytiques internes sécurisés pour mesurer l'audience et améliorer la plateforme. Aucune donnée n'est vendue à des tiers.</p>
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-terracotta-500/10 border border-terracotta-500/30 flex items-center justify-center text-xl flex-shrink-0">
+                🇨🇭
+            </div>
+            <div>
+                <h4 class="text-white font-extrabold text-base tracking-tight flex items-center gap-1.5">
+                    Confidentialité & Expérience
+                </h4>
+                <p class="text-xs text-stone-300 mt-1 leading-relaxed">
+                    Pour vous proposer les remorques les plus proches et optimiser votre expérience, nous utilisons des cookies analytiques internes 100% sécurisés.
+                </p>
+            </div>
         </div>
-        <div class="flex items-center gap-3 flex-shrink-0 w-full md:w-auto">
-            <button id="btn-refuse-cookies" class="flex-1 md:flex-none px-4 py-2 text-stone-400 hover:text-white font-medium transition">Refuser</button>
-            <button id="btn-accept-cookies" class="flex-1 md:flex-none px-6 py-2 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold rounded-xl transition">Accepter</button>
+
+        <!-- Engagements suisses réassurance -->
+        <div class="bg-stone-800/60 rounded-2xl p-3 border border-stone-700/50 space-y-1.5 text-[11px] text-stone-300">
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span>Calcul des remorques disponibles à proximité</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span>Hébergement sécurisé en Suisse (nLPD)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span>Zéro revente de données & Zéro publicité</span>
+            </div>
+        </div>
+
+        <!-- Boutons d'action : Hiérarchie persuasive légale -->
+        <div class="flex flex-col items-center gap-2 pt-1 w-full">
+            <button id="btn-accept-cookies" class="w-full py-3.5 px-6 bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-extrabold rounded-2xl shadow-lg shadow-terracotta-500/25 transition-all text-sm flex items-center justify-center gap-2">
+                <span>🛡️</span>
+                <span>Accepter & Continuer</span>
+            </button>
+            <button id="btn-refuse-cookies" class="text-xs text-stone-400 hover:text-stone-200 transition-colors py-1.5 underline underline-offset-4 decoration-stone-600 hover:decoration-stone-300">
+                Continuer sans accepter
+            </button>
         </div>
     `;
 
@@ -42,6 +75,9 @@ function renderCookieBanner() {
 
     document.getElementById('btn-refuse-cookies').addEventListener('click', () => {
         localStorage.setItem(COOKIE_CONSENT_KEY, 'refused');
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem(COOKIE_SESSION_REFUSED_KEY, 'true');
+        }
         banner.remove();
     });
 }
