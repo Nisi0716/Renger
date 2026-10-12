@@ -41,3 +41,43 @@ html.dark .leaflet-popup-content-wrapper p {
 .flatpickr-calendar {
     z-index: 1000 !important;
 }
+
+/* ==========================================
+   INFOBULLES PÉDAGOGIQUES RENGER ("i")
+   ========================================== */
+.renger-info-tooltip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    user-select: none;
+    touch-action: manipulation;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+.renger-info-tooltip:hover,
+.renger-info-tooltip:focus {
+    transform: scale(1.1);
+}
+
+.renger-tooltip-bubble {
+    position: fixed;
+    z-index: 10000;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: 280px;
+    line-height: 1.45;
+    word-break: normal;
+}
+.renger-tooltip-bubble.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.renger-tooltip-arrow {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
+}

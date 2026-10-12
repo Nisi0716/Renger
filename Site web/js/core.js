@@ -125,12 +125,12 @@ const translations = {
         btn_buyer: "Je cherche une remorque", btn_seller: "Je loue ma remorque", back: "← Retour",
         cat_utility: "Utilitaire", cat_horse: "Chevaux", cat_car: "Voiture", recommended: "Recommandées autour de Lausanne",
         trailer_title: "Remorque fermée 750kg", per_day: "/ j", see_details: "Voir les détails",
-        socket: "Prise", payload: "Charge Utile", pay_btn: "💳 Payer 70 CHF (Stripe)", photo_btn: "📸 Lancer l'état des lieux",
+        socket: "Prise", payload: "Charge Utile", pay_btn: "Payer 70 CHF (Stripe)", photo_btn: "Lancer l'état des lieux",
         publish_title: "Louer ma remorque", publish_subtitle: "Gagnez de l'argent en toute sécurité avec votre équipement.",
         import_title: "Vous avez déjà une annonce ?", import_desc: "Collez le lien de votre annonce Anibis, Tutti ou Leboncoin. Nous créerons votre profil Renger à votre place !",
         or_manual: "OU CRÉER MANUELLEMENT", form_title: "Titre de l'annonce", price_label: "Prix / Jour (CHF)", payload_input: "Charge Utile (kg)",
         socket_label: "Type de prise électrique", equip_label: "Équipements inclus (Gratuit)",
-        upsell_title: "Boostez vos revenus 🚀", upsell_desc: "Proposez des options payantes additionnelles à vos locataires.",
+        upsell_title: "Boostez vos revenus", upsell_desc: "Proposez des options payantes additionnelles à vos locataires.",
         form_submit: "Publier et lier mon compte bancaire", auth_title: "Rejoindre Renger", auth_btn: "Continuer", cancel: "Annuler",
         footer_cgu: "Conditions Générales d'Utilisation (CGU)", theme_btn: "Mode sombre/clair",
         detail_desc: "Cette remorque est idéale pour vos transports. Un état des lieux photographique sera exigé au départ et au retour."
@@ -140,12 +140,12 @@ const translations = {
         btn_buyer: "I'm looking for a trailer", btn_seller: "I rent out my trailer", back: "← Back",
         cat_utility: "Utility", cat_horse: "Horses", cat_car: "Car", recommended: "Recommended around Lausanne",
         trailer_title: "Closed trailer 750kg", per_day: "/ day", see_details: "See details",
-        socket: "Socket", payload: "Payload", pay_btn: "💳 Pay 70 CHF (Stripe)", photo_btn: "📸 Start inspection",
+        socket: "Socket", payload: "Payload", pay_btn: "Pay 70 CHF (Stripe)", photo_btn: "Start inspection",
         publish_title: "Rent out my trailer", publish_subtitle: "Earn money safely with your equipment.",
         import_title: "Already have a listing?", import_desc: "Paste your Anibis or Leboncoin link. We'll create your profile for you!",
         or_manual: "OR CREATE MANUALLY", form_title: "Listing Title", price_label: "Price / Day (CHF)", payload_input: "Payload (kg)",
         socket_label: "Socket type", equip_label: "Included equipment (Free)",
-        upsell_title: "Boost your income 🚀", upsell_desc: "Offer additional paid options to your renters.",
+        upsell_title: "Boost your income", upsell_desc: "Offer additional paid options to your renters.",
         form_submit: "Publish & link bank account", auth_title: "Join Renger", auth_btn: "Continue", cancel: "Cancel",
         footer_cgu: "Terms and Conditions (T&C)", theme_btn: "Dark/Light mode",
         detail_desc: "This trailer is ideal for your transport needs. A photographic condition report will be required upon departure and return."
@@ -155,12 +155,12 @@ const translations = {
         btn_buyer: "Ich suche einen Anhänger", btn_seller: "Ich vermiete meinen Anhänger", back: "← Zurück",
         cat_utility: "Nutzfahrzeug", cat_horse: "Pferde", cat_car: "Auto", recommended: "Empfohlen rund um Lausanne",
         trailer_title: "Geschlossener Anhänger 750kg", per_day: "/ Tag", see_details: "Details ansehen",
-        socket: "Stecker", payload: "Nutzlast", pay_btn: "💳 70 CHF bezahlen (Stripe)", photo_btn: "📸 Zustandsprotokoll starten",
+        socket: "Stecker", payload: "Nutzlast", pay_btn: "70 CHF bezahlen (Stripe)", photo_btn: "Zustandsprotokoll starten",
         publish_title: "Meinen Anhänger vermieten", publish_subtitle: "Verdienen Sie sicher Geld mit Ihrer Ausrüstung.",
         import_title: "Haben Sie bereits eine Anzeige?", import_desc: "Fügen Sie Ihren Anibis- oder Tutti-Link ein. Wir erstellen Ihr Profil für Sie!",
         or_manual: "ODER MANUELL ERSTELLEN", form_title: "Anzeigentitel", price_label: "Preis / Tag (CHF)", payload_input: "Nutzlast (kg)",
         socket_label: "Steckertyp", equip_label: "Inklusive Ausrüstung (Kostenlos)",
-        upsell_title: "Steigern Sie Ihr Einkommen 🚀", upsell_desc: "Bieten Sie Ihren Mietern zusätzliche kostenpflichtige Optionen an.",
+        upsell_title: "Steigern Sie Ihr Einkommen", upsell_desc: "Bieten Sie Ihren Mietern zusätzliche kostenpflichtige Optionen an.",
         form_submit: "Veröffentlichen & Bankkonto verknüpfen", auth_title: "Renger beitreten", auth_btn: "Weiter", cancel: "Abbrechen",
         footer_cgu: "Allgemeine Geschäftsbedingungen (AGB)", theme_btn: "Dunkel-/Hellmodus",
         detail_desc: "Dieser Anhänger ist ideal für Ihre Transporte. Ein fotografisches Zustandsprotokoll wird bei Abfahrt und Rückkehr verlangt."
@@ -200,13 +200,13 @@ function showToast(message, type = 'success') {
     
     if (type === 'success') {
         toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-green-500 pointer-events-none";
-        icon.innerText = "🎉";
+        icon.innerHTML = '<svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
     } else if (type === 'error') {
         toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-red-500 pointer-events-none";
-        icon.innerText = "⚠️";
+        icon.innerHTML = '<svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>';
     } else {
         toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 translate-y-0 opacity-100 transition-all duration-500 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white bg-stone-800 dark:bg-stone-700 pointer-events-none border border-stone-700 dark:border-stone-600";
-        icon.innerText = "ℹ️";
+        icon.innerHTML = '<svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
     }
 
     toastTimer = setTimeout(() => {
@@ -411,7 +411,7 @@ function validateSignupEmailLive(value) {
         const parts = email.split('@');
         if (parts[1]) {
             if (isAllowedEmailDomain(email)) {
-                feedback.textContent = "✓ Domaine d'e-mail accepté";
+                feedback.innerHTML = '<span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Domaine d\'e-mail accepté</span></span>';
                 feedback.className = "text-[11px] mt-1 text-green-600 dark:text-green-400 font-medium";
             } else {
                 feedback.textContent = "Fournisseur non autorisé. Utilisez Gmail, Outlook, iCloud, Yahoo, Bluewin ou Proton.";
@@ -431,14 +431,14 @@ function updatePasswordRuleUI(elId, isMet) {
     if (isMet) {
         el.className = "flex items-center gap-1.5 text-green-600 dark:text-green-400 font-medium transition-colors";
         if (badge) {
-            badge.textContent = "✓";
-            badge.className = "w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-950 text-green-600 dark:text-green-400 text-[10px] font-bold";
+            badge.innerHTML = '<svg class="w-2.5 h-2.5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+            badge.className = "w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-950 text-green-600 dark:text-green-400";
         }
     } else {
         el.className = "flex items-center gap-1.5 text-stone-400 transition-colors";
         if (badge) {
-            badge.textContent = "○";
-            badge.className = "w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500 text-[9px] font-bold";
+            badge.innerHTML = '<svg class="w-1.5 h-1.5 text-stone-400" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>';
+            badge.className = "w-3.5 h-3.5 inline-flex items-center justify-center rounded-full bg-stone-200 dark:bg-stone-700 text-stone-500";
         }
     }
 }
@@ -465,7 +465,7 @@ function validateSignupPasswordMatchLive() {
     }
     feedback.classList.remove('hidden');
     if (p1 === p2) {
-        feedback.textContent = "✓ Les mots de passe correspondent";
+        feedback.innerHTML = '<span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Les mots de passe correspondent</span></span>';
         feedback.className = "text-[11px] mt-1 text-green-600 dark:text-green-400 font-medium";
     } else {
         feedback.textContent = "Les mots de passe ne correspondent pas";
@@ -693,19 +693,19 @@ window.handleLogout = handleLogout;
 window.checkUser = checkUser;
 window.openSettings = openSettings;
 
-// Mapping catégories → emoji+label pour les badges
+// Mapping catégories → label pour les badges
 const CATEGORY_MAP = {
-    utilitaire:   { emoji: '📦', label: 'Utilitaire' },
-    cheval:       { emoji: '🐴', label: 'Cheval' },
-    voiture:      { emoji: '🚗', label: 'Voiture' },
-    moto:         { emoji: '🏍️', label: 'Moto' },
-    refrigere:    { emoji: '❄️', label: 'Réfrigéré' },
-    'porte-velo': { emoji: '🚲', label: 'Porte-vélo' },
-    bagage:       { emoji: '🧳', label: 'Bagage de toit' },
+    utilitaire:   { emoji: '', label: 'Utilitaire' },
+    cheval:       { emoji: '', label: 'Cheval' },
+    voiture:      { emoji: '', label: 'Voiture' },
+    moto:         { emoji: '', label: 'Moto' },
+    refrigere:    { emoji: '', label: 'Réfrigéré' },
+    'porte-velo': { emoji: '', label: 'Porte-vélo' },
+    bagage:       { emoji: '', label: 'Bagage de toit' },
 };
 const FILTER_LABELS = {
     all: 'Recommandées autour de Lausanne',
-    ...Object.fromEntries(Object.entries(CATEGORY_MAP).map(([k, v]) => [k, `${v.emoji} ${v.label}s`]))
+    ...Object.fromEntries(Object.entries(CATEGORY_MAP).map(([k, v]) => [k, `${v.label}s`]))
 };
 
 // Affiche des cartes skeleton pendant le chargement
@@ -940,8 +940,8 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         emptyContainer.className = 'col-span-full flex flex-col items-center justify-center py-16 px-4 text-center';
         
         const emptyIcon = document.createElement('div');
-        emptyIcon.className = 'w-16 h-16 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-400 text-3xl flex items-center justify-center mb-4';
-        emptyIcon.textContent = '🔍';
+        emptyIcon.className = 'w-16 h-16 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-400 flex items-center justify-center mb-4';
+        emptyIcon.innerHTML = '<svg class="w-8 h-8 text-stone-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>';
         
         const emptyTitle = document.createElement('h3');
         emptyTitle.className = 'text-lg font-bold text-stone-800 dark:text-stone-100 mb-1';
@@ -990,15 +990,15 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
             <div class="h-48 bg-stone-200 dark:bg-stone-700 relative">
                 <img class="trailer-card-img w-full h-full object-cover" alt="">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
-                ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg">${cat.emoji} <span class="safe-cat"></span></div>` : ''}
-                ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2 py-1 rounded-lg text-xs font-bold text-white shadow">🚀 Sponsorisé</div>` : ''}
+                ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg"><span class="safe-cat"></span></div>` : ''}
+                ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow flex items-center gap-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Sponsorisé</span></div>` : ''}
             </div>
             <div class="p-5">
                 <div class="flex justify-between items-start gap-2 mb-1">
                     <h4 class="safe-title font-bold text-lg dark:text-white flex-1 truncate"></h4>
                     <div class="trailer-rating-badge flex-shrink-0"></div>
                 </div>
-                <p class="text-sm text-stone-500 dark:text-stone-400 mb-4">📍 Vaud</p>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mb-4 flex items-center gap-1"><svg class="w-3.5 h-3.5 text-stone-400 inline-block shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Vaud</span></p>
                 <button class="w-full bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 font-semibold py-2.5 rounded-xl">Voir les détails</button>
             </div>
         `;
@@ -1236,7 +1236,7 @@ async function setupStripePayouts() {
 let isDeletingAccount = false;
 async function deleteAccount() {
     if (!currentUser || isDeletingAccount) return;
-    const confirmDelete = confirm("⚠️ ATTENTION : Voulez-vous vraiment supprimer définitivement votre compte et toutes vos annonces ? Cette action est irréversible.");
+    const confirmDelete = confirm("ATTENTION : Voulez-vous vraiment supprimer définitivement votre compte et toutes vos annonces ? Cette action est irréversible.");
     if (!confirmDelete) return;
 
     isDeletingAccount = true;
@@ -1268,7 +1268,7 @@ async function checkStripeConnectStatus() {
     window.history.replaceState({}, document.title, newUrl.pathname + (newUrl.search ? newUrl.search : ''));
 
     if (stripeStatus === 'success') {
-        showToast("🎉 Vos coordonnées bancaires ont été enregistrées avec succès !", "success");
+        showToast("Vos coordonnées bancaires ont été enregistrées avec succès !", "success");
         if (currentUser) {
             openSettings();
             if (typeof loadProfileSettings === 'function') loadProfileSettings();
@@ -1419,14 +1419,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const urlParams = new URLSearchParams(window.location.search);
 
     if (urlParams.get('pro_success') === 'true') {
-        showToast("👑 Abonnement Renger PRO activé avec succès !", "success");
+        showToast("Abonnement Renger PRO activé avec succès !", "success");
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete('pro_success');
         window.history.replaceState({}, document.title, newUrl.pathname + (newUrl.search ? newUrl.search : ''));
     }
     
     if (urlParams.get('boost_success') === 'true') {
-        showToast("🚀 Remorque boostée avec succès !", "success");
+        showToast("Remorque boostée avec succès !", "success");
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete('boost_success');
         window.history.replaceState({}, document.title, newUrl.pathname + (newUrl.search ? newUrl.search : ''));

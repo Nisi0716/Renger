@@ -1052,7 +1052,7 @@
                     <img src="${escapeHtml(photoUrl)}" alt="Remorque" class="w-10 h-10 rounded-xl object-cover border border-stone-200 dark:border-stone-700 flex-shrink-0" onerror="this.src='Logo_Renger.jpg'">
                     <div class="min-w-0">
                         <div class="font-bold text-xs truncate max-w-[180px] sm:max-w-xs text-stone-900 dark:text-white" title="${escapeHtml(t.title || '')}">${escapeHtml(t.title || 'Remorque #' + t.id)}</div>
-                        <div class="text-[11px] text-stone-400 truncate">📍 ${escapeHtml(t.location_city || 'Suisse')}</div>
+                        <div class="text-[11px] text-stone-400 truncate flex items-center gap-1"><svg class="w-3 h-3 shrink-0 text-stone-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>${escapeHtml(t.location_city || 'Suisse')}</span></div>
                     </div>
                 </td>
                 <td class="py-3.5 px-4 font-semibold text-stone-700 dark:text-stone-300 whitespace-nowrap">

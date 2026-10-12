@@ -236,7 +236,7 @@ async function renderChatMessages(messages) {
 
             const badge = document.createElement('div');
             badge.className = 'absolute top-2 left-2 bg-black/75 backdrop-blur text-[10px] font-bold text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1 shadow-sm';
-            badge.innerHTML = '<span>🛡️</span><span>Preuve Certifiée</span>';
+            badge.innerHTML = '<svg class="w-3 h-3 text-emerald-400 inline-block shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg><span>Preuve Certifiée</span>';
 
             imgContainer.appendChild(img);
             imgContainer.appendChild(badge);
@@ -331,28 +331,28 @@ function updateChatInspectionBar(messages) {
 
         if (inspectionBtn) {
             inspectionBtn.innerHTML = departureCount === 4
-                ? '<span>✅ Départ validé (4/4)</span>'
-                : `<span>📸 État des lieux départ (${departureCount}/4)</span>`;
+                ? '<svg class="w-3.5 h-3.5 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Départ validé (4/4)</span>'
+                : `<svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>État des lieux départ (${departureCount}/4)</span>`;
         }
 
         if (departureCount >= 4) {
             if (unlockBtn) {
                 unlockBtn.disabled = false;
                 unlockBtn.className = 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition shadow-md';
-                unlockBtn.innerHTML = '<span>🔓 Déverrouiller mes fonds</span>';
+                unlockBtn.innerHTML = '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg><span>Déverrouiller mes fonds</span>';
             }
             if (unlockHint) {
-                unlockHint.textContent = '✅ État des lieux complet certifié. Vous pouvez déverrouiller vos fonds (80% net).';
+                unlockHint.textContent = 'État des lieux complet certifié. Vous pouvez déverrouiller vos fonds (80% net).';
                 unlockHint.className = 'text-[11px] text-emerald-600 dark:text-emerald-400 font-medium';
             }
         } else {
             if (unlockBtn) {
                 unlockBtn.disabled = true;
                 unlockBtn.className = 'bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-500 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed transition shadow-sm';
-                unlockBtn.innerHTML = '<span>🔒 Déverrouiller mes fonds</span>';
+                unlockBtn.innerHTML = '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span>Déverrouiller mes fonds</span>';
             }
             if (unlockHint) {
-                unlockHint.textContent = `⚠️ 4 photos de départ requises pour déverrouiller vos fonds Stripe (${departureCount}/4 effectuées).`;
+                unlockHint.textContent = `4 photos de départ requises pour déverrouiller vos fonds Stripe (${departureCount}/4 effectuées).`;
                 unlockHint.className = 'text-[11px] text-amber-600 dark:text-amber-400 italic';
             }
         }
@@ -372,17 +372,17 @@ function updateChatInspectionBar(messages) {
         const inspectionBtn = document.getElementById('chat-renter-inspection-btn');
         if (inspectionBtn) {
             inspectionBtn.innerHTML = returnCount === 4
-                ? '<span>✅ Retour validé (4/4)</span>'
-                : `<span>📸 État des lieux retour (${returnCount}/4)</span>`;
+                ? '<svg class="w-3.5 h-3.5 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Retour validé (4/4)</span>'
+                : `<svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>État des lieux retour (${returnCount}/4)</span>`;
         }
 
         const closeHint = document.getElementById('chat-renter-close-hint');
         if (closeHint) {
             if (returnCount >= 4) {
-                closeHint.textContent = '✅ 4 photos enregistrées. Vous pouvez clôturer sereinement la location.';
+                closeHint.textContent = '4 photos enregistrées. Vous pouvez clôturer sereinement la location.';
                 closeHint.className = 'text-[11px] text-emerald-600 dark:text-emerald-400 font-medium';
             } else {
-                closeHint.textContent = `⚠️ Attention : sans photos de retour (${returnCount}/4), 50 CHF de pénalité sont facturés à la clôture.`;
+                closeHint.textContent = `Attention : sans photos de retour (${returnCount}/4), 50 CHF de pénalité sont facturés à la clôture.`;
                 closeHint.className = 'text-[11px] text-amber-600 dark:text-amber-400';
             }
         }
@@ -404,10 +404,10 @@ function updateChatInspectionBar(messages) {
         newDocsRow.className = 'flex flex-wrap items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-700';
         newDocsRow.innerHTML = `
             <button type="button" id="chat-download-contract-btn" onclick="handleChatDownloadContract()" class="flex-1 min-w-[130px] text-xs font-bold bg-white hover:bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95 shadow-xs">
-                <span>📄</span><span>Contrat (PDF)</span>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>Contrat (PDF)</span>
             </button>
             <button type="button" id="chat-download-report-btn" onclick="handleChatDownloadReport()" class="flex-1 min-w-[130px] text-xs font-bold bg-white hover:bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95 shadow-xs">
-                <span>📑</span><span>État des lieux (PDF)</span>
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg><span>État des lieux (PDF)</span><span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip-key="etat-lieux-certifie" data-tooltip="État des lieux photo certifié (CO art. 257a) : 4 photos obligatoires avec horodatage suisse et coordonnées GPS infalsifiables protégeant locataire et propriétaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
             </button>
         `;
         inspectionBar.appendChild(newDocsRow);
@@ -423,7 +423,7 @@ function handleChatDownloadContract() {
     }
     if (typeof window !== 'undefined' && window.RengerContracts && typeof window.RengerContracts.downloadRentalContract === 'function') {
         window.RengerContracts.downloadRentalContract(currentBookingContext);
-        showToast("📄 Téléchargement du contrat de location en cours...", "success");
+        showToast("Téléchargement du contrat de location en cours...", "success");
     } else {
         showToast("Module de contrats indisponible.", "error");
     }
@@ -440,7 +440,7 @@ function handleChatDownloadReport() {
         const returnCount = getReturnPhotosCount();
         const mode = (returnCount >= 4) ? 'return' : 'departure';
         window.RengerContracts.downloadInspectionReport(currentBookingContext, mode);
-        showToast("📑 Téléchargement du rapport d'état des lieux en cours...", "success");
+        showToast("Téléchargement du rapport d'état des lieux en cours...", "success");
     } else {
         showToast("Module d'état des lieux indisponible.", "error");
     }
@@ -521,10 +521,10 @@ function startRenterInspection() {
 async function handleUnlockStripeFunds() {
     const departureCount = getDeparturePhotosCount();
     if (departureCount < 4) {
-        return showToast("⚠️ Vous devez réaliser l'état des lieux de départ complet (4 photos) pour déverrouiller vos fonds.", "error");
+        return showToast("Vous devez réaliser l'état des lieux de départ complet (4 photos) pour déverrouiller vos fonds.", "error");
     }
 
-    showToast("🎉 Vérification validée ! Vos fonds Stripe (80% net) sont déverrouillés.", "success");
+    showToast("Vérification validée ! Vos fonds Stripe (80% net) sont déverrouillés.", "success");
 
     if (supabaseClient && currentUser && currentTrailer) {
         const receiverId = activeChatPartnerId || (currentUser.id === currentTrailer.owner_id ? null : currentTrailer.owner_id);
@@ -532,7 +532,7 @@ async function handleUnlockStripeFunds() {
             sender_id: currentUser.id,
             receiver_id: receiverId,
             trailer_id: currentTrailer.id,
-            content: "🔓 [Fonds Déverrouillés] Le propriétaire a certifié l'état des lieux de départ (4/4 photos). Les fonds Stripe sont débloqués."
+            content: "[Fonds Déverrouillés] Le propriétaire a certifié l'état des lieux de départ (4/4 photos). Les fonds Stripe sont débloqués."
         }]);
         await loadChatMessages();
     }
@@ -571,7 +571,7 @@ function startInspectionFromWarning() {
 }
 
 async function confirmCloseWithoutInspection() {
-    const confirmed = confirm("⚠️ DERNIÈRE CONFIRMATION :\n\nEn clôturant sans photos de retour, vous acceptez la facturation de 50 CHF de pénalité et êtes présumé responsable de tout dommage déclaré.\n\nVoulez-vous vraiment continuer ?");
+    const confirmed = confirm("DERNIÈRE CONFIRMATION :\n\nEn clôturant sans photos de retour, vous acceptez la facturation de 50 CHF de pénalité et êtes présumé responsable de tout dommage déclaré.\n\nVoulez-vous vraiment continuer ?");
     if (!confirmed) return;
 
     closeInspectionWarningModal();
@@ -583,7 +583,7 @@ async function confirmCloseWithoutInspection() {
             sender_id: currentUser.id,
             receiver_id: receiverId,
             trailer_id: currentTrailer.id,
-            content: "⚠️ [Clôture sans photos] Le locataire a clôturé la location sans état des lieux de retour. Pénalité de 50 CHF appliquée."
+            content: "[Clôture sans photos] Le locataire a clôturé la location sans état des lieux de retour. Pénalité de 50 CHF appliquée."
         }]);
     }
 
@@ -595,7 +595,7 @@ function finishRentalSuccessfully(hadPenalty = false) {
     if (hadPenalty) {
         showToast("Location clôturée (pénalité 50 CHF enregistrée). Merci de laisser un avis !", "info");
     } else {
-        showToast("🎉 Location clôturée avec succès ! Merci de prendre soin de la communauté.", "success");
+        showToast("Location clôturée avec succès ! Merci de prendre soin de la communauté.", "success");
     }
 
     if (currentBookingContext && currentTrailer) {
@@ -618,12 +618,12 @@ async function sendChatMessage() {
 
     const sanitized = sanitizeMessage(rawText);
     if (sanitized !== rawText) {
-        showToast('⚠️ Coordonnées masquées : pour votre sécurité, restez sur Renger.', 'info');
+        showToast('Coordonnées masquées : pour votre sécurité, restez sur Renger.', 'info');
     }
 
     const directPayRegex = /(?:twint\s*(?:direct|en\s*direct|hors\s*site)|paiement\s*(?:en\s*espèces|en\s*liquide|cash|de\s*la\s*main\s*à\s*la\s*main)|payer\s*(?:en\s*espèces|en\s*liquide|cash))/i;
     if (directPayRegex.test(rawText)) {
-        showToast('⚠️ Sollicitation hors-plateforme détectée : les paiements en cash ou TWINT direct ne sont pas couverts.', 'warning');
+        showToast('Sollicitation hors-plateforme détectée : les paiements en cash ou TWINT direct ne sont pas couverts.', 'warning');
     }
 
     const sendBtn = document.getElementById('chat-send-btn');

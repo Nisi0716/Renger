@@ -79,7 +79,7 @@
     </header>
 <div class="min-h-screen pt-24 pb-12 flex flex-col items-center justify-center text-center px-4">
     <h1 class="text-4xl md:text-5xl font-extrabold text-stone-800 dark:text-stone-100 mb-6">
-        Passez à la vitesse supérieure avec <span class="text-terracotta-500">Renger PRO</span>
+        Passez à la vitesse supérieure avec <span class="text-terracotta-500 inline-flex items-center gap-1.5">Renger PRO <button type="button" class="renger-info-tooltip inline-flex items-center justify-center w-5 h-5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-terracotta-500 border border-stone-200 dark:border-stone-700 transition align-middle" data-tooltip-key="renger-pro" data-tooltip="Abonnement Renger PRO : conservez 100% de vos revenus locatifs (0% de commission plateforme), remorques illimitées et accès au cockpit Renger Analytics PRO." aria-label="Information Renger PRO"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></button></span>
     </h1>
     <p class="text-xl text-stone-600 dark:text-stone-300 max-w-2xl mb-8">
         L'abonnement pensé pour les professionnels et les loueurs fréquents. Maximisez votre rentabilité avec 0% de commission sur vos locations.
@@ -88,14 +88,17 @@
     <!-- BANNIÈRE UTILISATEUR DÉJÀ PRO -->
     <div id="pro-already-subscribed-banner" class="max-w-4xl w-full mx-auto mb-8 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 rounded-3xl p-6 text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-4 hidden">
         <div class="flex items-center gap-3 text-left">
-            <span class="text-3xl flex-shrink-0">👑</span>
+            <div class="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10l3-4 6 5 6-5 3 4-2 7H5l-2-7z"/></svg>
+            </div>
             <div>
                 <h4 class="font-bold text-base text-emerald-900 dark:text-emerald-100">Vous êtes déjà abonné à Renger PRO</h4>
                 <p class="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">Votre compte bénéficie du taux de commission à 0% et de la visibilité prioritaire. Vous pouvez gérer vos factures ou résilier votre abonnement en toute autonomie.</p>
             </div>
         </div>
         <button onclick="handleOpenStripePortal()" class="flex-shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl text-xs transition active:scale-95 whitespace-nowrap shadow-sm flex items-center gap-2">
-            <span>⚙️ Gérer mon abonnement</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span>Gérer mon abonnement</span>
         </button>
     </div>
     
@@ -110,19 +113,19 @@
             
             <ul class="text-left space-y-4 mb-8">
                 <li class="flex items-start gap-3">
-                    <span class="text-green-500 font-bold">✓</span>
+                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     <span><b>0% de commission</b> sur toutes vos locations (au lieu de 20%)</span>
                 </li>
                 <li class="flex items-start gap-3">
-                    <span class="text-green-500 font-bold">✓</span>
+                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     <span>Mise en avant prioritaire de vos annonces</span>
                 </li>
                 <li class="flex items-start gap-3">
-                    <span class="text-green-500 font-bold">✓</span>
+                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     <span>Badge "Loueur PRO" de confiance</span>
                 </li>
                 <li class="flex items-start gap-3">
-                    <span class="text-green-500 font-bold">✓</span>
+                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     <span>Support client prioritaire 7j/7</span>
                 </li>
             </ul>
@@ -146,15 +149,15 @@
             
             <ul class="text-left space-y-4 mb-8">
                 <li class="flex items-start gap-3">
-                    <span class="text-green-500 font-bold">✓</span>
+                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     <span><b>Tous les avantages du PRO mensuel</b></span>
                 </li>
                 <li class="flex items-start gap-3">
-                    <span class="text-green-500 font-bold">✓</span>
+                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     <span><b>Économisez 78 CHF</b> par an</span>
                 </li>
                 <li class="flex items-start gap-3">
-                    <span class="text-green-500 font-bold">✓</span>
+                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     <span>Paiement unique pour la tranquillité</span>
                 </li>
             </ul>
@@ -206,12 +209,12 @@
                     <tr>
                         <td class="py-3.5 px-4 font-bold text-stone-900 dark:text-white">Badge "Loueur PRO" vérifié</td>
                         <td class="py-3.5 px-4 text-center text-stone-400">—</td>
-                        <td class="py-3.5 px-4 text-center text-emerald-500 font-bold">✓ Inclus</td>
+                        <td class="py-3.5 px-4 text-center text-emerald-600 dark:text-emerald-400 font-bold"><span class="inline-flex items-center justify-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Inclus</span></span></td>
                     </tr>
                     <tr>
                         <td class="py-3.5 px-4 font-bold text-stone-900 dark:text-white">Cockpit Renger Analytics PRO</td>
                         <td class="py-3.5 px-4 text-center text-stone-400">—</td>
-                        <td class="py-3.5 px-4 text-center text-emerald-500 font-bold">✓ Accès complet temps réel</td>
+                        <td class="py-3.5 px-4 text-center text-emerald-600 dark:text-emerald-400 font-bold"><span class="inline-flex items-center justify-center gap-1.5"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Accès complet temps réel</span></span></td>
                     </tr>
                     <tr>
                         <td class="py-3.5 px-4 font-bold text-stone-900 dark:text-white">Support client</td>
@@ -224,8 +227,8 @@
 
         <!-- Seuil d'amortissement / Rentabilité -->
         <div class="mt-8 p-5 bg-terracotta-50 dark:bg-terracotta-950/30 border border-terracotta-200 dark:border-terracotta-900/60 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
-            <div class="w-12 h-12 rounded-2xl bg-terracotta-500 text-white text-2xl flex items-center justify-center flex-shrink-0 shadow-md">
-                💡
+            <div class="w-12 h-12 rounded-2xl bg-terracotta-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
             </div>
             <div class="flex-1 text-center sm:text-left">
                 <h4 class="font-bold text-stone-900 dark:text-white text-sm">Seuil d'amortissement : Rentabilisé dès 195 CHF / mois</h4>
@@ -239,20 +242,29 @@
     <!-- MENTIONS LÉGALES & CONDITIONS D'ABONNEMENT PRO -->
     <div id="pro-legal-terms" class="max-w-4xl mx-auto mt-10 bg-white dark:bg-stone-800 rounded-3xl p-6 sm:p-8 border border-stone-200 dark:border-stone-700 shadow-sm text-stone-600 dark:text-stone-300">
         <h3 class="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2 mb-3">
-            <span>⚖️</span>
+            <svg class="w-5 h-5 text-terracotta-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
             <span>Conditions & Modalités d'Abonnement Renger PRO</span>
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
             <div class="bg-stone-50 dark:bg-stone-900/60 p-4 rounded-2xl border border-stone-100 dark:border-stone-700/50">
-                <span class="font-bold text-stone-800 dark:text-stone-200 block mb-1">🔄 Reconduction tacite</span>
+                <span class="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5 mb-1">
+                    <svg class="w-4 h-4 text-terracotta-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Reconduction tacite</span>
+                </span>
                 <p>L'abonnement (mensuel ou annuel) se renouvelle automatiquement à son échéance via Stripe, sauf résiliation avant la date de renouvellement.</p>
             </div>
             <div class="bg-stone-50 dark:bg-stone-900/60 p-4 rounded-2xl border border-stone-100 dark:border-stone-700/50">
-                <span class="font-bold text-stone-800 dark:text-stone-200 block mb-1">⚙️ Résiliation en 1 clic</span>
+                <span class="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5 mb-1">
+                    <svg class="w-4 h-4 text-terracotta-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span>Résiliation en 1 clic</span>
+                </span>
                 <p>Résiliable à tout moment et sans motif depuis votre espace client (Portail Stripe). La résiliation prend effet à la fin de la période payée en cours.</p>
             </div>
             <div class="bg-stone-50 dark:bg-stone-900/60 p-4 rounded-2xl border border-stone-100 dark:border-stone-700/50">
-                <span class="font-bold text-stone-800 dark:text-stone-200 block mb-1">🚫 Pas de prorata</span>
+                <span class="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5 mb-1">
+                    <svg class="w-4 h-4 text-terracotta-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                    <span>Pas de prorata</span>
+                </span>
                 <p>Aucun remboursement prorata temporis pour les périodes en cours ou échues. Vous conservez vos avantages PRO jusqu'au dernier jour de votre période.</p>
             </div>
         </div>
@@ -496,7 +508,9 @@
                 <div id="chat-owner-actions" class="hidden flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                            <span>🔑</span> État des lieux de départ :
+                            <svg class="w-4 h-4 text-terracotta-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            <span>État des lieux de départ :</span>
+                            <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip-key="etat-lieux-certifie" data-tooltip="État des lieux photo certifié (CO art. 257a) : 4 photos obligatoires avec horodatage suisse et coordonnées GPS infalsifiables protégeant locataire et propriétaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                         </span>
                         <span id="chat-owner-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                             0 / 4 photo(s)
@@ -504,14 +518,17 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button id="chat-owner-inspection-btn" onclick="startOwnerInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
-                            <span>📸 Faire l'état des lieux</span>
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <span>Faire l'état des lieux</span>
                         </button>
                         <button id="chat-owner-unlock-btn" onclick="handleUnlockStripeFunds()" disabled class="bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-500 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed transition shadow-sm">
-                            <span>🔒 Déverrouiller mes fonds</span>
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            <span>Déverrouiller mes fonds</span>
                         </button>
                     </div>
-                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
-                        ⚠️ 4 photos requises pour déverrouiller vos fonds Stripe (80%).
+                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 inline-block shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>4 photos requises pour déverrouiller vos fonds Stripe (80%).</span>
                     </p>
                 </div>
 
@@ -519,7 +536,9 @@
                 <div id="chat-renter-actions" class="hidden flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                            <span>🔄</span> État des lieux de retour :
+                            <svg class="w-4 h-4 text-terracotta-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>État des lieux de retour :</span>
+                            <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip-key="etat-lieux-certifie" data-tooltip="État des lieux photo certifié (CO art. 257a) : 4 photos obligatoires avec horodatage suisse et coordonnées GPS infalsifiables protégeant locataire et propriétaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                         </span>
                         <span id="chat-renter-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                             0 / 4 photo(s)
@@ -527,10 +546,12 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button id="chat-renter-inspection-btn" onclick="startRenterInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
-                            <span>📸 État des lieux retour</span>
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <span>État des lieux retour</span>
                         </button>
                         <button id="chat-renter-close-btn" onclick="handleRenterCloseRental()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm">
-                            <span>🏁 Clôturer la location</span>
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>
+                            <span>Clôturer la location</span>
                         </button>
                     </div>
                     <p id="chat-renter-close-hint" class="text-[11px] text-stone-500 dark:text-stone-400">

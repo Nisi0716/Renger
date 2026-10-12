@@ -139,6 +139,7 @@
                 label: 'Inconnu',
                 shortLabel: '?',
                 icon: '⚪',
+                svg: '<span class="w-2 h-2 rounded-full bg-stone-400 inline-block"></span>',
                 pillClass: 'bg-stone-100 text-stone-700 border-stone-200 dark:bg-stone-700 dark:text-stone-300',
                 badgeClass: 'bg-stone-100 text-stone-700 border-stone-200 dark:bg-stone-700 dark:text-stone-300'
             };
@@ -150,6 +151,7 @@
                 label: 'Indisponible (bloqué)',
                 shortLabel: 'Bloqué',
                 icon: '🔒',
+                svg: '<svg class="w-3.5 h-3.5 inline-block shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>',
                 pillClass: 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700/60',
                 badgeClass: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
             };
@@ -165,6 +167,7 @@
                 label: 'Terminé',
                 shortLabel: 'Terminé',
                 icon: '⚪',
+                svg: '<span class="w-2 h-2 rounded-full bg-stone-400 inline-block"></span>',
                 pillClass: 'bg-stone-100 dark:bg-stone-700/60 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-600',
                 badgeClass: 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-600'
             };
@@ -176,6 +179,7 @@
                 label: 'En cours',
                 shortLabel: 'En cours',
                 icon: '🔵',
+                svg: '<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block"></span>',
                 pillClass: 'bg-blue-100 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-700/60',
                 badgeClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
             };
@@ -186,6 +190,7 @@
             label: 'Confirmé',
             shortLabel: 'Confirmé',
             icon: '🟢',
+            svg: '<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>',
             pillClass: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-700/60',
             badgeClass: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700'
         };
@@ -243,7 +248,7 @@
         const filterSelect = document.getElementById('planning-trailer-filter');
         if (filterSelect) {
             const previousVal = filterSelect.value || selectedTrailerId || 'all';
-            filterSelect.innerHTML = '<option value="all">🚗 Toutes mes remorques</option>';
+            filterSelect.innerHTML = '<option value="all">Toutes mes remorques</option>';
             currentTrailers.forEach(t => {
                 const opt = document.createElement('option');
                 opt.value = String(t.id);
@@ -445,7 +450,7 @@
 
         const iconSpan = document.createElement('span');
         iconSpan.className = 'text-[10px] flex-shrink-0';
-        iconSpan.textContent = statusInfo.icon;
+        iconSpan.innerHTML = statusInfo.svg || statusInfo.icon;
         pill.appendChild(iconSpan);
 
         const textSpan = document.createElement('span');
@@ -532,11 +537,11 @@
                 const emptyCard = document.createElement('div');
                 emptyCard.className = 'bg-stone-50 dark:bg-stone-900/60 rounded-2xl p-6 text-center border border-stone-200/60 dark:border-stone-700/60';
                 emptyCard.innerHTML = `
-                    <div class="text-3xl mb-2">✨</div>
+                    <div class="w-12 h-12 rounded-2xl bg-terracotta-50 dark:bg-terracotta-950/40 text-terracotta-500 flex items-center justify-center mx-auto mb-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
                     <p class="font-bold text-stone-800 dark:text-white text-sm mb-1">Journée entièrement disponible</p>
                     <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">Toutes vos remorques peuvent être réservées par les locataires à cette date.</p>
                     <button onclick="if (window.RengerPlanning) window.RengerPlanning.openBlockDatesFromDay()" class="inline-flex items-center gap-1.5 bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-2 px-3.5 rounded-xl text-xs transition active:scale-95 shadow-sm">
-                        <span>🔒</span><span>Bloquer cette journée</span>
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span>Bloquer cette journée</span>
                     </button>
                 `;
                 listEl.appendChild(emptyCard);
@@ -585,16 +590,16 @@
                         </div>
                     </div>
                     <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-                        🔒 Indisponible
+                        <svg class="w-3 h-3 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span>Indisponible</span>
                     </span>
                 </div>
                 <div class="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 text-xs text-amber-900 dark:text-amber-200 font-medium flex items-center gap-2">
-                    <span>⚠️</span>
-                    <span>🔒 Période indisponible (Maintenance / Usage personnel)</span>
+                    <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <span>Période indisponible (Maintenance / Usage personnel)</span>
                 </div>
                 <div class="pt-1 flex justify-end">
                     <button onclick="if (window.RengerPlanning) window.RengerPlanning.unblockDates('${escapeHtml(booking.id)}')" class="inline-flex items-center gap-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 font-bold py-2 px-3.5 rounded-xl text-xs transition active:scale-95 border border-red-200 dark:border-red-800">
-                        <span>🔓</span><span>Débloquer ces dates</span>
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg><span>Débloquer ces dates</span>
                     </button>
                 </div>
             `;
@@ -633,8 +638,8 @@
                         </div>
                     </div>
                 </div>
-                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${statusInfo.badgeClass}">
-                    ${statusInfo.icon} ${statusInfo.label}
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${statusInfo.badgeClass}">
+                    ${statusInfo.svg || statusInfo.icon} <span>${statusInfo.label}</span>
                 </span>
             </div>
 
@@ -653,7 +658,7 @@
                         ${earnings.netEarnings.toFixed(2)} CHF
                     </p>
                     <p class="text-[10px] text-stone-500 dark:text-stone-400 truncate" title="${escapeHtml(earnings.rateLabel)}">
-                        ${earnings.isPro ? '👑 100% net (0% com. PRO)' : '80% net (20% commission déduite)'}
+                        ${earnings.isPro ? '100% net (0% com. PRO)' : '80% net (20% commission déduite)'}
                     </p>
                 </div>
             </div>
@@ -661,10 +666,10 @@
             <!-- Boutons d'action : Chat & Contrat -->
             <div class="flex items-center gap-2 pt-1">
                 <button onclick="if (window.RengerPlanning) window.RengerPlanning.openChatWithBooking('${escapeHtml(booking.id)}')" class="flex-1 inline-flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition active:scale-95 shadow-sm">
-                    <span>💬</span><span>Messagerie</span>
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg><span>Messagerie</span>
                 </button>
                 <button onclick="if (window.RengerPlanning) window.RengerPlanning.downloadRentalContract('${escapeHtml(booking.id)}')" class="flex-1 inline-flex items-center justify-center gap-1.5 bg-stone-200 hover:bg-stone-300 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-800 dark:text-stone-200 font-bold py-2.5 px-3 rounded-xl text-xs transition active:scale-95">
-                    <span>📄</span><span>Contrat PDF</span>
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>Contrat PDF</span>
                 </button>
             </div>
         `;
@@ -788,7 +793,7 @@
         const confirmBtn = document.getElementById('btn-confirm-block-dates');
         if (confirmBtn) {
             confirmBtn.disabled = true;
-            confirmBtn.innerHTML = '<span>⏳ Enregistrement...</span>';
+            confirmBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Enregistrement...</span>';
         }
 
         try {
@@ -839,7 +844,7 @@
         } finally {
             if (confirmBtn) {
                 confirmBtn.disabled = false;
-                confirmBtn.innerHTML = '<span>🔒 Confirmer le blocage</span>';
+                confirmBtn.innerHTML = '<svg class="w-4 h-4 inline-block mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span>Confirmer le blocage</span>';
             }
         }
     }

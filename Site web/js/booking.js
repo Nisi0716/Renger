@@ -24,6 +24,12 @@ async function openTrailerDetail(trailer) {
     document.getElementById('detail-price').innerText = trailer.price;
     document.getElementById('detail-socket').innerText = trailer.socket;
     document.getElementById('detail-payload').innerText = trailer.payload + " kg";
+    const permitEl = document.getElementById('detail-permit');
+    if (permitEl) {
+        const payloadNum = parseInt(trailer?.payload, 10) || 0;
+        const isBeRequired = (payloadNum > 750) || trailer?.category === 'cheval' || trailer?.category === 'voiture';
+        permitEl.textContent = isBeRequired ? 'Permis BE requis' : 'Permis B suffisant';
+    }
 
     // Badges d'état de l'annonce (Boost, Vérifié, Propriétaire)
     const isBoosted = !!(trailer?.is_boosted || (trailer?.boost_end_date && new Date(trailer.boost_end_date) > new Date()));
@@ -106,9 +112,8 @@ async function openTrailerDetail(trailer) {
         equipTitle.classList.remove('hidden');
         trailer.equipments.forEach(eq => {
             const span = document.createElement('span');
-            span.className = "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg text-sm font-semibold capitalize";
-            // L'utilisation de textContent désamorce toute tentative d'injection
-            span.textContent = "✅ " + eq;
+            span.className = "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg text-sm font-semibold capitalize inline-flex items-center gap-1.5";
+            span.innerHTML = `<svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>${escapeHtml(eq)}</span>`;
             equipContainer.appendChild(span);
         });
     }
@@ -117,18 +122,27 @@ async function openTrailerDetail(trailer) {
     if (trailer.upsells && trailer.upsells.length > 0) {
         upsellTitle.classList.remove('hidden');
         trailer.upsells.forEach(up => {
+            let upIconSvg = `<svg class="w-4 h-4 text-terracotta-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
             let upText = up;
             let upPrice = "";
-            if (up === "livraison") { upText = "🚚 Livraison"; upPrice = "+25 CHF"; }
-            if (up === "diable") { upText = "🛒 Prêt d'un diable"; upPrice = "+10 CHF/j"; }
+            if (up === "livraison") {
+                upIconSvg = `<svg class="w-4 h-4 text-terracotta-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8h4.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h4"/></svg>`;
+                upText = "Livraison";
+                upPrice = "+25 CHF";
+            }
+            if (up === "diable") {
+                upIconSvg = `<svg class="w-4 h-4 text-terracotta-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>`;
+                upText = "Prêt d'un diable";
+                upPrice = "+10 CHF/j";
+            }
 
             // Création de la structure ligne par ligne sans innerHTML
             const div = document.createElement('div');
             div.className = "flex justify-between items-center bg-terracotta-50 dark:bg-stone-800 border border-terracotta-100 dark:border-stone-700 p-3 rounded-xl";
             
             const spanTitle = document.createElement('span');
-            spanTitle.className = "font-bold text-terracotta-700 dark:text-terracotta-400 capitalize";
-            spanTitle.textContent = upText;
+            spanTitle.className = "font-bold text-terracotta-700 dark:text-terracotta-400 capitalize inline-flex items-center gap-1.5";
+            spanTitle.innerHTML = `${upIconSvg}<span>${escapeHtml(upText)}</span>`;
 
             const spanPrice = document.createElement('span');
             spanPrice.className = "text-terracotta-600 dark:text-terracotta-400 font-bold text-sm";
@@ -530,7 +544,7 @@ async function checkPaymentStatus() {
             if (error || !booking) continue;
 
             if (booking.status === 'paye') {
-                showToast("🎉 Réservation confirmée ! Redirection vers vos réservations...", "success");
+                showToast("Réservation confirmée ! Redirection vers vos réservations...", "success");
                 setTimeout(async () => {
                     await openProfile();
                 }, 3000);

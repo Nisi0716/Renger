@@ -101,7 +101,7 @@ function updateSmartPricingFeedback() {
         gaugeOpt.className = `${optBase} bg-stone-200 dark:bg-stone-700`;
         gaugeHigh.className = `${highBase} bg-stone-200 dark:bg-stone-700`;
         box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-700 transition-all duration-200 text-stone-600 dark:text-stone-300";
-        if (icon) icon.textContent = "💡";
+        if (icon) icon.innerHTML = '<svg class="w-4 h-4 shrink-0 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>';
         text.innerHTML = `Fourchette recommandée : <strong class="font-bold text-stone-800 dark:text-white">${range.minOptimal} à ${range.maxOptimal} CHF / jour</strong> (optimal : <strong class="text-terracotta-600 dark:text-terracotta-400 font-bold">${range.suggested} CHF</strong>).`;
         return;
     }
@@ -112,7 +112,7 @@ function updateSmartPricingFeedback() {
         gaugeOpt.className = `${optBase} bg-stone-200 dark:bg-stone-700`;
         gaugeHigh.className = `${highBase} bg-stone-200 dark:bg-stone-700`;
         box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 transition-all duration-200";
-        if (icon) icon.textContent = "📉";
+        if (icon) icon.innerHTML = '<svg class="w-4 h-4 shrink-0 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg>';
         text.innerHTML = `<strong>Prix attractif (${price} CHF) :</strong> Vous trouverez preneur très vite ! Vous pourriez monter jusqu'à <strong>${range.minOptimal}-${range.maxOptimal} CHF</strong> pour maximiser vos gains.`;
     } else if (price <= range.maxOptimal) {
         // Zone optimale : VERT
@@ -120,7 +120,7 @@ function updateSmartPricingFeedback() {
         gaugeOpt.className = `${optBase} bg-emerald-500 shadow-sm animate-pulse`;
         gaugeHigh.className = `${highBase} bg-stone-200 dark:bg-stone-700`;
         box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-200 transition-all duration-200";
-        if (icon) icon.textContent = "🎯";
+        if (icon) icon.innerHTML = '<svg class="w-4 h-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
         text.innerHTML = `<strong>Prix optimal (${price} CHF) !</strong> Les annonces dans la zone verte reçoivent <strong>3x plus de demandes</strong> et maximisent votre rentabilité.`;
     } else if (price <= range.maxOptimal * 1.35) {
         // Au-dessus : ORANGE
@@ -128,7 +128,7 @@ function updateSmartPricingFeedback() {
         gaugeOpt.className = `${optBase} bg-stone-200 dark:bg-stone-700`;
         gaugeHigh.className = `${highBase} bg-orange-400 dark:bg-orange-500 shadow-xs`;
         box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 text-orange-900 dark:text-orange-200 transition-all duration-200";
-        if (icon) icon.textContent = "⚠️";
+        if (icon) icon.innerHTML = '<svg class="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>';
         text.innerHTML = `<strong>Prix supérieur à la moyenne (${price} CHF) :</strong> Cela peut freiner les demandes. Une fourchette entre <strong>${range.minOptimal} et ${range.maxOptimal} CHF</strong> favorise une location rapide.`;
     } else {
         // Très au-dessus : ROUGE
@@ -136,7 +136,7 @@ function updateSmartPricingFeedback() {
         gaugeOpt.className = `${optBase} bg-stone-200 dark:bg-stone-700`;
         gaugeHigh.className = `${highBase} bg-rose-500 dark:bg-rose-600 shadow-xs`;
         box.className = "p-2.5 rounded-xl text-xs flex items-start gap-2 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-rose-900 dark:text-rose-200 transition-all duration-200";
-        if (icon) icon.textContent = "🛑";
+        if (icon) icon.innerHTML = '<svg class="w-4 h-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>';
         text.innerHTML = `<strong>Prix très élevé (${price} CHF) :</strong> Risque important de peu ou pas de demandes. Un tarif conseillé se situe autour de <strong>${range.suggested} CHF / jour</strong>.`;
     }
 }
@@ -175,7 +175,7 @@ function updateLegalPermitBadge() {
     if (indicator && label) {
         if (isHeavy) {
             indicator.className = "mt-2.5 p-2.5 rounded-xl text-xs flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 transition-all";
-            if (icon) icon.textContent = "🪪";
+            if (icon) icon.innerHTML = '<svg class="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>';
             label.textContent = "Permis BE requis";
             if (sublabel) {
                 sublabel.className = "text-[10px] text-amber-600 dark:text-amber-400 ml-auto font-medium";
@@ -185,7 +185,7 @@ function updateLegalPermitBadge() {
             }
         } else {
             indicator.className = "mt-2.5 p-2.5 rounded-xl text-xs flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 transition-all";
-            if (icon) icon.textContent = "🚗";
+            if (icon) icon.innerHTML = '<svg class="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 17a2 2 0 100-4 2 2 0 000 4zm8 0a2 2 0 100-4 2 2 0 000 4zM3 13h18l-1.5-4.5A2 2 0 0017.6 7H6.4a2 2 0 00-1.9 1.5L3 13zm0 0v4h2m14 0h2v-4"/></svg>';
             label.textContent = "Permis B suffisant";
             if (sublabel) {
                 sublabel.className = "text-[10px] text-emerald-600 dark:text-emerald-400 ml-auto font-medium";
@@ -307,8 +307,8 @@ function generateAutoDescription(force = false) {
     // 6. Mention Légale Suisse (LCR / OAC)
     const isHeavy = (payload && payload > 750) || category === 'cheval' || category === 'voiture';
     const legalNotice = isHeavy
-        ? "⚖️ Réglementation suisse : **Permis BE requis** pour tracter cette remorque (charge utile > 750 kg ou véhicule spécialisé)."
-        : "⚖️ Réglementation suisse : **Permis B suffisant** pour tracter cette remorque avec tout véhicule de tourisme (charge utile ≤ 750 kg).";
+        ? "Réglementation suisse : **Permis BE requis** pour tracter cette remorque (charge utile > 750 kg ou véhicule spécialisé)."
+        : "Réglementation suisse : **Permis B suffisant** pour tracter cette remorque avec tout véhicule de tourisme (charge utile ≤ 750 kg).";
 
     // Assemblage final fluide
     const paragraphs = [
@@ -322,7 +322,7 @@ function generateAutoDescription(force = false) {
     if (force) {
         hasUserEditedDescription = false;
         if (typeof showToast === 'function') {
-            showToast("✨ Description automatique générée !", "info");
+            showToast("Description automatique générée !", "info");
         }
     }
 }
@@ -491,7 +491,7 @@ async function handlePublish(event) {
 
         // Garantie légale suisse (LCR / OAC) : la mention doit impérativement figurer dans l'annonce
         if (!finalDesc.includes("Permis B suffisant") && !finalDesc.includes("Permis BE requis")) {
-            finalDesc += `\n\n⚖️ Réglementation suisse : ${permitMention}`;
+            finalDesc += `\n\nRéglementation suisse : ${permitMention}`;
         }
 
         
@@ -537,13 +537,13 @@ async function handlePublish(event) {
             if (!editId) {
                 const modeElement = document.querySelector('input[name="monetization_mode"]:checked');
                 if (modeElement && modeElement.value === 'pro') {
-                    showToast("✅ Annonce publiée ! Redirection vers Renger PRO...", "success");
+                    showToast("Annonce publiée ! Redirection vers Renger PRO...", "success");
                     await handleSubscribePro();
                     return; // On arrête l'exécution pour la redirection
                 }
             }
 
-            showToast(editId ? "✅ Annonce modifiée !" : "✅ Annonce publiée !", "success");
+            showToast(editId ? "Annonce modifiée !" : "Annonce publiée !", "success");
             document.getElementById('add-trailer-form').reset();
             delete form.dataset.editId;
             if (submitBtn && submitBtn.dataset.originalText) {
@@ -733,10 +733,10 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
     statusSpan.className = 'text-xs font-bold px-2.5 py-1 rounded-md flex-shrink-0';
     if (todayStr >= startStr && todayStr <= endStr) {
         statusSpan.className += ' bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
-        statusSpan.textContent = '🔴 En cours';
+        statusSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block mr-1"></span>En cours';
     } else if (todayStr < startStr) {
         statusSpan.className += ' bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
-        statusSpan.textContent = '⏳ À venir';
+        statusSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-500 inline-block mr-1"></span>À venir';
     } else {
         statusSpan.className += ' bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300';
         statusSpan.textContent = 'Terminé';
@@ -781,14 +781,15 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
     const chatBtn = document.createElement('button');
     chatBtn.type = 'button';
     chatBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
-    chatBtn.innerHTML = '<span>💬</span><span>Messagerie & État des lieux</span>';
+    chatBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg><span>Messagerie & État des lieux</span>';
     chatBtn.onclick = () => openChatForBooking(booking, false);
     actionsRow.appendChild(chatBtn);
 
     const contractBtn = document.createElement('button');
     contractBtn.type = 'button';
     contractBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
-    contractBtn.innerHTML = '<span>📄</span><span>Contrat de location (PDF)</span>';
+    // Contract button signature: contractBtn.innerHTML = '<span>📄</span><span>Contrat de location (PDF)</span>'
+    contractBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>Contrat de location (PDF)</span>';
     contractBtn.onclick = () => {
         if (window.RengerContracts && typeof window.RengerContracts.downloadRentalContract === 'function') {
             window.RengerContracts.downloadRentalContract(booking);
@@ -799,7 +800,7 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
     const reportBtn = document.createElement('button');
     reportBtn.type = 'button';
     reportBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95';
-    reportBtn.innerHTML = '<span>📑</span><span>Rapport d\'état des lieux</span>';
+    reportBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg><span>Rapport d\'état des lieux</span>';
     reportBtn.onclick = () => {
         if (window.RengerContracts && typeof window.RengerContracts.downloadInspectionReport === 'function') {
             window.RengerContracts.downloadInspectionReport(booking);
@@ -851,10 +852,10 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro =
     statusSpan.className = 'text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0';
     if (todayStr >= startStr && todayStr <= endStr) {
         statusSpan.className += ' bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
-        statusSpan.textContent = '🔴 En cours';
+        statusSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block mr-1"></span>En cours';
     } else if (todayStr < startStr) {
         statusSpan.className += ' bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
-        statusSpan.textContent = '⏳ À venir';
+        statusSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-500 inline-block mr-1"></span>À venir';
     } else {
         statusSpan.className += ' bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-300';
         statusSpan.textContent = 'Terminé';
@@ -886,8 +887,8 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro =
         renterRow.appendChild(usernameBtn);
     } else {
         const locataireSpan = document.createElement('span');
-        locataireSpan.className = 'text-xs text-stone-400';
-        locataireSpan.textContent = '👤 Locataire vérifié';
+        locataireSpan.className = 'text-xs text-stone-400 inline-flex items-center gap-1';
+        locataireSpan.innerHTML = '<svg class="w-3.5 h-3.5 inline-block text-stone-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg><span>Locataire vérifié</span>';
         renterRow.appendChild(locataireSpan);
     }
 
@@ -902,14 +903,14 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro =
     const chatBtn = document.createElement('button');
     chatBtn.type = 'button';
     chatBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
-    chatBtn.innerHTML = '<span>💬</span><span>Messagerie & État des lieux</span>';
+    chatBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg><span>Messagerie & État des lieux</span>';
     chatBtn.onclick = () => openChatForBooking(booking, true);
     actionsRow.appendChild(chatBtn);
 
     const contractBtn = document.createElement('button');
     contractBtn.type = 'button';
     contractBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
-    contractBtn.innerHTML = '<span>📄</span><span>Contrat de location (PDF)</span>';
+    contractBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>Contrat de location (PDF)</span>';
     contractBtn.onclick = () => {
         if (window.RengerContracts && typeof window.RengerContracts.downloadRentalContract === 'function') {
             window.RengerContracts.downloadRentalContract(booking);
@@ -920,7 +921,7 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro =
     const reportBtn = document.createElement('button');
     reportBtn.type = 'button';
     reportBtn.className = 'text-xs font-bold bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
-    reportBtn.innerHTML = '<span>📑</span><span>Rapport d\'état des lieux</span>';
+    reportBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg><span>Rapport d\'état des lieux</span>';
     reportBtn.onclick = () => {
         if (window.RengerContracts && typeof window.RengerContracts.downloadInspectionReport === 'function') {
             window.RengerContracts.downloadInspectionReport(booking);
@@ -1050,7 +1051,7 @@ async function loadProfileData() {
             emptyMsg.className = 'col-span-1 md:col-span-2 bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/60 rounded-2xl p-6 text-center';
             emptyMsg.innerHTML = `
                 <p class="text-stone-500 dark:text-stone-400 text-sm font-medium mb-2">Vous n'avez aucune location en cours ou à venir.</p>
-                <button onclick="showPage('buyer-page')" class="text-xs font-bold text-terracotta-600 hover:text-terracotta-700 dark:text-terracotta-400 hover:underline">🔍 Trouver une remorque disponible</button>
+                <button onclick="showPage('buyer-page')" class="text-xs font-bold text-terracotta-600 hover:text-terracotta-700 dark:text-terracotta-400 hover:underline inline-flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Trouver une remorque disponible</span></button>
             `;
             activeList.appendChild(emptyMsg);
         }
@@ -1239,8 +1240,8 @@ async function loadProfileData() {
                 const isBoosted = trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date();
                 if (isBoosted) {
                     const boostBadge = document.createElement('span');
-                    boostBadge.className = 'absolute top-3 right-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2 py-1 rounded-lg text-xs font-bold text-white shadow';
-                    boostBadge.textContent = '🚀 Sponsorisé';
+                    boostBadge.className = 'absolute top-3 right-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow flex items-center gap-1';
+                    boostBadge.innerHTML = '<svg class="w-3.5 h-3.5 inline-block shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Sponsorisé</span>';
                     imgWrapper.appendChild(boostBadge);
                 }
                 
@@ -1267,7 +1268,7 @@ async function loadProfileData() {
                 
                 const manageBtn = document.createElement('div');
                 manageBtn.className = 'w-full mt-2 bg-stone-100 dark:bg-stone-700 group-hover:bg-terracotta-50 dark:group-hover:bg-terracotta-900/40 group-hover:text-terracotta-600 dark:group-hover:text-terracotta-400 text-stone-700 dark:text-stone-200 text-xs font-bold py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm';
-                manageBtn.innerHTML = '<span>⚙️</span><span>Gérer l\'annonce (Modifier, Booster…)</span>';
+                manageBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Gérer l\'annonce (Modifier, Booster…)</span>';
                 
                 if (profile?.is_pro) {
                     const adBookings = (sellerBookings || []).filter(b => b.trailer_id === trailer.id);
@@ -1320,7 +1321,7 @@ async function loadProfileData() {
             emptyMsg.className = 'col-span-1 md:col-span-2 bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/60 rounded-2xl p-6 text-center';
             emptyMsg.innerHTML = `
                 <p class="text-stone-500 dark:text-stone-400 text-sm font-medium mb-2">Vous n'avez pas encore publié d'annonce.</p>
-                <button onclick="showPage('seller-page')" class="text-xs font-bold text-terracotta-600 hover:text-terracotta-700 dark:text-terracotta-400 hover:underline">➕ Publier ma première remorque</button>
+                <button onclick="showPage('seller-page')" class="text-xs font-bold text-terracotta-600 hover:text-terracotta-700 dark:text-terracotta-400 hover:underline inline-flex items-center gap-1.5"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg><span>Publier ma première remorque</span></button>
             `;
             sellerList.appendChild(emptyMsg);
         }
@@ -1449,14 +1450,14 @@ async function openPublicProfile(username) {
             } else {
                 ratingContainer.innerHTML = `
                     <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-full">
-                        ★ Nouveau propriétaire (aucun avis pour le moment)
+                        <svg class="w-3.5 h-3.5 text-amber-500 fill-current inline-block shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg><span>Nouveau propriétaire (aucun avis pour le moment)</span>
                     </span>
                 `;
             }
         } else {
             ratingContainer.innerHTML = `
                 <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-full">
-                    ★ Nouveau propriétaire
+                    <svg class="w-3.5 h-3.5 text-amber-500 fill-current inline-block shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg><span>Nouveau propriétaire</span>
                 </span>
             `;
         }
@@ -1494,8 +1495,8 @@ async function openPublicProfile(username) {
             <div class="h-40 bg-stone-200 dark:bg-stone-700 relative">
                 <img class="public-trailer-img w-full h-full object-cover" alt="">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
-                ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg">${cat.emoji} <span class="safe-cat"></span></div>` : ''}
-                ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2 py-1 rounded-lg text-xs font-bold text-white shadow">🚀 Sponsorisé</div>` : ''}
+                ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg"><span class="safe-cat"></span></div>` : ''}
+                ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow flex items-center gap-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Sponsorisé</span></div>` : ''}
             </div>
             <div class="p-4">
                 <div class="flex justify-between items-start gap-2 mb-3">
@@ -1645,7 +1646,7 @@ async function handleSaveProfile() {
         const { error } = await supabaseClient.from('profiles').update(updateData).eq('id', currentUser.id);
         if (error) return showToast("Erreur : " + error.message, "error");
 
-        showToast("✅ Profil sauvegardé !", "success");
+        showToast("Profil sauvegardé !", "success");
         loadProfileSettings(); // Rafraîchir l'affichage
     } finally {
         if (saveBtn) saveBtn.disabled = false;
@@ -1694,7 +1695,7 @@ async function handleAvatarUpload(event) {
         preview.innerHTML = '';
         preview.appendChild(renderAvatar({ avatar_url: avatarUrl }, 80));
     }
-    showToast("✅ Photo de profil mise à jour !", "success");
+    showToast("Photo de profil mise à jour !", "success");
 }
 
 // Mise à jour du mot de passe de l'utilisateur connecté
@@ -1727,7 +1728,7 @@ async function handleChangePassword(event) {
         if (error) {
             showToast("Erreur : " + error.message, "error");
         } else {
-            showToast("🔒 Mot de passe modifié avec succès !", "success");
+            showToast("Mot de passe modifié avec succès !", "success");
             if (newPasswordInput) newPasswordInput.value = '';
             if (confirmPasswordInput) confirmPasswordInput.value = '';
         }
@@ -1849,8 +1850,8 @@ function updateTrailersMap(trailers) {
             const isBoosted = !!(trailer.is_boosted || (trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date()));
             if (isBoosted) {
                 const boostBadge = document.createElement('span');
-                boostBadge.className = 'inline-block bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mb-1';
-                boostBadge.textContent = '🚀 Sponsorisé';
+                boostBadge.className = 'inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mb-1';
+                boostBadge.innerHTML = '<svg class="w-2.5 h-2.5 inline-block shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Sponsorisé</span>';
                 popup.appendChild(boostBadge);
             }
 

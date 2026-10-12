@@ -108,7 +108,7 @@ function updateInspectionHUD() {
         if (pill) {
             if (idx < inspectionContext.currentStepIndex) {
                 pill.className = 'flex-1 py-1.5 px-2 bg-emerald-950/70 border border-emerald-500 text-emerald-400 rounded-xl text-center text-xs font-bold transition';
-                pill.innerHTML = `✓ ${idx + 1}`;
+                pill.innerHTML = `<span class="inline-flex items-center justify-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>${idx + 1}</span></span>`;
             } else if (idx === inspectionContext.currentStepIndex) {
                 pill.className = 'flex-1 py-1.5 px-2 bg-terracotta-500/20 border-2 border-terracotta-500 text-terracotta-400 rounded-xl text-center text-xs font-extrabold transition shadow-sm';
                 pill.innerHTML = `${idx + 1}. ${s.title.split(' ')[0]}`;
@@ -168,13 +168,13 @@ async function getCurrentCoordinates() {
 async function updateGPSStatusBadge() {
     const gpsText = document.getElementById('camera-gps-text');
     if (!gpsText) return;
-    gpsText.textContent = '📍 Recherche GPS...';
+    gpsText.textContent = 'Recherche GPS...';
 
     const coords = await getCurrentCoordinates();
     if (coords.latitude) {
-        gpsText.textContent = `📍 GPS Précis (±${coords.accuracy}m)`;
+        gpsText.textContent = `GPS Précis (±${coords.accuracy}m)`;
     } else {
-        gpsText.textContent = '📍 GPS approximatif';
+        gpsText.textContent = 'GPS approximatif';
     }
 }
 
@@ -239,15 +239,15 @@ function applyInspectionWatermark(ctx, canvasWidth, canvasHeight, stepConfig, co
     ctx.fillStyle = '#FFFFFF';
     ctx.font = `bold ${fontSizeTitle}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     const modeLabel = inspectionContext.mode === 'departure' ? 'DÉPART (PROPRIÉTAIRE)' : 'RETOUR (LOCATAIRE)';
-    ctx.fillText(`🛡️ RENGER CERTIFIÉ — ÉTAT DES LIEUX ${modeLabel} | ÉTAPE ${stepConfig.step}/4 : ${stepConfig.title.toUpperCase()}`, 18, canvasHeight - bannerHeight + fontSizeTitle + 10);
+    ctx.fillText(`RENGER CERTIFIÉ — ÉTAT DES LIEUX ${modeLabel} | ÉTAPE ${stepConfig.step}/4 : ${stepConfig.title.toUpperCase()}`, 18, canvasHeight - bannerHeight + fontSizeTitle + 10);
 
     // Ligne 2 : Horodatage & Géolocalisation
     ctx.fillStyle = '#94A3B8';
     ctx.font = `${fontSizeMeta}px monospace`;
     const dateStr = date.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const timeStr = date.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const gpsStr = coords.latitude ? `📍 ${coords.text}` : '📍 GPS non accessible';
-    ctx.fillText(`📅 ${dateStr} ${timeStr} CEST  |  ${gpsStr}`, 18, canvasHeight - 12);
+    const gpsStr = coords.latitude ? coords.text : 'GPS non accessible';
+    ctx.fillText(`${dateStr} ${timeStr} CEST  |  ${gpsStr}`, 18, canvasHeight - 12);
 }
 
 async function takeGuidedInspectionPhoto() {
@@ -269,7 +269,7 @@ async function takeGuidedInspectionPhoto() {
         setTimeout(() => { flashEl.style.opacity = '0'; }, 150);
     }
 
-    showToast(`📸 Certification de l'étape ${currentStep.step}/4 en cours...`, "info");
+    showToast(`Certification de l'étape ${currentStep.step}/4 en cours...`, "info");
 
     try {
         // 2. Extraire la photo sur canvas
@@ -338,7 +338,7 @@ async function takeGuidedInspectionPhoto() {
         const dateStr = now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const modeLabel = mode === 'departure' ? 'départ' : 'retour';
-        const content = `📸 [État des lieux de ${modeLabel}] Étape ${currentStep.step}/4 : ${currentStep.title} — Certifié le ${dateStr} à ${timeStr} (${coords.text})`;
+        const content = `[État des lieux de ${modeLabel}] Étape ${currentStep.step}/4 : ${currentStep.title} — Certifié le ${dateStr} à ${timeStr} (${coords.text})`;
 
         const receiverId = inspectionContext.receiverId || activeChatPartnerId || (currentUser.id === currentTrailer?.owner_id ? null : currentTrailer?.owner_id);
 
@@ -368,13 +368,13 @@ async function takeGuidedInspectionPhoto() {
         // 8. Passage à l'étape suivante ou clôture
         if (inspectionContext.currentStepIndex < 3) {
             inspectionContext.currentStepIndex++;
-            showToast(`✅ Étape ${currentStep.step}/4 validée ! Passez à l'étape ${inspectionContext.currentStepIndex + 1}.`, "success");
+            showToast(`Étape ${currentStep.step}/4 validée ! Passez à l'étape ${inspectionContext.currentStepIndex + 1}.`, "success");
             updateInspectionHUD();
         } else {
             // Toutes les 4 étapes sont validées !
             stopCamera();
             stopInspectionClock();
-            showToast("🎉 État des lieux complet certifié (4/4 photos enregistrées) !", "success");
+            showToast("État des lieux complet certifié (4/4 photos enregistrées) !", "success");
 
             const completedSession = {
                 id: inspectionContext.bookingId || inspectionContext.trailerId || 'EDL' + Date.now().toString(36),
@@ -453,7 +453,7 @@ function downloadCurrentInspectionReport() {
         };
     if (typeof window !== 'undefined' && window.RengerContracts && typeof window.RengerContracts.downloadInspectionReport === 'function') {
         window.RengerContracts.downloadInspectionReport(sessionData, inspectionContext.mode);
-        showToast("📑 Téléchargement du rapport d'état des lieux certifié lancé !", "success");
+        showToast("Téléchargement du rapport d'état des lieux certifié lancé !", "success");
     } else {
         showToast("Génération du rapport en cours...", "info");
     }

@@ -100,7 +100,9 @@
         <!-- Recherche Hero avec Sélecteur de Dates (R2) -->
         <div class="w-full max-w-md mb-4">
             <div class="relative bg-white dark:bg-stone-800 rounded-2xl shadow-lg border border-stone-200 dark:border-stone-700 p-2 flex items-center gap-2">
-                <span class="pl-3 text-xl text-stone-400">📅</span>
+                <span class="pl-3 text-stone-400 flex items-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/></svg>
+                </span>
                 <input type="text" id="hero-dates" placeholder="Dates de location souhaitées..." readonly
                     class="w-full py-2.5 px-2 bg-transparent text-stone-800 dark:text-stone-100 placeholder-stone-400 text-sm font-medium focus:outline-none cursor-pointer">
                 <button id="hero-clear-dates" type="button" title="Effacer les dates" class="hidden pr-3 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-sm font-bold">&times;</button>
@@ -108,10 +110,12 @@
         </div>
         <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
             <a href="remorques.html" id="hero-search-btn" class="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                <span>🔍</span> <span data-i18n="btn_buyer">Je cherche une remorque</span>
+                <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+                <span data-i18n="btn_buyer">Je cherche une remorque</span>
             </a>
             <a href="louer-ma-remorque.html" class="w-full bg-white dark:bg-stone-800 hover:bg-terracotta-50 dark:hover:bg-stone-700 text-terracotta-600 border-2 border-terracotta-500 font-semibold py-4 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                <span>➕</span> <span data-i18n="btn_seller">Je loue ma remorque</span>
+                <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <span data-i18n="btn_seller">Je loue ma remorque</span>
             </a>
         </div>
 
@@ -124,42 +128,56 @@
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 <a href="remorques.html?category=utilitaire" class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 hover:shadow-md transition text-center group">
-                    <span class="text-3xl block mb-2 group-hover:scale-110 transition-transform">📦</span>
+                    <div class="w-10 h-10 mx-auto mb-2 text-stone-700 dark:text-stone-300 group-hover:text-terracotta-500 group-hover:scale-110 transition flex items-center justify-center">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8a2 2 0 012-2h10a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm14 3h4m0 0l-2-2m2 2l-2 2M7 16a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z"/></svg>
+                    </div>
                     <h3 class="font-bold text-sm text-stone-800 dark:text-white group-hover:text-terracotta-500 transition-colors">Utilitaire</h3>
                     <p class="text-[11px] text-stone-400 mt-0.5">Déménagements, travaux</p>
                 </a>
                 <a href="remorques.html?category=cheval" class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 hover:shadow-md transition text-center group">
-                    <span class="text-3xl block mb-2 group-hover:scale-110 transition-transform">🐴</span>
+                    <div class="w-10 h-10 mx-auto mb-2 text-stone-700 dark:text-stone-300 group-hover:text-terracotta-500 group-hover:scale-110 transition flex items-center justify-center">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19l2-8 3-4h4l3 2 4 4v3l-3 1-2 6-4-2-4 2z"/></svg>
+                    </div>
                     <h3 class="font-bold text-sm text-stone-800 dark:text-white group-hover:text-terracotta-500 transition-colors">Van à chevaux</h3>
                     <p class="text-[11px] text-stone-400 mt-0.5">1 ou 2 places, sécurisés</p>
                 </a>
                 <a href="remorques.html?category=voiture" class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 hover:shadow-md transition text-center group">
-                    <span class="text-3xl block mb-2 group-hover:scale-110 transition-transform">🚗</span>
+                    <div class="w-10 h-10 mx-auto mb-2 text-stone-700 dark:text-stone-300 group-hover:text-terracotta-500 group-hover:scale-110 transition flex items-center justify-center">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 17H3v-4l2-5h10l2 5v4h-2m-8 0h4"/></svg>
+                    </div>
                     <h3 class="font-bold text-sm text-stone-800 dark:text-white group-hover:text-terracotta-500 transition-colors">Porte-voiture</h3>
                     <p class="text-[11px] text-stone-400 mt-0.5">Plateaux renforcés</p>
                 </a>
                 <a href="remorques.html?category=moto" class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 hover:shadow-md transition text-center group">
-                    <span class="text-3xl block mb-2 group-hover:scale-110 transition-transform">🏍️</span>
+                    <div class="w-10 h-10 mx-auto mb-2 text-stone-700 dark:text-stone-300 group-hover:text-terracotta-500 group-hover:scale-110 transition flex items-center justify-center">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5" stroke-width="2"/><circle cx="18.5" cy="17.5" r="3.5" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 6h2l2 4M9 17l3-7h4l-2 7m-5-7L6 9"/></svg>
+                    </div>
                     <h3 class="font-bold text-sm text-stone-800 dark:text-white group-hover:text-terracotta-500 transition-colors">Porte-moto</h3>
                     <p class="text-[11px] text-stone-400 mt-0.5">Rails et rampes incluses</p>
                 </a>
                 <a href="remorques.html?category=refrigere" class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 hover:shadow-md transition text-center group">
-                    <span class="text-3xl block mb-2 group-hover:scale-110 transition-transform">❄️</span>
+                    <div class="w-10 h-10 mx-auto mb-2 text-stone-700 dark:text-stone-300 group-hover:text-terracotta-500 group-hover:scale-110 transition flex items-center justify-center">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v20m0-20l3 3m-3-3l-3 3m3 17l3-3m-3 3l-3-3M2 12h20m-20 0l3 3m-3-3l3-3m17 0l-3 3m3 0l-3-3"/></svg>
+                    </div>
                     <h3 class="font-bold text-sm text-stone-800 dark:text-white group-hover:text-terracotta-500 transition-colors">Réfrigéré</h3>
                     <p class="text-[11px] text-stone-400 mt-0.5">Événements & traiteurs</p>
                 </a>
                 <a href="remorques.html?category=porte-velo" class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 hover:shadow-md transition text-center group">
-                    <span class="text-3xl block mb-2 group-hover:scale-110 transition-transform">🚲</span>
+                    <div class="w-10 h-10 mx-auto mb-2 text-stone-700 dark:text-stone-300 group-hover:text-terracotta-500 group-hover:scale-110 transition flex items-center justify-center">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5" stroke-width="2"/><circle cx="18.5" cy="17.5" r="3.5" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 6a1 1 0 100-2 1 1 0 000 2zm-3 5l3-5h2m-5 5l-4 6m4-6h5l2.5 6.5"/></svg>
+                    </div>
                     <h3 class="font-bold text-sm text-stone-800 dark:text-white group-hover:text-terracotta-500 transition-colors">Porte-vélo</h3>
                     <p class="text-[11px] text-stone-400 mt-0.5">Vacances & loisirs</p>
                 </a>
                 <a href="remorques.html?category=bagage" class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 hover:border-terracotta-500 dark:hover:border-terracotta-500 hover:shadow-md transition text-center group">
-                    <span class="text-3xl block mb-2 group-hover:scale-110 transition-transform">🧳</span>
+                    <div class="w-10 h-10 mx-auto mb-2 text-stone-700 dark:text-stone-300 group-hover:text-terracotta-500 group-hover:scale-110 transition flex items-center justify-center">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="13" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3M9 20v2m6-2v2"/></svg>
+                    </div>
                     <h3 class="font-bold text-sm text-stone-800 dark:text-white group-hover:text-terracotta-500 transition-colors">Bagagère</h3>
                     <p class="text-[11px] text-stone-400 mt-0.5">Légère, permis B</p>
                 </a>
                 <a href="remorques.html" class="bg-gradient-to-br from-terracotta-500 to-terracotta-600 text-white p-4 rounded-2xl shadow-sm hover:shadow-md hover:from-terracotta-600 hover:to-terracotta-700 transition text-center group flex flex-col justify-center items-center">
-                    <span class="text-2xl block mb-1">🗺️</span>
+                    <svg class="w-7 h-7 text-white mb-1 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="18" stroke-width="2"/><line x1="16" y1="6" x2="16" y2="22" stroke-width="2"/></svg>
                     <h3 class="font-bold text-sm">Voir la carte</h3>
                     <p class="text-[11px] text-white/80 mt-0.5">Toutes les annonces →</p>
                 </a>
@@ -184,7 +202,8 @@
                         Sélectionnez la remorque la plus proche de chez vous par canton et vérifiez en 1 coup d'œil si votre permis voiture (B) suffit.
                     </p>
                     <div class="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700 text-xs text-stone-400 flex items-center gap-1.5">
-                        <span>💡</span><span>Filtre par dates et par rayon kilométrique</span>
+                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        <span>Filtre par dates et par canton</span>
                     </div>
                 </div>
 
@@ -193,12 +212,16 @@
                     <div class="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-2xl flex items-center justify-center font-bold mb-5 shadow-xs">
                         2
                     </div>
-                    <h3 class="text-lg font-bold text-stone-900 dark:text-white mb-2">Caution non débitée (0 CHF)</h3>
+                    <h3 class="text-lg font-bold text-stone-900 dark:text-white mb-2 flex items-center">
+                        Caution non débitée (0 CHF)
+                        <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip="Simple empreinte bancaire non débitée. Aucun montant n'est prélevé de votre compte si la remorque est rendue en bon état."><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-4m0-4h.01"/></svg></span>
+                    </h3>
                     <p class="text-sm text-stone-600 dark:text-stone-300 leading-relaxed flex-1">
                         Réglez votre location en toute sécurité via Stripe. La caution de garantie fait l'objet d'une simple empreinte sans aucun prélèvement sur votre compte bancaire.
                     </p>
                     <div class="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700 text-xs text-stone-400 flex items-center gap-1.5">
-                        <span>🛡️</span><span>Zéro avance de caution bloquée</span>
+                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <span>Zéro avance de caution bloquée</span>
                     </div>
                 </div>
 
@@ -207,12 +230,16 @@
                     <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-2xl flex items-center justify-center font-bold mb-5 shadow-xs">
                         3
                     </div>
-                    <h3 class="text-lg font-bold text-stone-900 dark:text-white mb-2">État des lieux photo certifié</h3>
+                    <h3 class="text-lg font-bold text-stone-900 dark:text-white mb-2 flex items-center">
+                        État des lieux photo certifié
+                        <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip="4 photos géolocalisées avec horodatage suisse infalsifiable protégeant propriétaire et locataire (CO art. 257a)."><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-4m0-4h.01"/></svg></span>
+                    </h3>
                     <p class="text-sm text-stone-600 dark:text-stone-300 leading-relaxed flex-1">
                         Photographiez la remorque au départ et au retour en 4 étapes guidées. Vos clichés sont horodatés et protégés par un contrat de bail officiel suisse (CO art. 253).
                     </p>
                     <div class="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700 text-xs text-stone-400 flex items-center gap-1.5">
-                        <span>📄</span><span>Téléchargement PDF certifié instantané</span>
+                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Téléchargement PDF certifié instantané</span>
                     </div>
                 </div>
             </div>
@@ -228,23 +255,34 @@
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
-                        <span class="text-3xl block mb-2">🇨🇭</span>
+                        <div class="w-8 h-8 rounded-lg bg-red-600/30 border border-red-500/40 flex items-center justify-center mb-3">
+                            <svg class="w-5 h-5 rounded-xs overflow-hidden flex-shrink-0" viewBox="0 0 32 32"><rect width="32" height="32" fill="#D52B1E"/><path d="M13 6h6v7h7v6h-7v7h-6v-7H6v-6h7V6z" fill="#FFF"/></svg>
+                        </div>
                         <h4 class="font-bold text-base text-white mb-1">100% Local Romand</h4>
                         <p class="text-xs text-stone-300 leading-relaxed">Présent sur Vaud, Genève, Fribourg, Valais, Neuchâtel et Jura pour des remises faciles entre voisins.</p>
                     </div>
                     <div class="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
-                        <span class="text-3xl block mb-2">⚖️</span>
+                        <div class="w-8 h-8 rounded-lg bg-terracotta-500/20 border border-terracotta-500/30 flex items-center justify-center text-terracotta-400 mb-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3-1m0 0l.886 1.771M12 3v18m0-18l3 1m-3-1l-3 1m6 0l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M18 7l3-1m-3 1l.886 1.771"/></svg>
+                        </div>
                         <h4 class="font-bold text-base text-white mb-1">Cadre Légal Suisse</h4>
                         <p class="text-xs text-stone-300 leading-relaxed">Contrat de bail certifié CO art. 253 et rapport d'état des lieux contradictoire CO art. 257a en PDF.</p>
                     </div>
                     <div class="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
-                        <span class="text-3xl block mb-2">💰</span>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2" stroke-width="2"/><line x1="2" y1="10" x2="22" y2="10" stroke-width="2"/></svg>
+                        </div>
                         <h4 class="font-bold text-base text-white mb-1">Transparence CHF</h4>
                         <p class="text-xs text-stone-300 leading-relaxed">Prix nets sans frais cachés. Caution restituée sans friction et virements bancaires Stripe automatisés.</p>
                     </div>
                     <div class="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10">
-                        <span class="text-3xl block mb-2">👑</span>
-                        <h4 class="font-bold text-base text-white mb-1">Mode Renger PRO</h4>
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 18h18M4 14l3-7 5 5 5-5 3 7H4z"/></svg>
+                        </div>
+                        <h4 class="font-bold text-base text-white mb-1 flex items-center">
+                            Mode Renger PRO
+                            <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-400 cursor-help" data-tooltip="Conservez 100% de vos revenus locatifs pour 39 CHF/mois (au lieu des 20% de commission standard)."><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-4m0-4h.01"/></svg></span>
+                        </h4>
                         <p class="text-xs text-stone-300 leading-relaxed">0% de commission pour les propriétaires abonnés (39 CHF/mois) avec cockpit Renger Analytics PRO inclus.</p>
                     </div>
                 </div>
@@ -262,7 +300,13 @@
                 <!-- Témoignage 1 -->
                 <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl border border-stone-200 dark:border-stone-700 shadow-sm flex flex-col justify-between">
                     <div>
-                        <div class="flex items-center gap-1 text-amber-400 mb-3 text-sm">★★★★★</div>
+                        <div class="flex items-center gap-1 text-amber-400 mb-3 text-sm">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        </div>
                         <p class="text-sm text-stone-600 dark:text-stone-300 italic leading-relaxed">
                             « J'avais besoin d'un plateau pour transporter ma moto sur le circuit de Bresse. Location réglée en 3 minutes, état des lieux photo super clair et caution non débitée. Parfait ! »
                         </p>
@@ -281,7 +325,13 @@
                 <!-- Témoignage 2 -->
                 <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl border border-stone-200 dark:border-stone-700 shadow-sm flex flex-col justify-between">
                     <div>
-                        <div class="flex items-center gap-1 text-amber-400 mb-3 text-sm">★★★★★</div>
+                        <div class="flex items-center gap-1 text-amber-400 mb-3 text-sm">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        </div>
                         <p class="text-sm text-stone-600 dark:text-stone-300 italic leading-relaxed">
                             « Ma remorque utilitaire restait au garage 25 jours par mois. Avec Renger PRO, je garde 100% de mes loyers. Mon abonnement est amorti en deux week-ends ! »
                         </p>
@@ -300,7 +350,13 @@
                 <!-- Témoignage 3 -->
                 <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl border border-stone-200 dark:border-stone-700 shadow-sm flex flex-col justify-between">
                     <div>
-                        <div class="flex items-center gap-1 text-amber-400 mb-3 text-sm">★★★★★</div>
+                        <div class="flex items-center gap-1 text-amber-400 mb-3 text-sm">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        </div>
                         <p class="text-sm text-stone-600 dark:text-stone-300 italic leading-relaxed">
                             « Le rappel du permis B vs BE m'a évité de faire une erreur de PTAC. Le contrat PDF officiel téléchargé directement après l'inspection rassure énormément. »
                         </p>

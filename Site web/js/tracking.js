@@ -24,8 +24,8 @@ function renderCookieBanner() {
     
     banner.innerHTML = `
         <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-2xl bg-terracotta-500/10 border border-terracotta-500/30 flex items-center justify-center text-xl flex-shrink-0">
-                🇨🇭
+            <div class="w-10 h-10 rounded-2xl bg-terracotta-500/10 border border-terracotta-500/30 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-terracotta-500" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2h4v8h8v4h-8v8h-4v-8H2v-4h8V2z"/></svg>
             </div>
             <div>
                 <h4 class="text-white font-extrabold text-base tracking-tight flex items-center gap-1.5">
@@ -40,15 +40,15 @@ function renderCookieBanner() {
         <!-- Engagements suisses réassurance -->
         <div class="bg-stone-800/60 rounded-2xl p-3 border border-stone-700/50 space-y-1.5 text-[11px] text-stone-300">
             <div class="flex items-center gap-2">
-                <span class="text-emerald-400 font-bold">✓</span>
+                <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                 <span>Calcul des remorques disponibles à proximité</span>
             </div>
             <div class="flex items-center gap-2">
-                <span class="text-emerald-400 font-bold">✓</span>
+                <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                 <span>Hébergement sécurisé en Suisse (nLPD)</span>
             </div>
             <div class="flex items-center gap-2">
-                <span class="text-emerald-400 font-bold">✓</span>
+                <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                 <span>Zéro revente de données & Zéro publicité</span>
             </div>
         </div>
@@ -56,7 +56,7 @@ function renderCookieBanner() {
         <!-- Boutons d'action : Hiérarchie persuasive légale -->
         <div class="flex flex-col items-center gap-2 pt-1 w-full">
             <button id="btn-accept-cookies" class="w-full py-3.5 px-6 bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-extrabold rounded-2xl shadow-lg shadow-terracotta-500/25 transition-all text-sm flex items-center justify-center gap-2">
-                <span>🛡️</span>
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                 <span>Accepter & Continuer</span>
             </button>
             <button id="btn-refuse-cookies" class="text-xs text-stone-400 hover:text-stone-200 transition-colors py-1.5 underline underline-offset-4 decoration-stone-600 hover:decoration-stone-300">

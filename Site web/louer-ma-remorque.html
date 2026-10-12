@@ -151,7 +151,7 @@
                             </div>
                             <!-- Message d'aide et statut dynamique -->
                             <div id="pricing-feedback-box" class="p-2.5 rounded-xl text-xs flex items-start gap-2 bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-700 transition-all duration-200">
-                                <span id="pricing-feedback-icon" class="text-sm flex-shrink-0 mt-0.5">💡</span>
+                                <span id="pricing-feedback-icon" class="w-4 h-4 text-stone-500 flex-shrink-0 mt-0.5 inline-flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></span>
                                 <div class="flex-1">
                                     <p id="pricing-feedback-text" class="text-stone-600 dark:text-stone-300 font-medium leading-snug">
                                         Indiquez votre prix. La fourchette recommandée s'adapte en temps réel à votre remorque.
@@ -171,8 +171,9 @@
                         
                         <!-- Indicateur de permis en temps réel selon la charge -->
                         <div id="payload-permit-indicator" class="mt-2.5 p-2.5 rounded-xl text-xs flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 transition-all">
-                            <span id="permit-icon" class="text-base flex-shrink-0">🚗</span>
+                            <span id="permit-icon" class="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 inline-flex items-center justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/></svg></span>
                             <span id="permit-label" class="font-bold">Permis B suffisant</span>
+                            <span class="renger-info-tooltip inline-flex items-center ml-0.5 text-stone-400 hover:text-terracotta-500 cursor-help transition-colors" data-tooltip="Permis B vs BE : le permis B suffit pour les remorques jusqu'à 750 kg PTAC, ou si le total PTAC véhicule + remorque ne dépasse pas 3'500 kg. Au-delà, le permis BE est obligatoire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                             <span id="permit-sublabel" class="text-[10px] text-emerald-600 dark:text-emerald-400 ml-auto font-medium">(Charge ≤ 750 kg)</span>
                         </div>
                     </div>
@@ -182,7 +183,10 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">PTAC (Poids Total en Charge)</label>
+                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 flex items-center">
+                                <span>PTAC (Poids Total en Charge)</span>
+                                <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help transition-colors" data-tooltip="PTAC (Poids Total Autorisé en Charge) : poids maximum légal cumulé de la remorque et de sa charge utile selon la législation routière suisse."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
+                            </label>
                             <span class="text-[11px] text-stone-400 font-medium">Optionnel</span>
                         </div>
                         <div class="relative">
@@ -218,7 +222,7 @@
                             <span class="text-[11px] text-stone-400 dark:text-stone-500 hidden sm:inline">• Automatique & personnalisable</span>
                         </div>
                         <button type="button" onclick="generateAutoDescription(true)" class="text-xs font-bold text-terracotta-600 dark:text-terracotta-400 hover:text-terracotta-700 flex items-center gap-1.5 py-1 px-3 rounded-lg bg-terracotta-50 dark:bg-stone-700 hover:bg-terracotta-100 dark:hover:bg-stone-600 transition shadow-xs active:scale-95 cursor-pointer">
-                            <span>✨ Générer la description</span>
+                            <svg class="w-3.5 h-3.5 text-terracotta-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.286L13 21l-2.286-6.857L5 12l5.714-2.286L13 3z"/></svg><span>Générer la description</span>
                         </button>
                     </div>
                     <textarea id="ad-desc" placeholder="Décrivez votre remorque ou cliquez sur 'Générer la description' pour assembler automatiquement un texte complet..." class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3.5 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition h-36 resize-y text-sm leading-relaxed" required></textarea>
@@ -226,7 +230,7 @@
                     <!-- Pédagogie Légale sous la description -->
                     <div id="desc-legal-footer" class="mt-2 flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1">
                         <span class="flex items-center gap-1.5">
-                            <span>⚖️</span>
+                            <svg class="w-3.5 h-3.5 text-stone-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
                             <span id="desc-legal-mention">Mention légale incluse : <strong class="text-emerald-600 dark:text-emerald-400 font-bold">Permis B suffisant</strong></span>
                         </span>
                         <span class="text-[11px] text-stone-400">Réglementation suisse LCR / OAC</span>
@@ -259,43 +263,43 @@
                     <label class="cursor-pointer relative">
                         <input type="radio" name="category" value="utilitaire" class="peer sr-only" required checked>
                         <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
-                            <span class="block text-2xl mb-1">📦</span><span class="text-xs font-bold">Utilitaire</span>
+                            <svg class="w-6 h-6 mx-auto mb-1 text-stone-700 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg><span class="text-xs font-bold">Utilitaire</span>
                         </div>
                     </label>
                     <label class="cursor-pointer relative">
                         <input type="radio" name="category" value="cheval" class="peer sr-only">
                         <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
-                            <span class="block text-2xl mb-1">🐴</span><span class="text-xs font-bold">Cheval</span>
+                            <svg class="w-6 h-6 mx-auto mb-1 text-stone-700 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 18v-2a4 4 0 014-4h2V8l4-4h2a2 2 0 012 2v2l-1 2h2a2 2 0 012 2v2a2 2 0 01-2 2h-1v4"/></svg><span class="text-xs font-bold">Cheval</span>
                         </div>
                     </label>
                     <label class="cursor-pointer relative">
                         <input type="radio" name="category" value="voiture" class="peer sr-only">
                         <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
-                            <span class="block text-2xl mb-1">🚗</span><span class="text-xs font-bold">Voiture</span>
+                            <svg class="w-6 h-6 mx-auto mb-1 text-stone-700 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/></svg><span class="text-xs font-bold">Voiture</span>
                         </div>
                     </label>
                     <label class="cursor-pointer relative">
                         <input type="radio" name="category" value="moto" class="peer sr-only">
                         <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
-                            <span class="block text-2xl mb-1">🏍️</span><span class="text-xs font-bold">Moto</span>
+                            <svg class="w-6 h-6 mx-auto mb-1 text-stone-700 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5" cy="16" r="3"/><circle cx="19" cy="16" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M5 16l4-7h5l3 7M12 9l2 4M14 6h3"/></svg><span class="text-xs font-bold">Moto</span>
                         </div>
                     </label>
                     <label class="cursor-pointer relative">
                         <input type="radio" name="category" value="refrigere" class="peer sr-only">
                         <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
-                            <span class="block text-2xl mb-1">❄️</span><span class="text-xs font-bold">Réfrigéré</span>
+                            <svg class="w-6 h-6 mx-auto mb-1 text-stone-700 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m-9-9h18m-3-6l-3 3 3 3m-12-6l3 3-3 3m12 6l-3-3 3-3m-12 6l3-3-3-3"/></svg><span class="text-xs font-bold">Réfrigéré</span>
                         </div>
                     </label>
                     <label class="cursor-pointer relative">
                         <input type="radio" name="category" value="porte-velo" class="peer sr-only">
                         <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
-                            <span class="block text-2xl mb-1">🚲</span><span class="text-xs font-bold">Porte-vélo</span>
+                            <svg class="w-6 h-6 mx-auto mb-1 text-stone-700 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 6a1 1 0 100-2 1 1 0 000 2zm-3 11.5L9 9h3l3 4.5m-3-4.5l3-3h3"/></svg><span class="text-xs font-bold">Porte-vélo</span>
                         </div>
                     </label>
                     <label class="cursor-pointer relative col-span-2">
                         <input type="radio" name="category" value="bagage" class="peer sr-only">
                         <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">
-                            <span class="block text-2xl mb-1">🧳</span><span class="text-xs font-bold">Bagage de toit</span>
+                            <svg class="w-6 h-6 mx-auto mb-1 text-stone-700 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M8 11v4M16 11v4"/></svg><span class="text-xs font-bold">Bagage de toit</span>
                         </div>
                     </label>
                 </div>
@@ -305,24 +309,27 @@
             <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
                 <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3" data-i18n="equip_label">Équipements inclus</label>
                 <div class="grid grid-cols-2 gap-3">
-                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="sangles" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">🔗 Sangles</div></label>
-                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="bache" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⛺ Bâche</div></label>
-                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="treuil" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⚙️ Treuil</div></label>
-                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="rames" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition">⚓ Rames</div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="sangles" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition flex items-center justify-center gap-1.5"><svg class="w-4 h-4 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg><span>Sangles</span></div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="bache" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition flex items-center justify-center gap-1.5"><svg class="w-4 h-4 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 20h18L12 4 3 20zm9-12v8"/></svg><span>Bâche</span></div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="treuil" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition flex items-center justify-center gap-1.5"><svg class="w-4 h-4 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg><span>Treuil</span></div></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="equipments" value="rames" class="peer sr-only"><div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center text-sm font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 dark:text-stone-300 transition flex items-center justify-center gap-1.5"><svg class="w-4 h-4 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20l7-7m3-3l6-6M9 15l-5 5m11-11l5-5"/></svg><span>Rampes</span></div></label>
                 </div>
             </div>
 
             <!-- Upsell pour augmenter la rentabilité -->
             <div class="bg-gradient-to-br from-terracotta-50 to-white dark:from-stone-800 dark:to-stone-900 p-6 rounded-3xl shadow-sm border border-terracotta-200 dark:border-stone-700 relative overflow-hidden">
-                <label class="block text-sm font-bold text-terracotta-600 mb-1" data-i18n="upsell_title">Boostez vos revenus 🚀</label>
+                <label class="block text-sm font-bold text-terracotta-600 mb-1 flex items-center gap-1.5" data-i18n="upsell_title">
+                    <svg class="w-4 h-4 text-terracotta-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span>Boostez vos revenus</span>
+                </label>
                 <p class="text-xs text-stone-500 dark:text-stone-400 mb-4" data-i18n="upsell_desc">Proposez des options payantes additionnelles à vos locataires.</p>
                 <div class="space-y-3 relative z-10">
                     <label class="flex items-center justify-between p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl cursor-pointer">
-                        <div class="flex items-center gap-3"><input type="checkbox" name="upsell" value="livraison" class="w-5 h-5 text-terracotta-500 rounded"><span class="font-semibold text-sm dark:text-white">🚚 Livraison de la remorque</span></div>
+                        <div class="flex items-center gap-3"><input type="checkbox" name="upsell" value="livraison" class="w-5 h-5 text-terracotta-500 rounded"><span class="font-semibold text-sm dark:text-white flex items-center gap-1.5"><svg class="w-4 h-4 text-stone-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg> Livraison de la remorque</span></div>
                         <span class="text-terracotta-600 font-bold text-sm">+25 CHF</span>
                     </label>
                     <label class="flex items-center justify-between p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl cursor-pointer">
-                        <div class="flex items-center gap-3"><input type="checkbox" name="upsell" value="diable" class="w-5 h-5 text-terracotta-500 rounded"><span class="font-semibold text-sm dark:text-white">🛒 Prêt d'un diable</span></div>
+                        <div class="flex items-center gap-3"><input type="checkbox" name="upsell" value="diable" class="w-5 h-5 text-terracotta-500 rounded"><span class="font-semibold text-sm dark:text-white flex items-center gap-1.5"><svg class="w-4 h-4 text-stone-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1"/><circle cx="20" cy="20" r="1"/><path stroke-linecap="round" stroke-linejoin="round" d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg> Prêt d'un diable</span></div>
                         <span class="text-terracotta-600 font-bold text-sm">+10 CHF/j</span>
                     </label>
                 </div>
@@ -342,7 +349,7 @@
                     <label class="flex items-start gap-3 p-4 border border-terracotta-200 dark:border-terracotta-900/50 bg-terracotta-50/50 dark:bg-terracotta-900/10 rounded-xl cursor-pointer hover:bg-terracotta-50 dark:hover:bg-terracotta-900/20 transition relative overflow-hidden">
                         <input type="radio" name="monetization_mode" value="pro" class="mt-1 w-5 h-5 text-terracotta-500 rounded-full">
                         <div>
-                            <span class="block font-bold text-terracotta-700 dark:text-terracotta-400">Mode PRO 👑</span>
+                            <span class="block font-bold text-terracotta-700 dark:text-terracotta-400 flex items-center gap-1.5">Mode PRO <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help transition-colors" data-tooltip="Renger PRO : conservez 100% de vos revenus locatifs (0% de commission plateforme) et bénéficiez de remorques illimitées et d'un support prioritaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span></span>
                             <span class="block text-sm text-stone-600 dark:text-stone-300">Je garde 100% de mes revenus (39 CHF/mois)</span>
                         </div>
                     </label>
@@ -706,7 +713,9 @@
                 <div id="chat-owner-actions" class="hidden flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                            <span>🔑</span> État des lieux de départ :
+                            <svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            <span>État des lieux de départ :</span>
+                            <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip-key="etat-lieux-certifie" data-tooltip="État des lieux photo certifié (CO art. 257a) : 4 photos obligatoires avec horodatage suisse et coordonnées GPS infalsifiables protégeant locataire et propriétaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                         </span>
                         <span id="chat-owner-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                             0 / 4 photo(s)
@@ -714,14 +723,17 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button id="chat-owner-inspection-btn" onclick="startOwnerInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
-                            <span>📸 Faire l'état des lieux</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <span>Faire l'état des lieux</span>
                         </button>
                         <button id="chat-owner-unlock-btn" onclick="handleUnlockStripeFunds()" disabled class="bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-500 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed transition shadow-sm">
-                            <span>🔒 Déverrouiller mes fonds</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <span>Déverrouiller mes fonds</span>
                         </button>
                     </div>
-                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
-                        ⚠️ 4 photos requises pour déverrouiller vos fonds Stripe (80%).
+                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 inline flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                        <span>4 photos requises pour déverrouiller vos fonds Stripe (80%).</span>
                     </p>
                 </div>
 
@@ -729,7 +741,9 @@
                 <div id="chat-renter-actions" class="hidden flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                            <span>🔄</span> État des lieux de retour :
+                            <svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>État des lieux de retour :</span>
+                            <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip-key="etat-lieux-certifie" data-tooltip="État des lieux photo certifié (CO art. 257a) : 4 photos obligatoires avec horodatage suisse et coordonnées GPS infalsifiables protégeant locataire et propriétaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                         </span>
                         <span id="chat-renter-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                             0 / 4 photo(s)
@@ -737,10 +751,12 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button id="chat-renter-inspection-btn" onclick="startRenterInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
-                            <span>📸 État des lieux retour</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <span>État des lieux retour</span>
                         </button>
                         <button id="chat-renter-close-btn" onclick="handleRenterCloseRental()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm">
-                            <span>🏁 Clôturer la location</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg>
+                            <span>Clôturer la location</span>
                         </button>
                     </div>
                     <p id="chat-renter-close-hint" class="text-[11px] text-stone-500 dark:text-stone-400">

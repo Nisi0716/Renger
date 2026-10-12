@@ -83,28 +83,36 @@
         
         <div class="flex overflow-x-auto gap-3 pb-4 mb-6 no-scrollbar">
             <button id="filter-all" onclick="setFilter('all')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-terracotta-500 text-white rounded-xl border-2 border-terracotta-500 shadow-sm transition focus:outline-none">
-                <span class="text-3xl mb-1">🔍</span><span class="text-xs font-semibold">Tout</span>
+                <svg class="w-7 h-7 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+                <span class="text-xs font-semibold">Tout</span>
             </button>
             <button id="filter-utilitaire" onclick="setFilter('utilitaire')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
-                <span class="text-3xl mb-1">📦</span><span class="text-xs font-semibold">Utilitaire</span>
+                <svg class="w-7 h-7 mb-1 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8a2 2 0 012-2h10a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm14 3h4m0 0l-2-2m2 2l-2 2M7 16a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4z"/></svg>
+                <span class="text-xs font-semibold">Utilitaire</span>
             </button>
             <button id="filter-cheval" onclick="setFilter('cheval')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
-                <span class="text-3xl mb-1">🐴</span><span class="text-xs font-semibold">Cheval</span>
+                <svg class="w-7 h-7 mb-1 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19l2-8 3-4h4l3 2 4 4v3l-3 1-2 6-4-2-4 2z"/></svg>
+                <span class="text-xs font-semibold">Cheval</span>
             </button>
             <button id="filter-voiture" onclick="setFilter('voiture')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
-                <span class="text-3xl mb-1">🚗</span><span class="text-xs font-semibold">Voiture</span>
+                <svg class="w-7 h-7 mb-1 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 17H3v-4l2-5h10l2 5v4h-2m-8 0h4"/></svg>
+                <span class="text-xs font-semibold">Voiture</span>
             </button>
             <button id="filter-moto" onclick="setFilter('moto')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
-                <span class="text-3xl mb-1">🏍️</span><span class="text-xs font-semibold">Moto</span>
+                <svg class="w-7 h-7 mb-1 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5" stroke-width="2"/><circle cx="18.5" cy="17.5" r="3.5" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 6h2l2 4M9 17l3-7h4l-2 7m-5-7L6 9"/></svg>
+                <span class="text-xs font-semibold">Moto</span>
             </button>
             <button id="filter-refrigere" onclick="setFilter('refrigere')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
-                <span class="text-3xl mb-1">❄️</span><span class="text-xs font-semibold">Réfrigéré</span>
+                <svg class="w-7 h-7 mb-1 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v20m0-20l3 3m-3-3l-3 3m3 17l3-3m-3 3l-3-3M2 12h20m-20 0l3 3m-3-3l3-3m17 0l-3 3m3 0l-3-3"/></svg>
+                <span class="text-xs font-semibold">Réfrigéré</span>
             </button>
             <button id="filter-porte-velo" onclick="setFilter('porte-velo')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
-                <span class="text-3xl mb-1">🚲</span><span class="text-xs font-semibold">Porte-vélo</span>
+                <svg class="w-7 h-7 mb-1 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5" stroke-width="2"/><circle cx="18.5" cy="17.5" r="3.5" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 6a1 1 0 100-2 1 1 0 000 2zm-3 5l3-5h2m-5 5l-4 6m4-6h5l2.5 6.5"/></svg>
+                <span class="text-xs font-semibold">Porte-vélo</span>
             </button>
             <button id="filter-bagage" onclick="setFilter('bagage')" class="flex flex-col items-center justify-center min-w-[90px] h-24 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 shadow-sm hover:border-terracotta-500 transition focus:outline-none">
-                <span class="text-3xl mb-1">🧳</span><span class="text-xs font-semibold">Bagage de toit</span>
+                <svg class="w-7 h-7 mb-1 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="13" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3M9 20v2m6-2v2"/></svg>
+                <span class="text-xs font-semibold">Bagage de toit</span>
             </button>
         </div>
 
@@ -112,20 +120,24 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
             <!-- Recherche textuelle -->
             <div class="relative">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg pointer-events-none">🔍</span>
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none flex items-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+                </span>
                 <input
                     type="search"
                     id="search-input"
                     placeholder="Rechercher une remorque (ex: van à chevaux, fermée...)"
                     oninput="handleSearch(this.value)"
-                    class="w-full pl-11 pr-4 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm"
+                    class="w-full pl-11 pr-4 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm text-sm"
                 >
             </div>
             <!-- Filtre Dates de disponibilité (R2) -->
             <div class="relative flex items-center">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-lg pointer-events-none">📅</span>
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none flex items-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/></svg>
+                </span>
                 <input type="text" id="catalog-dates" placeholder="Filtrer par dates de location..." readonly
-                    class="w-full pl-11 pr-10 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm cursor-pointer">
+                    class="w-full pl-11 pr-10 py-3 border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 dark:text-white rounded-2xl focus:border-terracotta-500 focus:outline-none transition shadow-sm cursor-pointer text-sm">
                 <button id="catalog-clear-dates" type="button" title="Effacer les dates"
                     class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-bold p-1 text-lg leading-none">&times;</button>
             </div>
@@ -134,15 +146,20 @@
         <!-- En-tête des résultats, Compteur et Basculeur Vue Liste / Carte -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div class="flex items-center gap-3">
-                <h3 id="filter-title" class="text-xl font-bold text-stone-800 dark:text-stone-100">Recommandées autour de Lausanne</h3>
+                <h3 id="filter-title" class="text-xl font-bold text-stone-800 dark:text-stone-100 flex items-center">
+                    Recommandées autour de Lausanne
+                    <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip="Permis B standard suffisant si le PTAC ≤ 750 kg (ou si ensemble véhicule + remorque ≤ 3'500 kg). Permis BE requis au-delà."><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-4m0-4h.01"/></svg></span>
+                </h3>
                 <span id="available-trailers-count" class="text-xs font-bold px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700"></span>
             </div>
             <div id="view-mode-toggle" class="inline-flex bg-stone-100 dark:bg-stone-800 p-1 rounded-xl border border-stone-200 dark:border-stone-700 self-start sm:self-auto">
                 <button id="view-mode-list-btn" type="button" onclick="setViewMode('list')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs">
-                    <span>📋</span><span>Liste</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    <span>Liste</span>
                 </button>
                 <button id="view-mode-map-btn" type="button" onclick="setViewMode('map')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
-                    <span>🗺️</span><span>Carte</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="18" stroke-width="2"/><line x1="16" y1="6" x2="16" y2="22" stroke-width="2"/></svg>
+                    <span>Carte</span>
                 </button>
             </div>
         </div>
@@ -392,7 +409,9 @@
                 <div id="chat-owner-actions" class="hidden flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                            <span>🔑</span> État des lieux de départ :
+                            <svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            <span>État des lieux de départ :</span>
+                            <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip-key="etat-lieux-certifie" data-tooltip="État des lieux photo certifié (CO art. 257a) : 4 photos obligatoires avec horodatage suisse et coordonnées GPS infalsifiables protégeant locataire et propriétaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                         </span>
                         <span id="chat-owner-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                             0 / 4 photo(s)
@@ -400,14 +419,17 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button id="chat-owner-inspection-btn" onclick="startOwnerInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
-                            <span>📸 Faire l'état des lieux</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <span>Faire l'état des lieux</span>
                         </button>
                         <button id="chat-owner-unlock-btn" onclick="handleUnlockStripeFunds()" disabled class="bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-500 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed transition shadow-sm">
-                            <span>🔒 Déverrouiller mes fonds</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <span>Déverrouiller mes fonds</span>
                         </button>
                     </div>
-                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic">
-                        ⚠️ 4 photos requises pour déverrouiller vos fonds Stripe (80%).
+                    <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 inline flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                        <span>4 photos requises pour déverrouiller vos fonds Stripe (80%).</span>
                     </p>
                 </div>
 
@@ -415,7 +437,9 @@
                 <div id="chat-renter-actions" class="hidden flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                            <span>🔄</span> État des lieux de retour :
+                            <svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>État des lieux de retour :</span>
+                            <span class="renger-info-tooltip inline-flex items-center ml-1 text-stone-400 hover:text-terracotta-500 cursor-help" data-tooltip-key="etat-lieux-certifie" data-tooltip="État des lieux photo certifié (CO art. 257a) : 4 photos obligatoires avec horodatage suisse et coordonnées GPS infalsifiables protégeant locataire et propriétaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                         </span>
                         <span id="chat-renter-step-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                             0 / 4 photo(s)
@@ -423,10 +447,12 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button id="chat-renter-inspection-btn" onclick="startRenterInspection()" class="bg-stone-800 hover:bg-stone-900 text-white dark:bg-stone-700 dark:hover:bg-stone-600 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
-                            <span>📸 État des lieux retour</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <span>État des lieux retour</span>
                         </button>
                         <button id="chat-renter-close-btn" onclick="handleRenterCloseRental()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm">
-                            <span>🏁 Clôturer la location</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg>
+                            <span>Clôturer la location</span>
                         </button>
                     </div>
                     <p id="chat-renter-close-hint" class="text-[11px] text-stone-500 dark:text-stone-400">
