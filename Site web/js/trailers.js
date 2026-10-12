@@ -523,13 +523,24 @@ async function handlePublish(event) {
         }
 
         let error = null;
-        if (editId) {
-            const res = await supabaseClient.from('trailers').update(newTrailer).eq('id', editId);
-            error = res.error;
-        } else {
-            const res = await supabaseClient.from('trailers').insert([newTrailer]);
-            error = res.error;
+        const payload = { ...newTrailer };
+
+        const saveTrailer = async (data) => {
+            if (editId) {
+                return await supabaseClient.from('trailers').update(data).eq('id', editId);
+            } else {
+                return await supabaseClient.from('trailers').insert([data]);
+            }
+        };
+
+        let res = await saveTrailer(payload);
+        // Repli gracieux et transparent si le schéma Supabase n'a pas la colonne 'location' (seule 'location_city' existe)
+        if (res.error && res.error.message && res.error.message.toLowerCase().includes('location')) {
+            console.warn("Colonne 'location' absente du schéma Supabase, repli sur 'location_city'");
+            delete payload.location;
+            res = await saveTrailer(payload);
         }
+        error = res.error;
 
         if (error) {
             showToast("Erreur BDD : " + error.message, "error");

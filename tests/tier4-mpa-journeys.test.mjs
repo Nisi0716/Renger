@@ -43,6 +43,17 @@ describe('Tier 4: Trailer Publication Payload Structure Contract', () => {
             "Le payload 'newTrailer' doit contenir 'longitude'"
         );
     });
+
+    it('trailers.js handlePublish must implement graceful fallback if location column is missing in Supabase schema', () => {
+        const trailersCode = fs.readFileSync(path.join(jsDir, 'trailers.js'), 'utf8');
+
+        // Vérifier que trailers.js gère le cas où Supabase renvoie une erreur sur la colonne location
+        assert.match(
+            trailersCode,
+            /delete\s+payload\.location/,
+            "trailers.js doit supprimer la clé 'location' et retenter l'enregistrement si la colonne 'location' est absente du schéma Supabase"
+        );
+    });
 });
 
 describe('Tier 4: MPA Trailer Edit Query Param Flow (louer-ma-remorque.html?edit=...)', () => {
