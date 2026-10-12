@@ -1,5 +1,16 @@
 # Sentinel-Backend Journal
 
+## 2026-04-01 - Missing Row-Level Security Policies on Profiles Table for Mutations
+
+**Vulnerability:**
+The `profiles` table stored user profile data alongside sensitive payment information (`stripe_customer_id`, `stripe_subscription_id`, `is_pro` status) added during Stripe migration, but lacked explicit Row-Level Security (RLS) policies for `INSERT` and `UPDATE` operations. Without strict `INSERT` and `UPDATE` policies enforcing `auth.uid() = id`, authenticated users could potentially modify another user's profile record, alter subscription flags (`is_pro`), or tamper with associated Stripe Customer IDs.
+
+**Learning:**
+When extending core schema tables like `profiles` with new columns (`is_pro`, `stripe_customer_id`), RLS policies were not explicitly added to restrict mutations to the record owner (`auth.uid() = id`).
+
+**Prevention:**
+Always explicitly enable Row-Level Security (`ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;`) and attach strict mutation policies (`FOR INSERT` and `FOR UPDATE`) checking `auth.uid() = id` on tables containing user-specific or account-linked data.
+
 ## 2026-03-31 - Overly Permissive Row-Level Security on Analytics Events Table
 
 **Vulnerability:**
