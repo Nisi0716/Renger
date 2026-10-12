@@ -20,7 +20,8 @@ describe('Tier 1: JavaScript Syntax Validation (node --check)', () => {
         'components.js',
         'inspection.js',
         'tracking.js',
-        'stats.js'
+        'stats.js',
+        'planning.js'
     ];
 
     for (const fileName of jsFiles) {

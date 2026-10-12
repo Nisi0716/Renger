@@ -173,6 +173,8 @@ document.addEventListener('keydown', (event) => {
             { id: 'auth-modal', close: closeAuthModal },
             { id: 'boost-modal', close: () => { if (typeof closeBoostModal === 'function') closeBoostModal(); } },
             { id: 'inspection-success-modal', close: () => { if (typeof closeInspectionSuccessModal === 'function') closeInspectionSuccessModal(); } },
+            { id: 'planning-day-modal', close: () => { if (window.RengerPlanning && typeof window.RengerPlanning.closeDayModal === 'function') window.RengerPlanning.closeDayModal(); } },
+            { id: 'modal-block-dates', close: () => { if (window.RengerPlanning && typeof window.RengerPlanning.closeBlockDatesModal === 'function') window.RengerPlanning.closeBlockDatesModal(); } },
             { id: 'onboarding-modal', close: skipOnboarding }
         ];
 

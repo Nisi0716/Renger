@@ -195,25 +195,116 @@
                 </div>
             </div>
             
-            <!-- État de ma flotte -->
-            <div class="mb-12">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-2xl font-bold text-stone-800 dark:text-white">État de ma flotte</h3>
-                    <span id="seller-trailers-count" class="text-xs font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full">0 remorque</span>
+            <!-- SOUS-NAVIGATION ONGLETS PROPRIÉTAIRE -->
+            <div class="mb-8 border-b border-stone-200 dark:border-stone-700">
+                <div class="flex items-center gap-2 sm:gap-4 overflow-x-auto pb-px no-scrollbar">
+                    <button id="tab-btn-trailers" data-tab-alias="btn-tab-fleet" onclick="if (window.RengerPlanning) window.RengerPlanning.switchTab('trailers')" class="tab-seller-btn inline-flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 border-terracotta-500 text-terracotta-600 dark:text-terracotta-400 transition whitespace-nowrap">
+                        <span>🚗 Mes Annonces</span>
+                    </button>
+                    <button id="tab-btn-planning" data-tab-alias="btn-tab-planning" onclick="if (window.RengerPlanning) window.RengerPlanning.switchTab('planning')" class="tab-seller-btn inline-flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 transition whitespace-nowrap">
+                        <span>📅 Planning des Locations</span>
+                    </button>
+                    <button id="tab-btn-bookings" data-tab-alias="btn-tab-history" onclick="if (window.RengerPlanning) window.RengerPlanning.switchTab('bookings')" class="tab-seller-btn inline-flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 transition whitespace-nowrap">
+                        <span>📋 Locations Reçues</span>
+                    </button>
                 </div>
-                <div id="seller-trailers-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
             </div>
 
-            <!-- Historique des locations reçues -->
-            <div class="pt-8 border-t border-stone-200 dark:border-stone-700">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 class="text-2xl font-bold text-stone-800 dark:text-white">Historique de mes locations</h3>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 mt-0.5">Toutes les réservations passées, en cours et à venir pour vos remorques.</p>
+            <!-- VUE 1 : MES ANNONCES & ÉTAT DE LA FLOTTE -->
+            <div id="seller-trailers-container">
+                <div class="mb-12">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold text-stone-800 dark:text-white">État de ma flotte</h3>
+                        <span id="seller-trailers-count" class="text-xs font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-2.5 py-1 rounded-full">0 remorque</span>
                     </div>
-                    <span id="seller-history-count" class="text-xs font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-3 py-1 rounded-full">0 location</span>
+                    <div id="seller-trailers-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 </div>
-                <div id="seller-history-list" class="space-y-4"></div>
+            </div>
+
+            <!-- VUE 2 : GESTIONNAIRE DE PLANNING DES LOCATIONS -->
+            <div id="seller-planning-section" class="hidden mb-12">
+                <div class="bg-white dark:bg-stone-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-stone-200/80 dark:border-stone-700/80">
+                    <!-- Barre d'outils du planning -->
+                    <div id="planning-toolbar" class="flex flex-col gap-5 mb-6">
+                        <!-- Navigation temporelle & En-tête mois -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <div class="flex items-center gap-3">
+                                    <h3 id="planning-month-label" class="text-2xl sm:text-3xl font-extrabold text-stone-800 dark:text-white capitalize"></h3>
+                                    <span id="planning-current-month" class="sr-only"></span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1">Visualisez quelle remorque est louée quand et par qui, ou bloquez des dates.</p>
+                            </div>
+                            
+                            <!-- Contrôles temporels -->
+                            <div class="flex items-center gap-2 self-start sm:self-auto">
+                                <button id="planning-prev-month" onclick="if (window.RengerPlanning) window.RengerPlanning.prevMonth()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-750 text-stone-700 dark:text-stone-200 text-xs font-bold hover:bg-stone-100 dark:hover:bg-stone-700 transition active:scale-95" title="Mois précédent">
+                                    <span>←</span><span class="hidden sm:inline">Mois précédent</span>
+                                </button>
+                                <button id="planning-today-btn" onclick="if (window.RengerPlanning) window.RengerPlanning.goToToday()" class="px-3.5 py-2 rounded-xl border border-terracotta-200 dark:border-terracotta-800/60 bg-terracotta-50/50 dark:bg-terracotta-950/30 text-terracotta-600 dark:text-terracotta-400 text-xs font-bold hover:bg-terracotta-100 dark:hover:bg-terracotta-900/50 transition active:scale-95">
+                                    Aujourd'hui
+                                </button>
+                                <button id="planning-next-month" onclick="if (window.RengerPlanning) window.RengerPlanning.nextMonth()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-750 text-stone-700 dark:text-stone-200 text-xs font-bold hover:bg-stone-100 dark:hover:bg-stone-700 transition active:scale-95" title="Mois suivant">
+                                    <span class="hidden sm:inline">Mois suivant</span><span>→</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Ligne 2 : Filtre remorque, action bloquer dates & légende -->
+                        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-4 border-t border-stone-100 dark:border-stone-700/60">
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <!-- Sélecteur de remorque -->
+                                <div class="relative min-w-[220px]">
+                                    <select id="planning-trailer-filter" onchange="if (window.RengerPlanning) window.RengerPlanning.filterByTrailer(this.value)" class="w-full pl-3.5 pr-8 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-white text-xs sm:text-sm font-semibold focus:outline-none focus:border-terracotta-500 transition appearance-none cursor-pointer">
+                                        <option value="all">🚗 Toutes mes remorques</option>
+                                    </select>
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400 text-xs">▼</span>
+                                </div>
+
+                                <!-- Bouton bloquer des dates -->
+                                <button id="btn-open-block-dates" onclick="if (window.RengerPlanning) window.RengerPlanning.openBlockDatesModal()" class="bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-2 whitespace-nowrap">
+                                    <span>🔒</span><span>Bloquer des dates</span>
+                                </button>
+                            </div>
+
+                            <!-- Légende des statuts -->
+                            <div class="flex items-center gap-3 sm:gap-4 flex-wrap text-[11px] sm:text-xs font-medium text-stone-600 dark:text-stone-400">
+                                <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> Confirmé</span>
+                                <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></span> En cours</span>
+                                <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-stone-400 shadow-sm"></span> Terminé</span>
+                                <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm"></span> Indisponible</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- En-tête des jours de la semaine (Lun - Dim) -->
+                    <div class="grid grid-cols-7 gap-1 sm:gap-2 text-center text-[11px] sm:text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider py-2 border-b border-stone-100 dark:border-stone-700/60 mb-2">
+                        <div>Lun</div>
+                        <div>Mar</div>
+                        <div>Mer</div>
+                        <div>Jeu</div>
+                        <div>Ven</div>
+                        <div>Sam</div>
+                        <div>Dim</div>
+                    </div>
+
+                    <!-- Grille Calendrier Interactive -->
+                    <div id="planning-calendar-grid" class="grid grid-cols-7 gap-1 sm:gap-2"></div>
+                </div>
+            </div>
+
+            <!-- VUE 3 : HISTORIQUE DES LOCATIONS REÇUES -->
+            <div id="seller-bookings-container" class="hidden">
+                <div class="pt-4">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-2xl font-bold text-stone-800 dark:text-white">Historique de mes locations</h3>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-0.5">Toutes les réservations passées, en cours et à venir pour vos remorques.</p>
+                        </div>
+                        <span id="seller-history-count" class="text-xs font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 px-3 py-1 rounded-full">0 location</span>
+                    </div>
+                    <div id="seller-history-list" class="space-y-4"></div>
+                </div>
             </div>
         </div>
 
@@ -898,6 +989,98 @@
         </div>
     </div>
 
+    <!-- MODALE DÉTAILS DU JOUR (PLANNING) -->
+    <div id="planning-day-modal" class="hidden fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onclick="if (window.RengerPlanning) window.RengerPlanning.closeDayModal()">
+        <div id="planning-day-detail-modal" class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 relative border border-stone-200 dark:border-stone-700 my-auto" onclick="event.stopPropagation()">
+            <!-- Bouton Fermer -->
+            <button onclick="if (window.RengerPlanning) window.RengerPlanning.closeDayModal()" class="absolute top-5 right-5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 w-8 h-8 rounded-full transition flex items-center justify-center font-bold text-sm active:scale-95" aria-label="Fermer">
+                ✕
+            </button>
+
+            <!-- En-tête date cliquée -->
+            <div class="mb-6 pr-8">
+                <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-terracotta-600 dark:text-terracotta-400 mb-1">
+                    <span>📅 Détail du Planning</span>
+                </div>
+                <h3 id="planning-day-modal-title" class="text-2xl font-extrabold text-stone-900 dark:text-white capitalize"></h3>
+                <p id="planning-day-modal-subtitle" class="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1"></p>
+            </div>
+
+            <!-- Liste des événements du jour -->
+            <div id="planning-day-events-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-1"></div>
+
+            <!-- Pied de modale / Action rapide -->
+            <div class="mt-6 pt-4 border-t border-stone-100 dark:border-stone-700/60 flex items-center justify-between gap-3">
+                <button id="planning-day-block-btn" onclick="if (window.RengerPlanning) window.RengerPlanning.openBlockDatesFromDay()" class="text-xs font-bold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white inline-flex items-center gap-1.5 transition">
+                    <span>🔒 Bloquer cette date</span>
+                </button>
+                <button onclick="if (window.RengerPlanning) window.RengerPlanning.closeDayModal()" class="bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 text-xs font-bold py-2 px-4 rounded-xl transition">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE BLOQUER DES DATES (PLANNING) -->
+    <div id="modal-block-dates" class="hidden fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onclick="if (window.RengerPlanning) window.RengerPlanning.closeBlockDatesModal()">
+        <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 relative border border-stone-200 dark:border-stone-700 my-auto" onclick="event.stopPropagation()">
+            <!-- Bouton Fermer -->
+            <button onclick="if (window.RengerPlanning) window.RengerPlanning.closeBlockDatesModal()" class="absolute top-5 right-5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 w-8 h-8 rounded-full transition flex items-center justify-center font-bold text-sm active:scale-95" aria-label="Fermer">
+                ✕
+            </button>
+
+            <div class="mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-2xl mb-3 border border-amber-200 dark:border-amber-800/60">
+                    🔒
+                </div>
+                <h3 class="text-2xl font-extrabold text-stone-900 dark:text-white">Bloquer des dates</h3>
+                <p class="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1">Empêchez les réservations sur une période donnée pour maintenance ou usage personnel.</p>
+            </div>
+
+            <form onsubmit="event.preventDefault(); if (window.RengerPlanning) window.RengerPlanning.submitBlockDates();" class="space-y-4">
+                <!-- Choix de la remorque -->
+                <div>
+                    <label for="block-trailer-select" class="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-2">Remorque concernée</label>
+                    <select id="block-trailer-select" required class="w-full px-4 py-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-white text-sm font-semibold focus:outline-none focus:border-terracotta-500 transition">
+                        <option value="">Sélectionner une remorque...</option>
+                    </select>
+                </div>
+
+                <!-- Dates de début et de fin -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="block-start-date" class="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-2">Date de début</label>
+                        <input type="date" id="block-start-date" required class="w-full px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-white text-sm focus:outline-none focus:border-terracotta-500 transition">
+                    </div>
+                    <div>
+                        <label for="block-end-date" class="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-2">Date de fin</label>
+                        <input type="date" id="block-end-date" required class="w-full px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-white text-sm focus:outline-none focus:border-terracotta-500 transition">
+                    </div>
+                </div>
+
+                <!-- Motif -->
+                <div>
+                    <label for="block-reason-select" class="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-2">Motif</label>
+                    <select id="block-reason-select" class="w-full px-4 py-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-white text-sm font-semibold focus:outline-none focus:border-terracotta-500 transition">
+                        <option value="maintenance">🔧 Maintenance / Révision technique</option>
+                        <option value="personnel">🚜 Usage personnel / Prêt familial</option>
+                        <option value="autre">🔒 Autre indisponibilité temporaire</option>
+                    </select>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="pt-2 space-y-2">
+                    <button type="submit" id="btn-confirm-block-dates" class="w-full bg-terracotta-500 hover:bg-terracotta-600 active:scale-95 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm">
+                        <span>🔒 Confirmer le blocage</span>
+                    </button>
+                    <button type="button" onclick="if (window.RengerPlanning) window.RengerPlanning.closeBlockDatesModal()" class="w-full bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-600 dark:text-stone-300 font-bold py-2.5 px-4 rounded-xl transition text-xs">
+                        Annuler
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modale d'avertissement état des lieux manquant -->
     <div id="inspection-warning-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-70 flex items-center justify-center z-50 px-4" onclick="handleWarningModalBackdrop(event)">
         <div class="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl w-full max-w-md p-6 sm:p-8 relative text-center" onclick="event.stopPropagation()">
@@ -980,6 +1163,7 @@
     <script src="js/trailers.js?v=6" defer></script>
     <script src="js/booking.js?v=6" defer></script>
     <script src="js/contracts.js" defer></script>
+    <script src="js/planning.js" defer></script>
     <script src="js/tracking.js"></script>
 </body>
 </html>

@@ -993,9 +993,23 @@ async function loadProfileData() {
         .from('bookings')
         .select('*, trailers(*)')
         .eq('owner_id', currentUser.id)
-        .in('status', ['paid', 'confirmed', 'paye'])
+        .in('status', ['paid', 'confirmed', 'paye', 'indisponible'])
         .order('start_date', { ascending: false });
     cachedSellerBookings = sellerBookings || [];
+
+    // Récupérer les profils des locataires pour le planning et l'historique
+    const renterIds = [...new Set((sellerBookings || []).map(b => b.renter_id).filter(Boolean))];
+    let renterProfilesMap = new Map();
+    if (renterIds.length > 0) {
+        const { data: renterProfiles } = await supabaseClient
+            .from('profiles')
+            .select('id, username, full_name, avatar_url')
+            .in('id', renterIds);
+        renterProfilesMap = new Map((renterProfiles || []).map(p => [p.id, p]));
+        (sellerBookings || []).forEach(b => {
+            b.renter_profile = renterProfilesMap.get(b.renter_id) || null;
+        });
+    }
 
     // Récupérer les avis déjà déposés par cet utilisateur
     const { data: myReviews } = await supabaseClient
@@ -1086,6 +1100,7 @@ async function loadProfileData() {
 
     if (sellerBookings) {
         sellerBookings.forEach(booking => {
+            if (booking.status === 'indisponible') return;
             const sDate = new Date(booking.start_date);
             const eDate = new Date(booking.end_date);
             const days = Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24)) + 1;
@@ -1126,7 +1141,8 @@ async function loadProfileData() {
                     
                 const imp = impCount || 0;
                 const clk = clickCount || 0;
-                const conv = clk > 0 ? ((sellerBookings.length / clk) * 100).toFixed(1) : 0;
+                const clientBookingsCount = sellerBookings.filter(b => b.status !== 'indisponible').length;
+                const conv = clk > 0 ? ((clientBookingsCount / clk) * 100).toFixed(1) : 0;
                 
                 const statImp = document.getElementById('stat-impressions');
                 if (statImp) statImp.textContent = imp;
@@ -1141,6 +1157,7 @@ async function loadProfileData() {
             const totalPossibleDays = sellerTrailers.length * daysInMonth;
             let rentedDays = 0;
             sellerBookings.forEach(b => {
+                if (b.status === 'indisponible') return;
                 if (b.start_date && b.end_date) {
                     const start = new Date(b.start_date);
                     const end = new Date(b.end_date);
@@ -1184,7 +1201,14 @@ async function loadProfileData() {
                     ? sellerBookings.some(b => {
                         const bStart = b.start_date ? b.start_date.split('T')[0] : '';
                         const bEnd = b.end_date ? b.end_date.split('T')[0] : '';
-                        return b.trailer_id === trailer.id && todayStr >= bStart && todayStr <= bEnd;
+                        return b.status !== 'indisponible' && b.trailer_id === trailer.id && todayStr >= bStart && todayStr <= bEnd;
+                    })
+                    : false;
+                const isBlockedNow = sellerBookings
+                    ? sellerBookings.some(b => {
+                        const bStart = b.start_date ? b.start_date.split('T')[0] : '';
+                        const bEnd = b.end_date ? b.end_date.split('T')[0] : '';
+                        return b.status === 'indisponible' && b.trailer_id === trailer.id && todayStr >= bStart && todayStr <= bEnd;
                     })
                     : false;
 
@@ -1194,6 +1218,9 @@ async function loadProfileData() {
                 if (isRentedNow) {
                     badge.className += ' bg-red-500 animate-pulse';
                     badge.textContent = 'En location actuelle';
+                } else if (isBlockedNow) {
+                    badge.className += ' bg-amber-500';
+                    badge.textContent = 'Indisponible';
                 } else {
                     badge.className += ' bg-green-500';
                     badge.textContent = 'Disponible';
@@ -1300,30 +1327,20 @@ async function loadProfileData() {
     }
 
     // 2.3 Historique des locations reçues par le propriétaire
+    const clientSellerBookings = (sellerBookings || []).filter(b => b.status !== 'indisponible');
     const historyCountBadge = document.getElementById('seller-history-count');
     if (historyCountBadge) {
-        const hCount = sellerBookings?.length || 0;
+        const hCount = clientSellerBookings.length;
         historyCountBadge.textContent = `${hCount} location${hCount > 1 ? 's' : ''}`;
     }
 
     const historyList = document.getElementById('seller-history-list');
     if (historyList) {
         historyList.innerHTML = '';
-        if (sellerBookings && sellerBookings.length > 0) {
-            // Récupérer les profils des locataires pour afficher leur @username et avatar
-            const renterIds = [...new Set(sellerBookings.map(b => b.renter_id).filter(Boolean))];
-            let renterProfilesMap = new Map();
-            if (renterIds.length > 0) {
-                const { data: renterProfiles } = await supabaseClient
-                    .from('profiles')
-                    .select('id, username, avatar_url')
-                    .in('id', renterIds);
-                renterProfilesMap = new Map((renterProfiles || []).map(p => [p.id, p]));
-            }
-
+        if (clientSellerBookings.length > 0) {
             const historyFragment = document.createDocumentFragment();
-            sellerBookings.forEach(booking => {
-                const renterProfile = renterProfilesMap.get(booking.renter_id) || null;
+            clientSellerBookings.forEach(booking => {
+                const renterProfile = renterProfilesMap.get(booking.renter_id) || booking.renter_profile || null;
                 historyFragment.appendChild(createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro));
             });
             historyList.appendChild(historyFragment);
@@ -1336,6 +1353,11 @@ async function loadProfileData() {
             `;
             historyList.appendChild(emptyHistoryMsg);
         }
+    }
+
+    // 2.4 Initialisation du Gestionnaire de Planning
+    if (typeof window !== 'undefined' && window.RengerPlanning && typeof window.RengerPlanning.init === 'function') {
+        window.RengerPlanning.init(myTrailers, sellerBookings, isPro);
     }
 }
 

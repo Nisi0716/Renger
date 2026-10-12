@@ -659,3 +659,88 @@ describe('Tier 3: Stripe Customer Portal & Subscription Lifecycle Contracts', ()
     });
 });
 
+describe('Tier 3: Rental Planning Manager Business Logic & Occupancy Engine', () => {
+    let planningModule = null;
+
+    it('planning.js module must exist and load cleanly via Node / CommonJS', async () => {
+        const planningPath = path.join(siteWebDir, 'js', 'planning.js');
+        assert.ok(fs.existsSync(planningPath), 'planning.js doit exister');
+        const imported = await import('../Site web/js/planning.js');
+        planningModule = imported.default || imported;
+        assert.ok(planningModule, 'planning.js doit exporter le module');
+        assert.strictEqual(typeof planningModule.init, 'function', 'init doit être une fonction');
+        assert.strictEqual(typeof planningModule.renderCalendar, 'function', 'renderCalendar doit être une fonction');
+        assert.strictEqual(typeof planningModule.getBookingsForDate, 'function', 'getBookingsForDate doit être une fonction');
+        assert.strictEqual(typeof planningModule.calculateBookingEarnings, 'function', 'calculateBookingEarnings doit être une fonction');
+    });
+
+    it('Occupancy Engine: multi-day rentals must occupy each intervening day without skipping', () => {
+        const bookings = [
+            { id: 1, trailer_id: 10, start_date: '2026-10-12', end_date: '2026-10-15', status: 'paye' }
+        ];
+
+        assert.strictEqual(planningModule.getBookingsForDate('2026-10-11', bookings).length, 0, '11 Oct: libre');
+        assert.strictEqual(planningModule.getBookingsForDate('2026-10-12', bookings).length, 1, '12 Oct: début');
+        assert.strictEqual(planningModule.getBookingsForDate('2026-10-13', bookings).length, 1, '13 Oct: en cours');
+        assert.strictEqual(planningModule.getBookingsForDate('2026-10-14', bookings).length, 1, '14 Oct: en cours');
+        assert.strictEqual(planningModule.getBookingsForDate('2026-10-15', bookings).length, 1, '15 Oct: fin');
+        assert.strictEqual(planningModule.getBookingsForDate('2026-10-16', bookings).length, 0, '16 Oct: libre');
+    });
+
+    it('Trailer Filtering: must accurately isolate individual trailer schedules and fleet overview', () => {
+        const bookings = [
+            { id: 1, trailer_id: 'trailer-A', start_date: '2026-10-10', end_date: '2026-10-12', status: 'paye' },
+            { id: 2, trailer_id: 'trailer-B', start_date: '2026-10-10', end_date: '2026-10-12', status: 'paye' }
+        ];
+
+        const all = planningModule.getBookingsForDate('2026-10-11', bookings, 'all');
+        assert.strictEqual(all.length, 2, 'Toutes les remorques doivent retourner 2 locations');
+
+        const filterA = planningModule.getBookingsForDate('2026-10-11', bookings, 'trailer-A');
+        assert.strictEqual(filterA.length, 1, 'Filtre trailer-A doit retourner 1 location');
+        assert.strictEqual(filterA[0].id, 1);
+
+        const filterB = planningModule.getBookingsForDate('2026-10-11', bookings, 'trailer-B');
+        assert.strictEqual(filterB.length, 1, 'Filtre trailer-B doit retourner 1 location');
+        assert.strictEqual(filterB[0].id, 2);
+    });
+
+    it('Financial Logic: Net revenue must guarantee 100% for PRO and 80% for Standard', () => {
+        const booking = {
+            id: 42,
+            start_date: '2026-10-01',
+            end_date: '2026-10-03', // 3 jours
+            trailers: { price: 40 } // base: 120 CHF
+        };
+
+        const proEarnings = planningModule.calculateBookingEarnings(booking, true);
+        assert.strictEqual(proEarnings.netEarnings, 120, 'PRO reçoit 100% (120 CHF)');
+        assert.strictEqual(proEarnings.commissionRate, 0);
+
+        const standardEarnings = planningModule.calculateBookingEarnings(booking, false);
+        assert.strictEqual(standardEarnings.netEarnings, 96, 'Standard reçoit 80% (96 CHF)');
+        assert.strictEqual(standardEarnings.commissionRate, 0.20);
+    });
+
+    it('Blocked Dates: status indisponible must be resolved with lock label and icon', () => {
+        const blockedBooking = {
+            id: 99,
+            trailer_id: 1,
+            start_date: '2026-10-20',
+            end_date: '2026-10-22',
+            status: 'indisponible'
+        };
+        const statusInfo = planningModule.getBookingStatusInfo(blockedBooking, '2026-10-21');
+        assert.strictEqual(statusInfo.key, 'indisponible');
+        assert.strictEqual(statusInfo.icon, '🔒');
+    });
+
+    it('Integration: trailers.js must invoke window.RengerPlanning.init during loadProfileData', () => {
+        const trailersCode = fs.readFileSync(path.join(siteWebDir, 'js', 'trailers.js'), 'utf8');
+        assert.ok(
+            trailersCode.includes('window.RengerPlanning.init'),
+            'trailers.js doit appeler window.RengerPlanning.init'
+        );
+    });
+});
+

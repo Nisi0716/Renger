@@ -281,3 +281,66 @@ describe('Tier 2: Paid Products, Subscriptions & Boost Legal Contracts (profil.h
     });
 });
 
+describe('Tier 2: Rental Planning Manager DOM Contract in profil.html', () => {
+    const profilPath = path.join(siteWebDir, 'profil.html');
+    let content = '';
+
+    it('profil.html must load for planning elements check', () => {
+        assert.ok(fs.existsSync(profilPath), `profil.html introuvable: ${profilPath}`);
+        content = fs.readFileSync(profilPath, 'utf8');
+    });
+
+    const requiredPlanningIds = [
+        // Sous-navigation onglets
+        'tab-btn-trailers',
+        'tab-btn-planning',
+        'tab-btn-bookings',
+        'seller-trailers-container',
+        'seller-planning-section',
+        'seller-bookings-container',
+
+        // Barre d'outils planning & calendrier
+        'planning-toolbar',
+        'planning-trailer-filter',
+        'planning-prev-month',
+        'planning-month-label',
+        'planning-next-month',
+        'planning-today-btn',
+        'btn-open-block-dates',
+        'planning-calendar-grid',
+
+        // Modale détails du jour
+        'planning-day-modal',
+        'planning-day-detail-modal',
+        'planning-day-modal-title',
+        'planning-day-modal-subtitle',
+        'planning-day-events-list',
+
+        // Modale bloquer des dates
+        'modal-block-dates',
+        'block-trailer-select',
+        'block-start-date',
+        'block-end-date',
+        'block-reason-select',
+        'btn-confirm-block-dates'
+    ];
+
+    for (const elemId of requiredPlanningIds) {
+        it(`profil.html must contain DOM element #${elemId}`, () => {
+            content = fs.readFileSync(profilPath, 'utf8');
+            assert.ok(
+                hasElementWithId(content, elemId),
+                `Élément DOM manquant dans profil.html : id="${elemId}" requis pour le Gestionnaire de Planning`
+            );
+        });
+    }
+
+    it('profil.html must load js/planning.js script module', () => {
+        content = fs.readFileSync(profilPath, 'utf8');
+        assert.ok(
+            content.includes('js/planning.js'),
+            'profil.html doit inclure la balise <script src="js/planning.js">'
+        );
+    });
+});
+
