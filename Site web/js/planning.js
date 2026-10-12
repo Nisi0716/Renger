@@ -236,6 +236,7 @@
         }
 
         renderCalendar();
+        applyProGating();
     }
 
     /**
@@ -322,6 +323,7 @@
             setActiveBtnStyle(btnPlanning, true);
             setActiveBtnStyle(btnBookings, false);
             renderCalendar();
+            applyProGating();
         } else if (canonical === 'bookings') {
             trailersContainer?.classList.add('hidden');
             planningSection?.classList.add('hidden');
@@ -434,6 +436,22 @@
             cell.appendChild(pillsCont);
             grid.appendChild(cell);
         }
+
+        applyProGating();
+    }
+
+    /**
+     * Applique le verrouillage exclusif Renger PRO sur le planning
+     */
+    function applyProGating() {
+        if (typeof document === 'undefined') return;
+        const gate = document.getElementById('pro-planning-gate');
+        if (!gate) return;
+        if (isProUser) {
+            gate.classList.add('hidden');
+        } else {
+            gate.classList.remove('hidden');
+        }
     }
 
     /**
@@ -508,6 +526,7 @@
      */
     function showDayDetails(dateStr) {
         if (typeof document === 'undefined') return;
+        if (!isProUser) return;
         selectedDateStr = dateStr;
 
         const modal = document.getElementById('planning-day-modal');
@@ -683,6 +702,13 @@
     function openBlockDatesModal(defaultDateStr) {
         if (typeof document === 'undefined') return;
 
+        if (!isProUser) {
+            if (typeof showToast === 'function') {
+                showToast('Le blocage de dates est une fonctionnalité exclusive de l\'abonnement Renger PRO.', 'error');
+            }
+            return;
+        }
+
         const modal = document.getElementById('modal-block-dates');
         if (!modal) return;
 
@@ -726,6 +752,13 @@
      */
     async function submitBlockDates() {
         if (typeof document === 'undefined') return;
+
+        if (!isProUser) {
+            if (typeof showToast === 'function') {
+                showToast('Le blocage de dates est une fonctionnalité exclusive de l\'abonnement Renger PRO.', 'error');
+            }
+            return;
+        }
 
         const trailerSelect = document.getElementById('block-trailer-select');
         const startInput = document.getElementById('block-start-date');
@@ -863,6 +896,13 @@
             return;
         }
 
+        if (!isProUser) {
+            if (typeof showToast === 'function') {
+                showToast('Le déblocage de dates est une fonctionnalité exclusive de l\'abonnement Renger PRO.', 'error');
+            }
+            return;
+        }
+
         if (typeof confirm === 'function' && !confirm('Voulez-vous vraiment débloquer ces dates et rouvrir la disponibilité ?')) {
             return;
         }
@@ -909,6 +949,11 @@
      * Ouvre la messagerie instantanée avec le locataire d'une réservation donnée
      */
     function openChatWithBooking(bookingId) {
+        if (!isProUser) {
+            if (typeof showToast === 'function') showToast('Cette fonctionnalité est réservée aux membres Renger PRO.', 'error');
+            return;
+        }
+
         const booking = currentBookings.find(b => String(b.id) === String(bookingId));
         if (!booking) {
             if (typeof showToast === 'function') showToast('Réservation introuvable.', 'error');
@@ -934,6 +979,11 @@
      * Télécharge le contrat officiel PDF de location pour une réservation donnée
      */
     function downloadRentalContract(bookingId) {
+        if (!isProUser) {
+            if (typeof showToast === 'function') showToast('Cette fonctionnalité est réservée aux membres Renger PRO.', 'error');
+            return;
+        }
+
         const booking = currentBookings.find(b => String(b.id) === String(bookingId));
         if (!booking) {
             if (typeof showToast === 'function') showToast('Réservation introuvable.', 'error');
@@ -973,6 +1023,12 @@
         goToToday,
         openChatWithBooking,
         downloadRentalContract,
+        applyProGating,
+        isPro: () => isProUser,
+        setPro: (val) => {
+            isProUser = (typeof val === 'boolean') ? val : (val === 'true' || val === 1 || Boolean(val));
+            applyProGating();
+        },
         // Helpers purs pour les tests unitaires
         calculateRentalDays,
         calculateBookingEarnings,

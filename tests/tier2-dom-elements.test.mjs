@@ -322,7 +322,10 @@ describe('Tier 2: Rental Planning Manager DOM Contract in profil.html', () => {
         'block-start-date',
         'block-end-date',
         'block-reason-select',
-        'btn-confirm-block-dates'
+        'btn-confirm-block-dates',
+
+        // Gating PRO du planning
+        'pro-planning-gate'
     ];
 
     for (const elemId of requiredPlanningIds) {
@@ -342,5 +345,77 @@ describe('Tier 2: Rental Planning Manager DOM Contract in profil.html', () => {
             'profil.html doit inclure la balise <script src="js/planning.js">'
         );
     });
+
+    it('profil.html must include PRO badge on #tab-btn-planning and CTA towards pro.html', () => {
+        content = fs.readFileSync(profilPath, 'utf8');
+        assert.ok(
+            content.includes('👑 PRO'),
+            'profil.html doit afficher un badge "👑 PRO" sur l\'onglet du planning'
+        );
+        assert.ok(
+            content.includes('pro.html'),
+            'Le conteneur de verrouillage du planning doit contenir un lien vers pro.html'
+        );
+    });
+
+    it('pro.html must include fleet planning in benefits list and comparison table', () => {
+        const proPath = path.join(siteWebDir, 'pro.html');
+        const proContent = fs.readFileSync(proPath, 'utf8');
+        assert.ok(
+            proContent.includes('Planning interactif de flotte'),
+            'pro.html doit lister le planning interactif de flotte dans ses avantages'
+        );
+        assert.ok(
+            (proContent.includes('❌ Non disponible') || proContent.includes('❌ Non inclus')) && proContent.includes('Inclus en illimité'),
+            'pro.html doit afficher le statut du planning dans le tableau comparatif'
+        );
+    });
+
+    it('index.html, remorques.html and louer-ma-remorque.html must feature upgraded category SVGs', () => {
+        const indexPath = path.join(siteWebDir, 'index.html');
+        const remorquesPath = path.join(siteWebDir, 'remorques.html');
+        const louerPath = path.join(siteWebDir, 'louer-ma-remorque.html');
+
+        const indexContent = fs.readFileSync(indexPath, 'utf8');
+        const remorquesContent = fs.readFileSync(remorquesPath, 'utf8');
+        const louerContent = fs.readFileSync(louerPath, 'utf8');
+
+        // Réfrigérée: flocon de neige
+        assert.ok(indexContent.includes('M12 2v20M2 12h20M5 5l14 14'), 'index.html doit contenir le flocon de neige pour réfrigéré');
+        assert.ok(remorquesContent.includes('M12 2v20M2 12h20M5 5l14 14'), 'remorques.html doit contenir le flocon de neige');
+        assert.ok(louerContent.includes('M12 2v20M2 12h20M5 5l14 14'), 'louer-ma-remorque.html doit contenir le flocon de neige');
+
+        // Porte-vélo: vrai vélo tubulaire
+        assert.ok(indexContent.includes('M5.5 17.5L9 9l3 8.5H5.5'), 'index.html doit contenir le vélo vectoriel moderne');
+        assert.ok(remorquesContent.includes('M5.5 17.5L9 9l3 8.5H5.5'), 'remorques.html doit contenir le vélo');
+        assert.ok(louerContent.includes('M5.5 17.5L9 9l3 8.5H5.5'), 'louer-ma-remorque.html doit contenir le vélo');
+
+        // Utilitaire: remorque à ridelles avec flèche
+        assert.ok(indexContent.includes('M3 8.5h13v5.5H3V8.5z'), 'index.html doit contenir la remorque utilitaire à ridelles');
+        assert.ok(remorquesContent.includes('M3 8.5h13v5.5H3V8.5z'), 'remorques.html doit contenir la remorque utilitaire');
+        assert.ok(louerContent.includes('M3 8.5h13v5.5H3V8.5z'), 'louer-ma-remorque.html doit contenir la remorque utilitaire');
+
+        // Cheval: profil équestre noble
+        assert.ok(indexContent.includes('M3.5 14.5c0-1.5 1-2.5 2-3.5L8 8'), 'index.html doit contenir le profil équestre noble');
+        assert.ok(remorquesContent.includes('M3.5 14.5c0-1.5 1-2.5 2-3.5L8 8'), 'remorques.html doit contenir le profil équestre');
+        assert.ok(louerContent.includes('M3.5 14.5c0-1.5 1-2.5 2-3.5L8 8'), 'louer-ma-remorque.html doit contenir le profil équestre');
+
+        // Moto: profil motocross avec réservoir et roues moto distinctes
+        assert.ok(indexContent.includes('M18.5 16.5L15 7h-2.5l-2 3H6'), 'index.html doit contenir la moto vectorielle distincte');
+        assert.ok(remorquesContent.includes('M18.5 16.5L15 7h-2.5l-2 3H6'), 'remorques.html doit contenir la moto');
+        assert.ok(louerContent.includes('M18.5 16.5L15 7h-2.5l-2 3H6'), 'louer-ma-remorque.html doit contenir la moto');
+    });
+
+    it('components.js must feature upgraded category SVGs in RengerIcons', () => {
+        const componentsPath = path.join(siteWebDir, 'js', 'components.js');
+        const componentsContent = fs.readFileSync(componentsPath, 'utf8');
+
+        assert.ok(componentsContent.includes('M12 2v20M2 12h20M5 5l14 14'), 'components.js doit contenir le flocon de neige pour snow');
+        assert.ok(componentsContent.includes('M5.5 17.5L9 9l3 8.5H5.5'), 'components.js doit contenir le vélo pour bike');
+        assert.ok(componentsContent.includes('M3 8.5h13v5.5H3V8.5z'), 'components.js doit contenir la remorque utilitaire pour trailer');
+        assert.ok(componentsContent.includes('M3.5 14.5c0-1.5 1-2.5 2-3.5L8 8'), 'components.js doit contenir le cheval pour horse');
+        assert.ok(componentsContent.includes('M18.5 16.5L15 7h-2.5l-2 3H6'), 'components.js doit contenir la moto pour moto');
+    });
 });
+
 

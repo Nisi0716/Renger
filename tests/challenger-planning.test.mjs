@@ -1,4 +1,4 @@
-import { describe, test, it, beforeEach } from 'node:test';
+import { describe, test, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -315,5 +315,142 @@ describe('Challenger Suite: Rental Planning Manager Logic & Algorithmic Rigor', 
             assert.strictEqual(matched.length, 0, 'Les demandes non confirmées ne doivent pas bloquer le planning');
         });
     });
+
+    describe('9. Renger PRO Exclusivity Gating: Non-PRO vs PRO Access Controls', () => {
+        let mockElements = {};
+        let toastMessage = null;
+
+        beforeEach(() => {
+            mockElements = {
+                'pro-planning-gate': {
+                    classList: {
+                        classes: new Set(['hidden']),
+                        add(c) { this.classes.add(c); },
+                        remove(c) { this.classes.delete(c); },
+                        contains(c) { return this.classes.has(c); }
+                    }
+                },
+                'modal-block-dates': {
+                    classList: {
+                        classes: new Set(['hidden']),
+                        add(c) { this.classes.add(c); },
+                        remove(c) { this.classes.delete(c); },
+                        contains(c) { return this.classes.has(c); }
+                    }
+                },
+                'planning-day-modal': {
+                    classList: {
+                        classes: new Set(['hidden']),
+                        add(c) { this.classes.add(c); },
+                        remove(c) { this.classes.delete(c); },
+                        contains(c) { return this.classes.has(c); }
+                    }
+                },
+                'planning-day-modal-title': { textContent: '' },
+                'planning-day-modal-subtitle': { textContent: '' },
+                'planning-day-events-list': { innerHTML: '', appendChild() {} },
+                'block-start-date': { value: '' },
+                'block-end-date': { value: '' },
+                'block-trailer-select': { value: '', innerHTML: '', options: [], appendChild() {} },
+                'planning-trailer-filter': { value: '', innerHTML: '', options: [], appendChild() {} }
+            };
+
+            global.document = {
+                getElementById: (id) => mockElements[id] || null,
+                createElement: () => ({
+                    classList: { add() {}, remove() {}, contains() { return false; } },
+                    style: {},
+                    appendChild() {}
+                })
+            };
+
+            toastMessage = null;
+            global.showToast = (msg, type) => { toastMessage = msg; };
+        });
+
+        afterEach(() => {
+            delete global.document;
+            delete global.showToast;
+        });
+
+        it('Standard User (isPro = false): reveals #pro-planning-gate overlay and blocks manual date blocking', async () => {
+            planningModule.init([{ id: 1, title: 'Remorque 1' }], [{ id: 'block-1', trailer_id: 1, status: 'indisponible', start_date: '2026-10-15', end_date: '2026-10-16' }, { id: 'bk-1', trailer_id: 1, status: 'paye', start_date: '2026-10-20', end_date: '2026-10-22' }], false);
+            assert.strictEqual(planningModule.isPro(), false);
+
+            planningModule.applyProGating();
+            const gate = mockElements['pro-planning-gate'];
+            assert.strictEqual(gate.classList.contains('hidden'), false, '#pro-planning-gate doit être affiché (hidden retiré)');
+
+            // Tentative d'ouverture de la modale de blocage
+            planningModule.openBlockDatesModal();
+            const blockModal = mockElements['modal-block-dates'];
+            assert.strictEqual(blockModal.classList.contains('hidden'), true, '#modal-block-dates doit rester caché');
+            assert.ok(toastMessage && toastMessage.includes('exclusive'), 'Doit notifier que le blocage est exclusif PRO');
+
+            // Tentative de soumission directe de blocage
+            toastMessage = null;
+            await planningModule.submitBlockDates();
+            assert.ok(toastMessage && toastMessage.includes('exclusive'), 'submitBlockDates doit rejeter pour un non-PRO');
+
+            // Tentative de déblocage direct d'une indisponibilité
+            toastMessage = null;
+            await planningModule.unblockDates('block-1');
+            assert.ok(toastMessage && toastMessage.includes('exclusive'), 'unblockDates doit rejeter le déblocage pour un non-PRO');
+
+            // Tentative d'ouverture de messagerie depuis planning
+            toastMessage = null;
+            planningModule.openChatWithBooking('bk-1');
+            assert.ok(toastMessage && toastMessage.includes('Renger PRO'), 'openChatWithBooking doit rejeter pour un non-PRO');
+
+            // Tentative de téléchargement de contrat depuis planning
+            toastMessage = null;
+            planningModule.downloadRentalContract('bk-1');
+            assert.ok(toastMessage && toastMessage.includes('Renger PRO'), 'downloadRentalContract doit rejeter pour un non-PRO');
+
+            // Clic sur un jour du calendrier ne doit pas ouvrir la modale
+            planningModule.showDayDetails('2026-10-15');
+            const dayModal = mockElements['planning-day-modal'];
+            assert.strictEqual(dayModal.classList.contains('hidden'), true, 'showDayDetails doit être bloqué pour un non-PRO');
+        });
+
+        it('PRO User (isPro = true): hides #pro-planning-gate and grants full access to fleet planning', async () => {
+            mockElements['pro-planning-gate'].classList.remove('hidden'); // simulation overlay visible
+
+            planningModule.init([{ id: 1, title: 'Remorque PRO' }], [], true);
+            assert.strictEqual(planningModule.isPro(), true);
+
+            planningModule.applyProGating();
+            const gate = mockElements['pro-planning-gate'];
+            assert.strictEqual(gate.classList.contains('hidden'), true, '#pro-planning-gate doit être masqué (hidden ajouté)');
+
+            // Ouverture autorisée de la modale de blocage
+            planningModule.openBlockDatesModal();
+            const blockModal = mockElements['modal-block-dates'];
+            assert.strictEqual(blockModal.classList.contains('hidden'), false, '#modal-block-dates doit s\'ouvrir');
+
+            // Affichage autorisé des détails de journée
+            planningModule.showDayDetails('2026-10-15');
+            const dayModal = mockElements['planning-day-modal'];
+            assert.strictEqual(dayModal.classList.contains('hidden'), false, 'showDayDetails doit s\'ouvrir pour un utilisateur PRO');
+            assert.ok(mockElements['planning-day-modal-title'].textContent.length > 0, 'Le titre de la journée doit être renseigné');
+        });
+
+        it('Dynamic Tier Transition: setPro toggles gating reactively without re-init', () => {
+            planningModule.init([{ id: 1, title: 'Remorque Dyn' }], [], false);
+            assert.strictEqual(planningModule.isPro(), false);
+            assert.strictEqual(mockElements['pro-planning-gate'].classList.contains('hidden'), false);
+
+            // Passage en PRO à chaud
+            planningModule.setPro(true);
+            assert.strictEqual(planningModule.isPro(), true);
+            assert.strictEqual(mockElements['pro-planning-gate'].classList.contains('hidden'), true);
+
+            // Rétrogradation à chaud
+            planningModule.setPro(false);
+            assert.strictEqual(planningModule.isPro(), false);
+            assert.strictEqual(mockElements['pro-planning-gate'].classList.contains('hidden'), false);
+        });
+    });
 });
+
 
