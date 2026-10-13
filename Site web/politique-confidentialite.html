@@ -61,82 +61,39 @@
         
         <div class="space-y-8 text-stone-600 dark:text-stone-300 leading-relaxed text-justify">
             <section>
-                <h2 data-i18n="h2_1" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">1. Introduction et Responsable du traitement</h2>
-                <p data-i18n="p_1">La plateforme <strong>Renger</strong> s'engage à protéger avec rigueur la vie privée et les données personnelles de ses utilisateurs. La présente politique détaille les modalités de collecte, de traitement et de sécurisation de vos données lors de l'utilisation de nos services. Le <strong>responsable du traitement</strong> est <strong>Enis Medjiti</strong>, Fondateur & Exploitant de Renger (Entreprise individuelle, domiciliée à Lausanne, Canton de Vaud, Suisse - E-mail : <a href="mailto:info@renger.ch" class="text-terracotta-500 underline hover:text-terracotta-600">info@renger.ch</a>), agissant en conformité avec la nouvelle Loi fédérale sur la protection des données suisse (nLPD) et le Règlement Général sur la Protection des Données européen (RGPD).</p>
+                <h2 data-i18n="h2_1" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">1. Responsable du traitement</h2>
+                <p data-i18n="p_1">La protection de vos données personnelles est assurée par Enis Medjiti, exploitant de Renger (Canton de Vaud, Suisse - <a href="mailto:info@renger.ch" class="text-terracotta-500 underline hover:text-terracotta-600">info@renger.ch</a>).</p>
             </section>
             
             <section>
-                <h2 data-i18n="h2_2" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">2. Les données que nous collectons</h2>
-                <div data-i18n="p_2" class="space-y-2">
-                    <p>Pour assurer le bon fonctionnement de notre service d'intermédiation de location de remorques, nous collectons les informations strictement nécessaires :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Données de compte et profil :</strong> Adresse e-mail, prénom, nom et identifiants techniques générés lors de l'authentification sécurisée (Supabase Auth).</li>
-                        <li><strong>Données des annonces :</strong> Caractéristiques techniques, dimensions, charge utile homologuée, plaque d'immatriculation, localisation géographique de prise en charge et photographies des remorques.</li>
-                        <li><strong>Données d'état des lieux contradictoire :</strong> Photographies horodatées et géolocalisées (4 clichés de prise en charge et 4 clichés de retour) stockées sur stockage privé sécurisé accessible exclusivement via des URL signées temporaires.</li>
-                        <li><strong>Données financières et de facturation :</strong> Montants des locations, quittances, identifiants de transactions bancaires et factures générés via Stripe. Renger ne conserve aucun numéro complet de carte bancaire sur ses serveurs.</li>
-                        <li><strong>Données de navigation et tracking first-party Renger :</strong> Mesures d'audience et de performance internes anonymisées pour le cockpit propriétaire Renger Analytics, sans aucune régie publicitaire externe ni transmission de données à des tiers publicitaires.</li>
-                    </ul>
-                </div>
+                <h2 data-i18n="h2_2" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">2. Données collectées</h2>
+                <p data-i18n="p_2">Nous collectons uniquement les informations nécessaires au service d'intermédiation : données de profil (nom, e-mail), données d'annonces (photos, localisation), états des lieux (clichés horodatés), données de navigation internes et historiques de transaction.</p>
             </section>
             
             <section>
-                <h2 data-i18n="h2_3" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">3. Traitement bancaire et Données financières (Stripe)</h2>
-                <div data-i18n="p_3" class="space-y-2">
-                    <p>La sécurité financière de vos transactions est assurée par notre partenaire bancaire agréé Stripe Payments Europe Ltd (certifié PCI-DSS Niveau 1) :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Pour les locataires :</strong> Le règlement du loyer et la réservation de l'empreinte de caution (non débitée, mode off-session) s'effectuent via les modules chiffrés Stripe Checkout / Elements.</li>
-                        <li><strong>Pour les propriétaires :</strong> La vérification d'identité réglementaire (KYC) et la collecte sécurisée de l'IBAN sont déléguées à Stripe Express Onboarding.</li>
-                    </ul>
-                </div>
+                <h2 data-i18n="h2_3" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">3. Sous-traitants et Sécurité</h2>
+                <p data-i18n="p_3">Renger ne stocke aucune donnée bancaire sensible. Les paiements, cautions et vérifications d'identité (KYC) sont intégralement délégués à notre partenaire bancaire externe certifié PCI-DSS. L'hébergement des données et l'envoi d'e-mails sont assurés par des prestataires technologiques de premier plan respectant des standards stricts de sécurité (chiffrement, accès cloisonnés).</p>
             </section>
             
             <section>
-                <h2 data-i18n="h2_4" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">4. Sous-traitants technologiques de confiance (DPA)</h2>
+                <h2 data-i18n="h2_4" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">4. Durées de conservation</h2>
                 <div data-i18n="p_4" class="space-y-2">
-                    <p>Vos données sont traitées exclusivement par des prestataires techniques de premier plan garantissant un niveau de protection optimal des données :</p>
                     <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Supabase Inc. :</strong> Hébergement de la base de données PostgreSQL, authentification chiffrée et stockage privé d'inspections (certifié SOC 2 Type II).</li>
-                        <li><strong>Stripe Payments Europe Ltd :</strong> Traitement des flux financiers, séquestre de caution, détection de fraude et facturation.</li>
-                        <li><strong>Resend Inc. :</strong> Acheminement sécurisé des e-mails transactionnels (confirmations de réservation, quittances de paiement, alertes de disponibilité).</li>
-                        <li><strong>OpenStreetMap Foundation :</strong> Affichage cartographique local sans cookies traceurs de profilage.</li>
+                        <li><strong>Données de compte :</strong> Conservées jusqu'à la suppression du compte.</li>
+                        <li><strong>Données financières et comptables :</strong> Conservées pendant la durée légale impérative de 10 ans (art. 958f CO).</li>
+                        <li><strong>États des lieux :</strong> Conservés pendant la durée de prescription légale des litiges.</li>
                     </ul>
                 </div>
             </section>
             
             <section>
-                <h2 data-i18n="h2_5" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">5. Sécurité et Mesures techniques de protection</h2>
-                <p data-i18n="p_5">Nous appliquons les principes de sécurité dès la conception (Privacy by Design). L'accès à la base de données est cloisonné au moyen de politiques de sécurité au niveau des lignes (Row Level Security - RLS), garantissant qu'aucun utilisateur ne puisse accéder aux données privées ou aux réservations d'autrui. Les buckets de stockage d'états des lieux photo sont strictement privés et requièrent des signatures cryptographiques éphémères. L'ensemble des échanges web est chiffré en HTTPS / TLS 1.3.</p>
-            </section>
-            
-            <section>
-                <h2 data-i18n="h2_6" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">6. Durées de conservation des données (CO art. 958f)</h2>
-                <div data-i18n="p_6" class="space-y-2">
-                    <p>Les données personnelles sont conservées pendant des durées proportionnées aux finalités poursuivies :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Données de compte utilisateur :</strong> Conservées pendant toute la durée d'activité du compte, supprimées sur demande de l'utilisateur.</li>
-                        <li><strong>Pièces comptables et Données de facturation :</strong> Conservées pendant la durée légale impérative de <strong>10 ans</strong> conformément à l'article 958f du Code des Obligations suisse (CO art. 958f).</li>
-                        <li><strong>Clichés et Rapports d'état des lieux :</strong> Conservés pendant la durée de la location et la prescription légale des litiges de bail, puis archivés ou purgés.</li>
-                    </ul>
-                </div>
-            </section>
-
-            <section>
-                <h2 data-i18n="h2_7" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">7. Vos droits (nLPD et RGPD) & Contact</h2>
-                <div data-i18n="p_7" class="space-y-2">
-                    <p>Conformément à la nLPD et au RGPD, vous disposez des droits fondamentaux suivants :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Droit d'accès et d'information :</strong> Obtenir communication des données vous concernant.</li>
-                        <li><strong>Droit de rectification :</strong> Corriger toute donnée inexacte ou incomplète directement dans votre profil.</li>
-                        <li><strong>Droit à l'effacement :</strong> Demander la suppression définitive de vos données personnelles (sous réserve de nos obligations légales de conservation comptable de 10 ans selon l'art. 958f CO).</li>
-                        <li><strong>Droit à la limitation et à la portabilité :</strong> Recevoir vos données dans un format standard structuré.</li>
-                    </ul>
-                    <p class="pt-2">Pour exercer ces droits ou pour toute question relative à la protection de vos données, vous pouvez vous adresser directement à : <a href="mailto:info@renger.ch" class="text-terracotta-500 underline hover:text-terracotta-600 font-semibold">info@renger.ch</a> (Enis Medjiti, Délégué à la protection des données).</p>
-                </div>
+                <h2 data-i18n="h2_5" class="text-xl font-bold text-stone-800 dark:text-stone-100 mb-3">5. Vos droits</h2>
+                <p data-i18n="p_5">Vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données. Pour les exercer, contactez-nous à l'adresse <a href="mailto:info@renger.ch" class="text-terracotta-500 underline hover:text-terracotta-600">info@renger.ch</a>.</p>
             </section>
         </div>
         
         <div data-i18n="footer_text" class="mt-12 pt-8 border-t border-stone-200 dark:border-stone-700 text-sm text-stone-400 dark:text-stone-500 text-center">
-            En naviguant sur ce site et en créant un compte, vous acceptez notre Politique de Confidentialité. For juridique exclusif : Lausanne, Canton de Vaud.
+            En naviguant sur ce site et en créant un compte, vous acceptez notre Politique de Confidentialité. For juridique exclusif : Canton de Vaud.
         </div>
     </div>
 
@@ -161,150 +118,63 @@
                 back_home: "← Retour à l'accueil",
                 page_title: "Politique de Confidentialité",
                 last_update: "Dernière mise à jour : Octobre 2026 - Conforme à la nLPD (Suisse) et au RGPD (Europe).",
-                h2_1: "1. Introduction et Responsable du traitement",
-                p_1: "La plateforme <strong>Renger</strong> s'engage à protéger avec rigueur la vie privée et les données personnelles de ses utilisateurs. La présente politique détaille les modalités de collecte, de traitement et de sécurisation de vos données lors de l'utilisation de nos services. Le <strong>responsable du traitement</strong> est <strong>Enis Medjiti</strong>, Fondateur & Exploitant de Renger (Entreprise individuelle, domiciliée à Lausanne, Canton de Vaud, Suisse - E-mail : <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>), agissant en conformité avec la nouvelle Loi fédérale sur la protection des données suisse (nLPD) et le Règlement Général sur la Protection des Données européen (RGPD).",
-                h2_2: "2. Les données que nous collectons",
-                p_2: `<p>Pour assurer le bon fonctionnement de notre service d'intermédiation de location de remorques, nous collectons les informations strictement nécessaires :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Données de compte et profil :</strong> Adresse e-mail, prénom, nom et identifiants techniques générés lors de l'authentification sécurisée (Supabase Auth).</li>
-                        <li><strong>Données des annonces :</strong> Caractéristiques techniques, dimensions, charge utile homologuée, plaque d'immatriculation, localisation géographique de prise en charge et photographies des remorques.</li>
-                        <li><strong>Données d'état des lieux contradictoire :</strong> Photographies horodatées et géolocalisées (4 clichés de prise en charge et 4 clichés de retour) stockées sur stockage privé sécurisé accessible exclusivement via des URL signées temporaires.</li>
-                        <li><strong>Données financières et de facturation :</strong> Montants des locations, quittances, identifiants de transactions bancaires et factures générés via Stripe. Renger ne conserve aucun numéro complet de carte bancaire sur ses serveurs.</li>
-                        <li><strong>Données de navigation et tracking first-party Renger :</strong> Mesures d'audience et de performance internes anonymisées pour le cockpit propriétaire Renger Analytics, sans aucune régie publicitaire externe ni transmission de données à des tiers publicitaires.</li>
-                    </ul>`,
-                h2_3: "3. Traitement bancaire et Données financières (Stripe)",
-                p_3: `<p>La sécurité financière de vos transactions est assurée par notre partenaire bancaire agréé Stripe Payments Europe Ltd (certifié PCI-DSS Niveau 1) :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Pour les locataires :</strong> Le règlement du loyer et la réservation de l'empreinte de caution (non débitée, mode off-session) s'effectuent via les modules chiffrés Stripe Checkout / Elements.</li>
-                        <li><strong>Pour les propriétaires :</strong> La vérification d'identité réglementaire (KYC) et la collecte sécurisée de l'IBAN sont déléguées à Stripe Express Onboarding.</li>
-                    </ul>`,
-                h2_4: "4. Sous-traitants technologiques de confiance (DPA)",
-                p_4: `<p>Vos données sont traitées exclusivement par des prestataires techniques de premier plan garantissant un niveau de protection optimal des données :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Supabase Inc. :</strong> Hébergement de la base de données PostgreSQL, authentification chiffrée et stockage privé d'inspections (certifié SOC 2 Type II).</li>
-                        <li><strong>Stripe Payments Europe Ltd :</strong> Traitement des flux financiers, séquestre de caution, détection de fraude et facturation.</li>
-                        <li><strong>Resend Inc. :</strong> Acheminement sécurisé des e-mails transactionnels (confirmations de réservation, quittances de paiement, alertes de disponibilité).</li>
-                        <li><strong>OpenStreetMap Foundation :</strong> Affichage cartographique local sans cookies traceurs de profilage.</li>
-                    </ul>`,
-                h2_5: "5. Sécurité et Mesures techniques de protection",
-                p_5: "Nous appliquons les principes de sécurité dès la conception (Privacy by Design). L'accès à la base de données est cloisonné au moyen de politiques de sécurité au niveau des lignes (Row Level Security - RLS), garantissant qu'aucun utilisateur ne puisse accéder aux données privées ou aux réservations d'autrui. Les buckets de stockage d'états des lieux photo sont strictement privés et requièrent des signatures cryptographiques éphémères. L'ensemble des échanges web est chiffré en HTTPS / TLS 1.3.",
-                h2_6: "6. Durées de conservation des données (CO art. 958f)",
-                p_6: `<p>Les données personnelles sont conservées pendant des durées proportionnées aux finalités poursuivies :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Données de compte utilisateur :</strong> Conservées pendant toute la durée d'activité du compte, supprimées sur demande de l'utilisateur.</li>
-                        <li><strong>Pièces comptables et Données de facturation :</strong> Conservées pendant la durée légale impérative de <strong>10 ans</strong> conformément à l'article 958f du Code des Obligations suisse (CO art. 958f).</li>
-                        <li><strong>Clichés et Rapports d'état des lieux :</strong> Conservés pendant la durée de la location et la prescription légale des litiges de bail, puis archivés ou purgés.</li>
-                    </ul>`,
-                h2_7: "7. Vos droits (nLPD et RGPD) & Contact",
-                p_7: `<p>Conformément à la nLPD et au RGPD, vous disposez des droits fondamentaux suivants :</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Droit d'accès et d'information :</strong> Obtenir communication des données vous concernant.</li>
-                        <li><strong>Droit de rectification :</strong> Corriger toute donnée inexacte ou incomplète directement dans votre profil.</li>
-                        <li><strong>Droit à l'effacement :</strong> Demander la suppression définitive de vos données personnelles (sous réserve de nos obligations légales de conservation comptable de 10 ans selon l'art. 958f CO).</li>
-                        <li><strong>Droit à la limitation et à la portabilité :</strong> Recevoir vos données dans un format standard structuré.</li>
-                    </ul>
-                    <p class="pt-2">Pour exercer ces droits ou pour toute question relative à la protection de vos données, vous pouvez vous adresser directement à : <a href="mailto:info@renger.ch" class="text-terracotta-500 underline hover:text-terracotta-600 font-semibold">info@renger.ch</a> (Enis Medjiti, Délégué à la protection des données).</p>`,
-                footer_text: "En naviguant sur ce site et en créant un compte, vous acceptez notre Politique de Confidentialité. For juridique exclusif : Lausanne, Canton de Vaud."
+                h2_1: "1. Responsable du traitement",
+                p_1: "La protection de vos données personnelles est assurée par Enis Medjiti, exploitant de Renger (Canton de Vaud, Suisse - <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>).",
+                h2_2: "2. Données collectées",
+                p_2: "Nous collectons uniquement les informations nécessaires au service d'intermédiation : données de profil (nom, e-mail), données d'annonces (photos, localisation), états des lieux (clichés horodatés), données de navigation internes et historiques de transaction.",
+                h2_3: "3. Sous-traitants et Sécurité",
+                p_3: "Renger ne stocke aucune donnée bancaire sensible. Les paiements, cautions et vérifications d'identité (KYC) sont intégralement délégués à notre partenaire bancaire externe certifié PCI-DSS. L'hébergement des données et l'envoi d'e-mails sont assurés par des prestataires technologiques de premier plan respectant des standards stricts de sécurité (chiffrement, accès cloisonnés).",
+                h2_4: "4. Durées de conservation",
+                p_4: `<ul class="list-disc pl-5 space-y-1">
+                    <li><strong>Données de compte :</strong> Conservées jusqu'à la suppression du compte.</li>
+                    <li><strong>Données financières et comptables :</strong> Conservées pendant la durée légale impérative de 10 ans (art. 958f CO).</li>
+                    <li><strong>États des lieux :</strong> Conservés pendant la durée de prescription légale des litiges.</li>
+                </ul>`,
+                h2_5: "5. Vos droits",
+                p_5: "Vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données. Pour les exercer, contactez-nous à l'adresse <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>.",
+                footer_text: "En naviguant sur ce site et en créant un compte, vous acceptez notre Politique de Confidentialité. For juridique exclusif : Canton de Vaud."
             },
             de: {
                 theme_btn: "Thema wechseln",
                 back_home: "← Zurück zur Startseite",
                 page_title: "Datenschutzerklärung",
-                last_update: "Letzte Aktualisierung: Oktober 2026 - Konform mit Schweizer DSG und DSGVO.",
-                h2_1: "1. Einleitung und Verantwortlicher für die Datenverarbeitung",
-                p_1: "Die Plattform <strong>Renger</strong> legt höchsten Wert auf den Schutz Ihrer Privatsphäre und personenbezogenen Daten. Diese Datenschutzerklärung erläutert, wie Ihre Daten erfasst, verarbeitet und geschützt werden. <strong>Verantwortlicher für die Datenbearbeitung</strong> ist <strong>Enis Medjiti</strong>, Gründer & Betreiber von Renger (Einzelunternehmen, wohnhaft in Lausanne, Kanton Waadt, Schweiz - E-Mail: <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>), gemäß dem neuen Schweizer Datenschutzgesetz (DSG) und der Datenschutz-Grundverordnung (DSGVO).",
-                h2_2: "2. Daten, die wir erfassen",
-                p_2: `<p>Um unseren Vermittlungsservice für Anhänger bereitzustellen, erfassen wir nur zwingend erforderliche Daten:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Konto- und Profildaten:</strong> E-Mail-Adresse, Vor- und Nachname, verschlüsselte Identifikatoren via Supabase Auth.</li>
-                        <li><strong>Inseratedaten:</strong> Technische Spezifikationen, Maße, Nutzlast, Kontrollschild, Abholstandort und Fotos des Anhängers.</li>
-                        <li><strong>Zustandsprotokolldaten:</strong> Zeit- und ortsgestempelte Fotos (4 bei Übergabe, 4 bei Rückgabe), gespeichert im privaten Supabase Storage mit temporär signierten URLs.</li>
-                        <li><strong>Finanz- und Rechnungsdaten:</strong> Mietbeträge, Transaktions-IDs und Belege via Stripe. Renger speichert keine vollständigen Kreditkartendaten.</li>
-                        <li><strong>First-Party Renger Analytics:</strong> Anonymisierte interne Nutzungsstatistiken ohne Werbenetzwerke oder Tracking-Pixel Dritter.</li>
-                    </ul>`,
-                h2_3: "3. Zahlungsabwicklung und Finanzdaten (Stripe)",
-                p_3: `<p>Die Sicherheit Ihrer Transaktionen wird durch Stripe Payments Europe Ltd (PCI-DSS Level 1) gewährleistet:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Für Mieter:</strong> Mietzahlung und nicht abgebuchte Kautionsreservierung (off-session) über verschlüsselte Stripe-Module.</li>
-                        <li><strong>Für Vermieter:</strong> Gesetzliche Identitätsprüfung (KYC) und IBAN-Auszahlung über Stripe Express Onboarding.</li>
-                    </ul>`,
-                h2_4: "4. Technische Auftragsverarbeiter (DPA)",
-                p_4: `<p>Ihre Daten werden von führenden Technologiepartnern mit maximalen Sicherheitsstandards verarbeitet:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Supabase Inc.:</strong> PostgreSQL-Datenbank, Authentifizierung und privater Inspektionsspeicher (SOC 2 Typ II).</li>
-                        <li><strong>Stripe Payments Europe Ltd:</strong> Zahlungsabwicklung, Kautionstreuhand und Betrugsschutz.</li>
-                        <li><strong>Resend Inc.:</strong> Sichere Transaktions-E-Mails (Buchungsbestätigungen, Rechnungen).</li>
-                        <li><strong>OpenStreetMap Foundation:</strong> Kartendarstellung ohne Werbetracking.</li>
-                    </ul>`,
-                h2_5: "5. Sicherheit und technische Schutzmaßnahmen",
-                p_5: "Wir implementieren strikte Sicherheitsmaßnahmen: Row Level Security (RLS) schützt alle Datenbanktabellen vor unbefugtem Zugriff. Zustandsprotokoll-Fotos liegen in privaten Buckets und können nur mit kryptografisch signierten Kurzzeit-URLs geladen werden. Alle Verbindungen sind mit HTTPS / TLS 1.3 verschlüsselt.",
-                h2_6: "6. Aufbewahrungsfristen (OR Art. 958f)",
-                p_6: `<p>Personenbezogene Daten werden nur so lange aufbewahrt, wie es der Zweck erfordert:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Benutzerkontodaten:</strong> Bis zur Löschung des Kontos auf Anfrage.</li>
-                        <li><strong>Buchungsbelege und Rechnungsdaten:</strong> Gesetzliche Aufbewahrungspflicht von <strong>10 Jahren</strong> gemäß Art. 958f des Schweizerischen Obligationenrechts (OR Art. 958f).</li>
-                        <li><strong>Inspektionsfotos:</strong> Für die Dauer der Miete und die mietrechtliche Verjährungsfrist.</li>
-                    </ul>`,
-                h2_7: "7. Ihre Rechte (DSG & DSGVO) & Kontakt",
-                p_7: `<p>Gemäß DSG und DSGVO haben Sie folgende Rechte:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Auskunftsrecht:</strong> Information über Ihre bearbeiteten Daten.</li>
-                        <li><strong>Berichtigungsrecht:</strong> Korrektur unrichtiger Daten im Profil.</li>
-                        <li><strong>Löschungsrecht:</strong> Löschung Ihrer Daten (vorbehaltlich der 10-jährigen Buchhaltungsaufbewahrungspflicht nach Art. 958f OR).</li>
-                        <li><strong>Recht auf Datenübertragbarkeit:</strong> Erhalt der Daten in einem strukturierten Format.</li>
-                    </ul>
-                    <p class="pt-2">Zur Ausübung Ihrer Rechte kontaktieren Sie bitte: <a href="mailto:info@renger.ch" class="text-terracotta-500 underline hover:text-terracotta-600 font-semibold">info@renger.ch</a> (Enis Medjiti, Datenschutzverantwortlicher).</p>`,
-                footer_text: "Durch die Nutzung dieser Website und die Kontoerstellung akzeptieren Sie unsere Datenschutzerklärung. Ausschließlicher Gerichtsstand: Lausanne, Kanton Waadt."
+                last_update: "Letzte Aktualisierung: Oktober 2026 - Konform mit dem revDSG (Schweiz) und der DSGVO (Europa).",
+                h2_1: "1. Verantwortlicher",
+                p_1: "Der Schutz Ihrer persönlichen Daten wird durch Enis Medjiti, Betreiber von Renger (Kanton Waadt, Schweiz - <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>), gewährleistet.",
+                h2_2: "2. Erfasste Daten",
+                p_2: "Wir erfassen nur die für den Vermittlungsdienst erforderlichen Informationen: Profildaten (Name, E-Mail), Anzeigendaten (Fotos, Standort), Zustandsprotokolle (zeitgestempelte Fotos), interne Navigationsdaten und Transaktionshistorien.",
+                h2_3: "3. Auftragsverarbeiter und Sicherheit",
+                p_3: "Renger speichert keine sensiblen Bankdaten. Zahlungen, Kautionen und Identitätsprüfungen (KYC) werden vollständig an unseren externen, PCI-DSS-zertifizierten Bankpartner delegiert. Datenhosting und E-Mail-Versand erfolgen durch führende Technologieanbieter unter Einhaltung strenger Sicherheitsstandards (Verschlüsselung, getrennte Zugriffe).",
+                h2_4: "4. Aufbewahrungsfristen",
+                p_4: `<ul class="list-disc pl-5 space-y-1">
+                    <li><strong>Kontodaten:</strong> Aufbewahrt bis zur Kontolöschung.</li>
+                    <li><strong>Finanz- und Buchhaltungsdaten:</strong> Aufbewahrt für die gesetzlich vorgeschriebene Dauer von 10 Jahren (Art. 958f OR).</li>
+                    <li><strong>Zustandsprotokolle:</strong> Aufbewahrt während der gesetzlichen Verjährungsfrist für Streitigkeiten.</li>
+                </ul>`,
+                h2_5: "5. Ihre Rechte",
+                p_5: "Sie haben das Recht auf Auskunft, Berichtigung, Löschung und Übertragbarkeit Ihrer Daten. Um diese auszuüben, kontaktieren Sie uns unter <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>.",
+                footer_text: "Durch das Surfen auf dieser Website und die Erstellung eines Kontos akzeptieren Sie unsere Datenschutzerklärung. Ausschließlicher Gerichtsstand: Kanton Waadt."
             },
             en: {
                 theme_btn: "Toggle theme",
                 back_home: "← Back to home",
                 page_title: "Privacy Policy",
-                last_update: "Last updated: October 2026 - Compliant with Swiss FADP and European GDPR.",
-                h2_1: "1. Introduction & Data Controller",
-                p_1: "The <strong>Renger</strong> platform is committed to strictly protecting user privacy and personal data. This policy explains how we collect, process, and protect your information. The <strong>Data Controller</strong> is <strong>Enis Medjiti</strong>, Founder & Operator of Renger (Sole proprietorship, based in Lausanne, Canton of Vaud, Switzerland - E-mail: <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>), operating in compliance with the Swiss revised Federal Act on Data Protection (FADP) and the General Data Protection Regulation (GDPR).",
-                h2_2: "2. Data We Collect",
-                p_2: `<p>To deliver our peer-to-peer trailer rental service, we collect strictly necessary data:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Account & Profile Data:</strong> Email address, first and last name, encrypted user tokens managed via Supabase Auth.</li>
-                        <li><strong>Trailer Listing Data:</strong> Technical specifications, payload capacity, license plate, pickup location, and trailer photos.</li>
-                        <li><strong>Condition Inspection Data:</strong> Timestamped and geotagged photographs (4 departure photos, 4 return photos) stored in private storage accessed via temporary signed URLs.</li>
-                        <li><strong>Financial & Invoicing Data:</strong> Booking charges, transaction identifiers, and invoices generated through Stripe. Renger never stores full credit card numbers.</li>
-                        <li><strong>First-Party Renger Analytics:</strong> Anonymized internal performance metrics for the Renger Analytics owner dashboard, without external ad networks or third-party tracking pixels.</li>
-                    </ul>`,
-                h2_3: "3. Banking Processing & Financial Data (Stripe)",
-                p_3: `<p>Financial transactions are secured by our authorized banking partner Stripe Payments Europe Ltd (PCI-DSS Level 1 certified):</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Renters:</strong> Rental payment and non-debited security deposit pre-authorization (off-session mode) via encrypted Stripe Checkout / Elements.</li>
-                        <li><strong>Owners:</strong> Regulatory identity verification (KYC) and bank payouts managed via Stripe Express Onboarding.</li>
-                    </ul>`,
-                h2_4: "4. Trusted Technology Subcontractors (DPA)",
-                p_4: `<p>Your data is processed exclusively by industry-leading cloud partners ensuring top data privacy standards:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Supabase Inc.:</strong> Encrypted PostgreSQL database, authentication, and private inspection storage (SOC 2 Type II).</li>
-                        <li><strong>Stripe Payments Europe Ltd:</strong> Financial processing, deposit escrow, and fraud prevention.</li>
-                        <li><strong>Resend Inc.:</strong> Secure transactional email delivery (booking notifications, payment receipts).</li>
-                        <li><strong>OpenStreetMap Foundation:</strong> Map tiles without third-party ad profiling cookies.</li>
-                    </ul>`,
-                h2_5: "5. Security & Technical Safeguards",
-                p_5: "We enforce Privacy by Design. Database tables are secured via PostgreSQL Row Level Security (RLS) policies, preventing unauthorized data access. Inspection photo storage buckets are strictly private and require short-lived signed URLs. All web communication is encrypted in transit using HTTPS / TLS 1.3.",
-                h2_6: "6. Data Retention Periods (CO Art. 958f)",
-                p_6: `<p>Personal data is retained for periods proportionate to its intended purpose:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>User Account Data:</strong> Retained while the account is active, deleted upon user request.</li>
-                        <li><strong>Accounting & Billing Records:</strong> Mandatorily retained for <strong>10 years</strong> pursuant to Article 958f of the Swiss Code of Obligations (CO Art. 958f).</li>
-                        <li><strong>Condition Inspection Photos:</strong> Retained for the rental duration and the statutory lease dispute limitation period.</li>
-                    </ul>`,
-                h2_7: "7. Your Rights (FADP & GDPR) & Contact",
-                p_7: `<p>Under the FADP and GDPR, you have the following rights:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li><strong>Right to Access:</strong> Request details and copies of personal data held about you.</li>
-                        <li><strong>Right to Rectification:</strong> Correct inaccurate information directly in your account profile.</li>
-                        <li><strong>Right to Erasure:</strong> Request deletion of your personal data (subject to our mandatory 10-year accounting retention obligations under CO Art. 958f).</li>
-                        <li><strong>Right to Data Portability:</strong> Receive your data in a structured, standard format.</li>
-                    </ul>
-                    <p class="pt-2">To exercise these rights, please contact: <a href="mailto:info@renger.ch" class="text-terracotta-500 underline hover:text-terracotta-600 font-semibold">info@renger.ch</a> (Enis Medjiti, Data Protection Officer).</p>`,
-                footer_text: "By browsing this site and creating an account, you accept our Privacy Policy. Exclusive jurisdiction: Lausanne, Canton of Vaud."
+                last_update: "Last updated: October 2026 - Compliant with the revFADP (Switzerland) and GDPR (Europe).",
+                h2_1: "1. Data Controller",
+                p_1: "The protection of your personal data is ensured by Enis Medjiti, operator of Renger (Canton of Vaud, Switzerland - <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>).",
+                h2_2: "2. Collected Data",
+                p_2: "We only collect information necessary for the matchmaking service: profile data (name, email), listing data (photos, location), condition reports (time-stamped photos), internal browsing data, and transaction histories.",
+                h2_3: "3. Subprocessors and Security",
+                p_3: "Renger does not store sensitive banking data. Payments, deposits, and identity checks (KYC) are fully delegated to our certified PCI-DSS external banking partner. Data hosting and email delivery are handled by leading technology providers adhering to strict security standards (encryption, partitioned access).",
+                h2_4: "4. Retention Periods",
+                p_4: `<ul class="list-disc pl-5 space-y-1">
+                    <li><strong>Account data:</strong> Retained until account deletion.</li>
+                    <li><strong>Financial and accounting data:</strong> Retained for the mandatory legal period of 10 years (Art. 958f CO).</li>
+                    <li><strong>Condition reports:</strong> Retained for the statutory limitation period of disputes.</li>
+                </ul>`,
+                h2_5: "5. Your Rights",
+                p_5: "You have the right to access, rectify, erase, and port your data. To exercise these rights, contact us at <a href=\"mailto:info@renger.ch\" class=\"text-terracotta-500 underline hover:text-terracotta-600\">info@renger.ch</a>.",
+                footer_text: "By browsing this site and creating an account, you accept our Privacy Policy. Exclusive jurisdiction: Canton of Vaud."
             }
         };
 
@@ -357,7 +227,7 @@
         </a>
         <a href="profil.html" id="mobile-nav-bookings" class="mobile-nav-btn flex flex-col items-center gap-1 w-20 text-stone-400 hover:text-terracotta-500 transition-transform active:scale-95">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            <span class="text-[10px] font-bold tracking-wide">R&eacute;servations</span>
+            <span class="text-[10px] font-bold tracking-wide">Réservations</span>
         </a>
         <a href="profil.html?p=settings-page" id="mobile-nav-settings" class="mobile-nav-btn flex flex-col items-center gap-1 w-20 text-stone-400 hover:text-terracotta-500 transition-transform active:scale-95">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>

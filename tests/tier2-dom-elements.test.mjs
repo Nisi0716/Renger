@@ -229,19 +229,19 @@ describe('Tier 2: Paid Products, Subscriptions & Boost Legal Contracts (profil.h
         assert.ok(content.includes('prorata') || content.includes('remboursement'), 'pro.html doit stipuler l absence de remboursement prorata');
     });
 
-    it('cgu.html must contain Article 7 for PRO & Boosts with full fr, de, and en translations', () => {
+    it('cgu.html must contain Article for Paid Services & Fees with full fr, de, and en translations', () => {
         const filePath = path.join(siteWebDir, 'cgu.html');
         const content = fs.readFileSync(filePath, 'utf8');
+        assert.ok(content.includes('data-i18n="h2_6"'), 'cgu.html doit contenir la balise data-i18n="h2_6"');
+        assert.ok(content.includes('data-i18n="p_6"'), 'cgu.html doit contenir la balise data-i18n="p_6" (Services payants & Frais)');
         assert.ok(content.includes('data-i18n="h2_7"'), 'cgu.html doit contenir la balise data-i18n="h2_7"');
-        assert.ok(content.includes('data-i18n="p_7_1"'), 'cgu.html doit contenir la balise data-i18n="p_7_1" (Renger PRO)');
-        assert.ok(content.includes('data-i18n="p_7_2"'), 'cgu.html doit contenir la balise data-i18n="p_7_2" (Boosts)');
-        assert.ok(content.includes('data-i18n="p_7_3"'), 'cgu.html doit contenir la balise data-i18n="p_7_3" (Paiements Stripe)');
+        assert.ok(content.includes('data-i18n="p_7"'), 'cgu.html doit contenir la balise data-i18n="p_7" (Droit applicable)');
 
         // Check translation dictionaries
+        assert.ok(content.includes('h2_6:'), 'cgu.html doit définir h2_6 dans les traductions');
+        assert.ok(content.includes('p_6:'), 'cgu.html doit définir p_6 dans les traductions');
         assert.ok(content.includes('h2_7:'), 'cgu.html doit définir h2_7 dans les traductions');
-        assert.ok(content.includes('p_7_1:'), 'cgu.html doit définir p_7_1 dans les traductions');
-        assert.ok(content.includes('p_7_2:'), 'cgu.html doit définir p_7_2 dans les traductions');
-        assert.ok(content.includes('p_7_3:'), 'cgu.html doit définir p_7_3 dans les traductions');
+        assert.ok(content.includes('p_7:'), 'cgu.html doit définir p_7 dans les traductions');
     });
 
     it('profil.html must isolate fleet management in #profile-seller-section (zero subscription banner)', () => {

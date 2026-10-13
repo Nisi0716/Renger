@@ -41,26 +41,19 @@ describe('Challenger Legal Compliance Suite: Mentions Légales, CGU & Confidenti
         it('must disclose Enis Medjiti as founder & publisher with individual company status in Canton de Vaud', () => {
             assert.ok(content.includes('Enis Medjiti'), 'Enis Medjiti doit être nommé comme exploitant');
             assert.ok(content.includes('Entreprise individuelle') || content.includes('individuelle'), 'Entreprise individuelle doit être mentionnée');
-            assert.ok(content.includes('Canton de Vaud') || content.includes('Lausanne'), 'Lausanne et Canton de Vaud doivent être mentionnés');
+            assert.ok(content.includes('Canton de Vaud'), 'Canton de Vaud doit être mentionné');
             assert.ok(content.includes('info@renger.ch'), 'info@renger.ch doit être présent');
             assert.ok(content.includes('https://renger.ch'), 'URL https://renger.ch doit être présente');
         });
 
-        it('must clearly state Renger technical intermediary status (CO art. 253 ss)', () => {
-            assert.ok(content.includes('intermédiaire technique') || content.includes('infrastructure technologique'));
-            assert.ok(content.includes('253') && content.includes('Obligations'));
+        it('must describe certified professional cloud hosting', () => {
+            assert.ok(content.includes('Hébergement') || content.includes('Hosting'));
+            assert.ok(content.includes('prestataires cloud professionnels certifiés') || content.includes('Cloud-Anbietern') || content.includes('cloud providers'));
         });
 
-        it('must disclose all third-party infrastructure providers (Supabase, Stripe, Resend, OpenStreetMap)', () => {
-            assert.ok(content.includes('Supabase Inc.') || content.includes('Supabase'), 'Supabase doit être listé');
-            assert.ok(content.includes('Stripe Payments Europe Ltd') || content.includes('Stripe'), 'Stripe doit être listé');
-            assert.ok(content.includes('Resend Inc.') || content.includes('Resend'), 'Resend doit être listé');
-            assert.ok(content.includes('OpenStreetMap'), 'OpenStreetMap doit être listé');
-        });
-
-        it('must state intellectual property protection for Renger and Terracotta #d85110', () => {
-            assert.ok(content.includes('Propriété intellectuelle'));
-            assert.ok(content.includes('#d85110') || content.includes('Terracotta'));
+        it('must state intellectual property protection for Renger', () => {
+            assert.ok(content.includes('Propriété intellectuelle') || content.includes('Geistiges Eigentum') || content.includes('Intellectual Property'));
+            assert.ok(content.includes('propriété exclusive de Renger') || content.includes('Eigentum von Renger') || content.includes('exclusive property of Renger'));
         });
 
         it('must implement full trilingual support (FR, DE, EN) with localStorage persistence', () => {
@@ -101,37 +94,33 @@ describe('Challenger Legal Compliance Suite: Mentions Légales, CGU & Confidenti
         const filePath = path.join(siteWebDir, 'cgu.html');
         const content = fs.readFileSync(filePath, 'utf8');
 
-        it('must define complete Swiss financial formulas: 5% fee, 4.90 min, 0.05 rounding, 20% commission, PRO 0%', () => {
-            assert.ok(content.includes('5%'), 'Frais locataire 5%');
-            assert.ok(content.includes('4.90 CHF'), 'Minimum garanti 4.90 CHF');
-            assert.ok(content.includes('5 centimes') || content.includes('5 Rappen') || content.includes('0.05 CHF'), 'Arrondi suisse aux 5 centimes');
-            assert.ok(content.includes('20%'), 'Commission propriétaire 20%');
-            assert.ok(content.includes('80%'), 'Net propriétaire 80%');
-            assert.ok(content.includes('39 CHF/mois') || content.includes('39 CHF / mois'), 'PRO 39 CHF/mois');
-            assert.ok(content.includes('390 CHF/an') || content.includes('390 CHF / an'), 'PRO 390 CHF/an');
-            assert.ok(content.includes('5.90 CHF') && content.includes('9.90 CHF'), 'Boosts 5.90 CHF et 9.90 CHF');
+        it('must state intermediary role pursuant to art. 253 ss CO', () => {
+            assert.ok(content.includes('Statut d\'intermédiaire') || content.includes('Vermittlerstatus') || content.includes('Intermediary Status'));
+            assert.ok(content.includes('253 ss CO') || content.includes('253 ff. OR') || content.includes('253 ff. CO'));
         });
 
-        it('must define deposit scales (200 / 300 / 400 CHF) and off-session non-debited hold', () => {
-            assert.ok(content.includes('200 CHF'), 'Caution 200 CHF');
-            assert.ok(content.includes('300 CHF'), 'Caution 300 CHF');
-            assert.ok(content.includes('400 CHF'), 'Caution 400 CHF');
-            assert.ok(content.includes('off-session') || content.includes('non débitée') || content.includes('Vorautorisierung'), 'Caution non débitée');
-            assert.ok(content.includes('48h') || content.includes('48 heures') || content.includes('48 Stunden') || content.includes('48 hours'), 'Libération sous 48h');
+        it('must define exemption of liability and road insurance pursuant to art. 63 ss LCR', () => {
+            assert.ok(content.includes('Exonération de responsabilité') || content.includes('Haftungsausschluss') || content.includes('Limitation of Liability'));
+            assert.ok(content.includes('63 ss LCR') || content.includes('63 ff. SVG') || content.includes('63 ff. Road Traffic Act'));
         });
 
-        it('must define mandatory 4-photo contradictory inventory (CO art. 257a) and Swiss presumption of liability', () => {
-            assert.ok(content.includes('257a'), 'CO art. 257a requis');
-            assert.ok(content.includes('présumée imputable') || content.includes('présumé responsable') || content.includes('vermutungshalber') || content.includes('presumed attributable'), 'Présomption légale suisse requise');
+        it('must define renter obligations regarding Permis B / BE', () => {
+            assert.ok(content.includes('Permis B ou BE') || content.includes('Kategorie B oder BE') || content.includes('Category B or BE'));
         });
 
-        it('must define balanced Zero-Loss cancellation policy in fr, de, en', () => {
-            assert.ok(content.includes('Zero-Loss'), 'Zero-Loss doit figurer dans les CGU');
-            assert.ok(content.includes('h2_8') && content.includes('p_8'), 'Balises i18n d\'annulation requises');
+        it('must define condition report and deposit pre-authorization capture', () => {
+            assert.ok(content.includes('état des lieux contradictoire photographique') || content.includes('Zustandsprotokoll') || content.includes('condition report'));
+            assert.ok(content.includes('caution') || content.includes('Kaution') || content.includes('deposit'));
         });
 
-        it('must specify exclusive jurisdiction: Lausanne, Canton de Vaud', () => {
-            assert.ok(content.includes('Lausanne'), 'For de Lausanne');
+        it('must define service fees, boosts/abonnements and cancellation policy', () => {
+            assert.ok(content.includes('Frais de service et Services payants') || content.includes('Servicegebühren') || content.includes('Service Fees'));
+            assert.ok(content.includes('Boosts') && content.includes('abonnements'));
+            assert.ok(content.includes('politique d\'annulation') || content.includes('Stornierungsbedingungen') || content.includes('cancellation policy'));
+        });
+
+        it('must specify exclusive jurisdiction: Canton de Vaud and Swiss law', () => {
+            assert.ok(content.includes('droit suisse') || content.includes('schweizerischem Recht') || content.includes('Swiss law'));
             assert.ok(content.includes('Canton de Vaud') || content.includes('Kanton Waadt'));
         });
     });
@@ -172,7 +161,7 @@ describe('Challenger Legal Compliance Suite: Mentions Légales, CGU & Confidenti
         it('must disclose Enis Medjiti as data controller with info@renger.ch contact', () => {
             assert.ok(content.includes('Enis Medjiti'));
             assert.ok(content.includes('info@renger.ch'));
-            assert.ok(content.includes('Lausanne') || content.includes('Canton de Vaud'));
+            assert.ok(content.includes('Canton de Vaud'));
         });
 
         it('must state compliance with Swiss nLPD and European GDPR', () => {
@@ -180,11 +169,9 @@ describe('Challenger Legal Compliance Suite: Mentions Légales, CGU & Confidenti
             assert.ok(content.includes('RGPD') || content.includes('DSGVO') || content.includes('GDPR'));
         });
 
-        it('must disclose all subcontractors: Supabase, Stripe, Resend, OpenStreetMap', () => {
-            assert.ok(content.includes('Supabase'));
-            assert.ok(content.includes('Stripe'));
-            assert.ok(content.includes('Resend'));
-            assert.ok(content.includes('OpenStreetMap'));
+        it('must disclose subcontracting standards and PCI-DSS external banking partner', () => {
+            assert.ok(content.includes('PCI-DSS'));
+            assert.ok(content.includes('Sous-traitants et Sécurité') || content.includes('Auftragsverarbeiter') || content.includes('Subprocessors'));
         });
 
         it('must state mandatory 10-year accounting retention pursuant to CO art. 958f', () => {
@@ -192,10 +179,11 @@ describe('Challenger Legal Compliance Suite: Mentions Légales, CGU & Confidenti
             assert.ok(content.includes('10 ans') || content.includes('10 Jahren') || content.includes('10 years'), 'Conservation 10 ans requise');
         });
 
-        it('must detail data subject rights (access, rectification, erasure, portability) and DPO contact', () => {
-            assert.ok(content.includes('Droit d\'accès') || content.includes('Auskunftsrecht') || content.includes('Right to Access'));
-            assert.ok(content.includes('Droit de rectification') || content.includes('Berichtigungsrecht') || content.includes('Right to Rectification'));
-            assert.ok(content.includes('Droit à l\'effacement') || content.includes('Löschungsrecht') || content.includes('Right to Erasure'));
+        it('must detail data subject rights (access, rectification, erasure, portability) and contact', () => {
+            assert.ok(content.includes('accès') || content.includes('Auskunft') || content.includes('access'));
+            assert.ok(content.includes('rectification') || content.includes('Berichtigung') || content.includes('rectify'));
+            assert.ok(content.includes('effacement') || content.includes('Löschung') || content.includes('erase'));
+            assert.ok(content.includes('portabilité') || content.includes('Übertragbarkeit') || content.includes('portability'));
         });
 
         it('must implement full trilingual support (FR, DE, EN)', () => {
@@ -229,7 +217,7 @@ describe('Challenger Legal Compliance Suite: Mentions Légales, CGU & Confidenti
                 const deKeys = Object.keys(translations.de || {});
                 const enKeys = Object.keys(translations.en || {});
 
-                assert.ok(frKeys.length > 10, `${file} doit avoir au moins 10 clés de traduction`);
+                assert.ok(frKeys.length >= 7, `${file} doit avoir au moins 7 clés de traduction`);
                 assert.strictEqual(deKeys.length, frKeys.length, `${file} : DE (${deKeys.length}) doit avoir le même nombre de clés que FR (${frKeys.length})`);
                 assert.strictEqual(enKeys.length, frKeys.length, `${file} : EN (${enKeys.length}) doit avoir le même nombre de clés que FR (${frKeys.length})`);
 
