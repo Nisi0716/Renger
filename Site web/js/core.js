@@ -75,6 +75,14 @@ if (supabaseClient) {
                 updateUserMenu(session?.user || null);
             }
 
+            // Réévaluation du mode maintenance et bandeau selon le statut utilisateur
+            if (typeof initMaintenanceMode === 'function') {
+                initMaintenanceMode();
+            }
+            if (typeof initBroadcastBanner === 'function') {
+                initBroadcastBanner();
+            }
+
             // Rafraîchissement automatique des données profil/settings dès résolution auth
             if (currentUser && typeof window !== 'undefined' && window.location.pathname.includes('profil.html')) {
                 const params = new URLSearchParams(window.location.search || '');
@@ -717,6 +725,7 @@ async function checkUser() {
                 if (data?.is_admin) {
                     window.__rengerIsAdmin = true;
                     if (typeof updateUserMenu === 'function') updateUserMenu(currentUser);
+                    if (typeof initMaintenanceMode === 'function') initMaintenanceMode();
                 }
             }).catch(() => null);
         }

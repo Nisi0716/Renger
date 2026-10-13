@@ -400,7 +400,9 @@ function switchAuthTab(tab) {
         }
     }
 }
-window.switchAuthTab = switchAuthTab;
+if (typeof window !== 'undefined') {
+    window.switchAuthTab = switchAuthTab;
+}
 
 function openAuthModal(defaultTab = 'login') { 
     const modal = document.getElementById('auth-modal');
@@ -412,9 +414,11 @@ function closeAuthModal() {
     const modal = document.getElementById('auth-modal');
     if (modal) modal.classList.add('hidden'); 
 }
-window.updateUserMenu = updateUserMenu;
-window.openAuthModal = openAuthModal;
-window.closeAuthModal = closeAuthModal;
+if (typeof window !== 'undefined') {
+    window.updateUserMenu = updateUserMenu;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+}
 
 
 function handleAuthModalBackdrop(event) {
@@ -430,41 +434,44 @@ function handleBookingConfirmModalBackdrop(event) {
 }
 
 // Écouteur global pour fermer la modale active avec la touche Échap et navigation clavier
-document.addEventListener('keydown', (event) => {
-    const onboardingModal = document.getElementById('onboarding-modal');
-    const isOnboardingOpen = onboardingModal && !onboardingModal.classList.contains('hidden');
+if (typeof document !== 'undefined') {
+    document.addEventListener('keydown', (event) => {
+        const onboardingModal = document.getElementById('onboarding-modal');
+        const isOnboardingOpen = onboardingModal && !onboardingModal.classList.contains('hidden');
 
-    if (event.key === 'Escape') {
-        const modals = [
-            { id: 'review-modal', close: closeReviewModal },
-            { id: 'chat-modal', close: closeChatModal },
-            { id: 'booking-confirm-modal', close: closeBookingConfirmModal },
-            { id: 'auth-modal', close: closeAuthModal },
-            { id: 'boost-modal', close: () => { if (typeof closeBoostModal === 'function') closeBoostModal(); } },
-            { id: 'inspection-success-modal', close: () => { if (typeof closeInspectionSuccessModal === 'function') closeInspectionSuccessModal(); } },
-            { id: 'planning-day-modal', close: () => { if (window.RengerPlanning && typeof window.RengerPlanning.closeDayModal === 'function') window.RengerPlanning.closeDayModal(); } },
-            { id: 'modal-block-dates', close: () => { if (window.RengerPlanning && typeof window.RengerPlanning.closeBlockDatesModal === 'function') window.RengerPlanning.closeBlockDatesModal(); } },
-            { id: 'onboarding-modal', close: skipOnboarding }
-        ];
+        if (event.key === 'Escape') {
+            const modals = [
+                { id: 'syni-action-modal', close: () => { const m = document.getElementById('syni-action-modal'); if (m) m.classList.add('hidden'); } },
+                { id: 'review-modal', close: closeReviewModal },
+                { id: 'chat-modal', close: closeChatModal },
+                { id: 'booking-confirm-modal', close: closeBookingConfirmModal },
+                { id: 'auth-modal', close: closeAuthModal },
+                { id: 'boost-modal', close: () => { if (typeof closeBoostModal === 'function') closeBoostModal(); } },
+                { id: 'inspection-success-modal', close: () => { if (typeof closeInspectionSuccessModal === 'function') closeInspectionSuccessModal(); } },
+                { id: 'planning-day-modal', close: () => { if (window.RengerPlanning && typeof window.RengerPlanning.closeDayModal === 'function') window.RengerPlanning.closeDayModal(); } },
+                { id: 'modal-block-dates', close: () => { if (window.RengerPlanning && typeof window.RengerPlanning.closeBlockDatesModal === 'function') window.RengerPlanning.closeBlockDatesModal(); } },
+                { id: 'onboarding-modal', close: skipOnboarding }
+            ];
 
-        for (const m of modals) {
-            const el = document.getElementById(m.id);
-            if (el && !el.classList.contains('hidden')) {
-                m.close();
-                break;
+            for (const m of modals) {
+                const el = document.getElementById(m.id);
+                if (el && !el.classList.contains('hidden')) {
+                    m.close();
+                    break;
+                }
+            }
+            return;
+        }
+
+        if (isOnboardingOpen && typeof onboardingState !== 'undefined' && onboardingState.track) {
+            if (event.key === 'ArrowRight') {
+                nextOnboardingStep();
+            } else if (event.key === 'ArrowLeft') {
+                prevOnboardingStep();
             }
         }
-        return;
-    }
-
-    if (isOnboardingOpen && typeof onboardingState !== 'undefined' && onboardingState.track) {
-        if (event.key === 'ArrowRight') {
-            nextOnboardingStep();
-        } else if (event.key === 'ArrowLeft') {
-            prevOnboardingStep();
-        }
-    }
-});
+    });
+}
 
 function showResetPanel() {
     const tabsContainer = document.getElementById('auth-modal-tabs');
@@ -888,6 +895,178 @@ function initPageUIState() {
         updateMobileNavState(pageId);
     }
     checkAndTriggerOnboarding();
+    initBroadcastBanner();
+    initMaintenanceMode();
+}
+
+// ==========================================
+// BANDEAU D'ANNONCE GLOBAL & MODE MAINTENANCE
+// ==========================================
+function initBroadcastBanner() {
+    try {
+        if (typeof window === 'undefined' || typeof document === 'undefined' || !window.localStorage) return;
+        const raw = window.localStorage.getItem('renger_broadcast_banner');
+        const existing = document.getElementById('renger-broadcast-banner');
+        if (!raw) {
+            if (existing) existing.remove();
+            return;
+        }
+
+        let config;
+        try { config = JSON.parse(raw); } catch (_) { return; }
+        if (!config || !config.enabled || !config.message) {
+            if (existing) existing.remove();
+            return;
+        }
+
+        // Vérifier si dismissible et déjà masqué par l'utilisateur pour cette version du bandeau
+        const bannerSignature = String(config.updatedAt || config.message || '').trim();
+        if (config.dismissible) {
+            const dismissedSig = (window.sessionStorage && sessionStorage.getItem('renger_banner_dismissed'))
+                || (window.localStorage && window.localStorage.getItem('renger_banner_dismissed'));
+            if (dismissedSig && (dismissedSig === 'true' || dismissedSig === bannerSignature)) {
+                if (existing) existing.remove();
+                return;
+            }
+        }
+
+        if (existing) existing.remove();
+
+        // Classes de thème
+        let typeClasses = 'bg-sky-600 border-sky-500 text-white';
+        let iconSvg = '<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+        if (config.type === 'success') {
+            typeClasses = 'bg-emerald-600 border-emerald-500 text-white';
+            iconSvg = '<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+        } else if (config.type === 'warning') {
+            typeClasses = 'bg-amber-600 border-amber-500 text-white';
+            iconSvg = '<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>';
+        } else if (config.type === 'danger') {
+            typeClasses = 'bg-red-600 border-red-500 text-white';
+            iconSvg = '<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+        }
+
+        const bannerEl = document.createElement('div');
+        bannerEl.id = 'renger-broadcast-banner';
+        bannerEl.className = `w-full py-2.5 px-4 text-xs font-medium border-b flex items-center justify-between gap-3 shadow-md z-[9990] transition-all ${typeClasses}`;
+
+        const msgEscaped = String(config.message || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        let linkHtml = '';
+        if (config.linkText && config.linkUrl) {
+            const rawUrl = String(config.linkUrl || '').trim();
+            // Sécurité protocolaire : interdiction des schémas malveillants javascript: ou data:
+            const isSafeUrl = !/^javascript:/i.test(rawUrl) && !/^data:/i.test(rawUrl);
+            if (isSafeUrl) {
+                const linkTextEscaped = String(config.linkText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                const linkUrlEscaped = rawUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                linkHtml = `<a href="${linkUrlEscaped}" class="underline font-bold hover:opacity-90 ml-2 whitespace-nowrap">${linkTextEscaped} &rarr;</a>`;
+            }
+        }
+
+        let closeBtnHtml = '';
+        if (config.dismissible) {
+            closeBtnHtml = `
+                <button type="button" id="btn-close-broadcast-banner" class="p-1 hover:bg-black/20 rounded-lg transition text-white/90 hover:text-white flex-shrink-0" title="Masquer l'annonce">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            `;
+        }
+
+        bannerEl.innerHTML = `
+            <div class="flex items-center gap-2.5 mx-auto text-center justify-center flex-1">
+                ${iconSvg}
+                <span>${msgEscaped}${linkHtml}</span>
+            </div>
+            ${closeBtnHtml}
+        `;
+
+        if (document.body) {
+            document.body.prepend(bannerEl);
+            const closeBtn = document.getElementById('btn-close-broadcast-banner');
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    try {
+                        const sigToStore = bannerSignature || 'true';
+                        if (window.sessionStorage) sessionStorage.setItem('renger_banner_dismissed', sigToStore);
+                    } catch (_) {}
+                    bannerEl.remove();
+                };
+            }
+        }
+    } catch (_) {}
+}
+
+function initMaintenanceMode() {
+    try {
+        if (typeof window === 'undefined' || typeof document === 'undefined' || !window.localStorage) return;
+        const raw = window.localStorage.getItem('renger_maintenance_mode');
+        const overlay = document.getElementById('renger-maintenance-overlay');
+        const badge = document.getElementById('renger-maintenance-admin-badge');
+
+        if (!raw) {
+            if (overlay) overlay.remove();
+            if (badge) badge.remove();
+            return;
+        }
+
+        let config;
+        try { config = JSON.parse(raw); } catch (_) { return; }
+        if (!config || !config.enabled) {
+            if (overlay) overlay.remove();
+            if (badge) badge.remove();
+            return;
+        }
+
+        const path = (window.location && window.location.pathname) || '';
+        const isSyniPage = path.includes('syni.html');
+
+        // Vérifier si l'utilisateur est admin suprême (priorité email maître ou profil admin)
+        let isAdmin = false;
+        if (typeof window !== 'undefined' && window.__rengerIsAdmin === true) {
+            isAdmin = true;
+        }
+        if (typeof currentUser !== 'undefined' && currentUser) {
+            if (currentUser.email === 'enism2007@hotmail.com' || currentUser.is_admin === true || currentUser.user_metadata?.is_admin === true) {
+                isAdmin = true;
+            }
+        }
+
+        if (isAdmin || isSyniPage) {
+            // L'administrateur a un accès complet avec badge discret
+            if (overlay) overlay.remove();
+            if (!badge && document.body) {
+                const badgeEl = document.createElement('div');
+                badgeEl.id = 'renger-maintenance-admin-badge';
+                badgeEl.className = 'fixed top-3 right-3 z-[99999] bg-red-600/90 text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-2xl border border-red-400 flex items-center gap-2 backdrop-blur animate-pulse';
+                badgeEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-white"></span><span>Mode Maintenance Actif</span>';
+                document.body.appendChild(badgeEl);
+            }
+            return;
+        }
+
+        // Pour tout autre visiteur : écran de maintenance bloquant
+        if (badge) badge.remove();
+        if (!overlay && document.body) {
+            const overlayEl = document.createElement('div');
+            overlayEl.id = 'renger-maintenance-overlay';
+            overlayEl.className = 'fixed inset-0 z-[999999] bg-stone-950 text-white flex flex-col items-center justify-center p-6 text-center select-none';
+            const msg = String(config.message || "Maintenance technique en cours sur Renger.ch. Retour du service d'ici quelques instants. Merci de votre patience.")
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            overlayEl.innerHTML = `
+                <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-8 shadow-2xl space-y-5">
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <h1 class="text-2xl font-black text-white">Maintenance en Cours</h1>
+                    <p class="text-xs text-stone-300 leading-relaxed">${msg}</p>
+                    <div class="pt-4 border-t border-stone-800">
+                        <a href="syni.html" class="text-[11px] text-stone-500 hover:text-stone-300 transition">Administration Syni</a>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlayEl);
+        }
+    } catch (_) {}
 }
 
 if (typeof document !== 'undefined') {
@@ -1264,6 +1443,8 @@ if (typeof window !== 'undefined') {
     window.initTooltips = initTooltips;
     window.showTooltipFor = showTooltipFor;
     window.hideTooltip = hideTooltip;
+    window.initBroadcastBanner = initBroadcastBanner;
+    window.initMaintenanceMode = initMaintenanceMode;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -1285,6 +1466,8 @@ if (typeof module !== 'undefined' && module.exports) {
         createTooltip,
         initTooltips,
         showTooltipFor,
-        hideTooltip
+        hideTooltip,
+        initBroadcastBanner,
+        initMaintenanceMode
     };
 }

@@ -24,9 +24,12 @@
     const SESSION_UNLOCKED_KEY = 'renger_syni_unlocked';
     const SESSION_PASSPHRASE_KEY = 'renger_syni_passphrase';
     const GSC_TOKEN_KEY = 'renger_syni_gsc_token';
+    const BROADCAST_BANNER_KEY = 'renger_broadcast_banner';
+    const MAINTENANCE_MODE_KEY = 'renger_maintenance_mode';
+    const AUDIT_LOG_KEY = 'syni_audit_log';
 
-    // Modules Syni
-    const MODULES = ['cockpit', 'users', 'bookings', 'trailers', 'inspections', 'seo'];
+    // Modules Syni (8 modules de gestion suprême)
+    const MODULES = ['cockpit', 'users', 'bookings', 'trailers', 'inspections', 'seo', 'control', 'simulator'];
 
     // Cantons suisses
     const SWISS_CANTONS = {
@@ -222,6 +225,90 @@
             isCancelled,
             stripeFee,
             zeroLossRenterRefund
+        };
+    }
+
+    /**
+     * Moteur de simulation financière et de croissance Renger
+     * Calcule précisément le GMV, MRR, commissions (20%), frais locataires (5% min 4.90 CHF),
+     * revenus boosts, marge nette et seuil de rentabilité (Break-Even Point).
+     */
+    function calculateSimulatorProjections(inputs = {}) {
+        const activeTrailers = Math.max(0, Number(inputs.activeTrailers ?? 50));
+        const proRate = Math.min(100, Math.max(0, Number(inputs.proRate ?? 20))); // % de PRO
+        const rentalDays = Math.max(0, Number(inputs.rentalDays ?? 4)); // jours loués/mois/remorque
+        const dailyPrice = Math.max(0, Number(inputs.dailyPrice ?? 65)); // CHF/jour
+        const boostRate = Math.min(100, Math.max(0, Number(inputs.boostRate ?? 15))); // % boostées
+        const fixedCosts = Math.max(0, Number(inputs.fixedCosts ?? 250)); // CHF/mois
+        const avgRentalDuration = Math.max(0.5, Number(inputs.avgRentalDuration ?? 2)); // jours/réservation
+        const boostPrice = Math.max(0, Number(inputs.boostPrice ?? 7.90)); // CHF moyenne pondérée (5.90 & 9.90)
+
+        // 1. Volume Brut d'Affaires Mensuel et Annuel (GMV)
+        const gmvMonthly = Math.round(activeTrailers * rentalDays * dailyPrice * 100) / 100;
+        const gmvAnnual = Math.round(gmvMonthly * 12 * 100) / 100;
+
+        // 2. Abonnements PRO récurrents (39 CHF / mois)
+        const proRateFrac = proRate / 100;
+        const nbPro = Math.round(activeTrailers * proRateFrac);
+        const mrr = Math.round(nbPro * 39 * 100) / 100;
+        const arr = Math.round(mrr * 12 * 100) / 100;
+
+        // 3. Commissions Renger (20% sur locations des non-PRO)
+        const nonProFraction = Math.max(0, 1 - proRateFrac);
+        const nonProGmv = Math.round(gmvMonthly * nonProFraction * 100) / 100;
+        const platformCommissions = Math.round(nonProGmv * 0.20 * 100) / 100;
+
+        // 4. Frais de traitement locataires (5% min 4.90 CHF sur toutes les locations)
+        const totalRentalDays = activeTrailers * rentalDays;
+        const totalBookings = totalRentalDays > 0 ? Math.max(1, Math.round(totalRentalDays / avgRentalDuration)) : 0;
+        const avgBookingBase = dailyPrice * avgRentalDuration;
+        const rawFee = (totalBookings > 0 && avgBookingBase > 0) ? Math.max(4.90, avgBookingBase * 0.05) : 0;
+        const feePerBooking = Math.round(rawFee * 20) / 20;
+        const renterFees = totalBookings > 0 ? Math.round(totalBookings * feePerBooking * 100) / 100 : 0;
+
+        // 5. Options de visibilité Boosts d'annonces
+        const nbBoosted = Math.round(activeTrailers * (boostRate / 100));
+        const boostRevenue = Math.round(nbBoosted * boostPrice * 100) / 100;
+
+        // 6. Revenu Net Total Renger
+        const totalNetRevenue = Math.round((platformCommissions + renterFees + mrr + boostRevenue) * 100) / 100;
+
+        // 7. Bénéfice Net Mensuel & Marge nette
+        const netProfit = Math.round((totalNetRevenue - fixedCosts) * 100) / 100;
+        const netMargin = totalNetRevenue > 0 ? Math.round((netProfit / totalNetRevenue) * 1000) / 10 : 0;
+
+        // 8. Seuil de rentabilité (Break-Even Point)
+        const revenuePerTrailer = activeTrailers > 0 ? totalNetRevenue / activeTrailers : 0;
+        const breakEvenTrailers = (fixedCosts > 0 && revenuePerTrailer > 0) ? Math.ceil(fixedCosts / revenuePerTrailer) : 0;
+        const revenuePerBooking = totalBookings > 0 ? totalNetRevenue / totalBookings : 0;
+        const breakEvenBookings = (fixedCosts > 0 && revenuePerBooking > 0) ? Math.ceil(fixedCosts / revenuePerBooking) : 0;
+
+        return {
+            activeTrailers,
+            proRate,
+            rentalDays,
+            dailyPrice,
+            boostRate,
+            fixedCosts,
+            avgRentalDuration,
+            boostPrice,
+            gmvMonthly,
+            gmvAnnual,
+            nbPro,
+            mrr,
+            arr,
+            nonProGmv,
+            platformCommissions,
+            totalBookings,
+            feePerBooking,
+            renterFees,
+            nbBoosted,
+            boostRevenue,
+            totalNetRevenue,
+            netProfit,
+            netMargin,
+            breakEvenTrailers,
+            breakEvenBookings
         };
     }
 
@@ -1032,7 +1119,7 @@
      * Rendu des données dans les éléments DOM
      */
     function renderCurrentModule() {
-        if (!computedMetrics) return;
+        if (typeof document === 'undefined' || !computedMetrics) return;
 
         // Mise à jour des badges généraux
         const badgeSource = document.getElementById('syni-data-source-badge');
@@ -1094,6 +1181,238 @@
 
         // Module 6 : Google SEO
         renderSeoSection();
+
+        // Module 7 : Contrôle Global & Diffusion
+        renderControlSection();
+
+        // Module 8 : Simulateur Business & Croissance
+        renderSimulatorSection();
+    }
+
+    // ==========================================
+    // MODALE D'ACTION & MODÉRATION EN 1 CLIC
+    // ==========================================
+    let pendingAction = null;
+
+    function openActionModal({ title, message, actionType, targetType, targetId, onConfirm }) {
+        const modal = document.getElementById('syni-action-modal');
+        const titleEl = document.getElementById('syni-action-title');
+        const msgEl = document.getElementById('syni-action-message');
+        const reasonInput = document.getElementById('syni-action-reason');
+        const cancelBtn = document.getElementById('syni-action-cancel');
+        const confirmBtn = document.getElementById('syni-action-confirm');
+
+        if (!modal) {
+            if (onConfirm) onConfirm('');
+            return;
+        }
+
+        if (titleEl) titleEl.textContent = title || "Confirmation d'Action Suprême";
+        if (msgEl) msgEl.textContent = message || "Êtes-vous sûr de vouloir exécuter cette action ?";
+        if (reasonInput) reasonInput.value = '';
+
+        pendingAction = { actionType, targetType, targetId, onConfirm };
+        modal.classList.remove('hidden');
+
+        if (cancelBtn) {
+            cancelBtn.onclick = closeActionModal;
+        }
+
+        if (confirmBtn) {
+            confirmBtn.onclick = () => {
+                const reason = (reasonInput?.value || '').trim();
+                const actionToRun = pendingAction;
+                closeActionModal();
+                if (actionToRun && typeof actionToRun.onConfirm === 'function') {
+                    actionToRun.onConfirm(reason);
+                } else if (actionToRun) {
+                    const res = executeSupremeAction(actionToRun.actionType, actionToRun.targetType, actionToRun.targetId, reason);
+                    if (typeof showToast === 'function') showToast(res.message, 'success');
+                }
+            };
+        }
+
+        modal.onclick = (e) => {
+            if (e.target === modal) closeActionModal();
+        };
+
+        if (reasonInput) {
+            reasonInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (confirmBtn) confirmBtn.click();
+                }
+            };
+        }
+    }
+
+    function closeActionModal() {
+        const modal = document.getElementById('syni-action-modal');
+        if (modal) modal.classList.add('hidden');
+        pendingAction = null;
+    }
+
+    /**
+     * Enregistre une entrée dans le journal d'audit des actions suprêmes
+     */
+    function recordAuditLog(action, targetType, targetId, reason = '', adminEmail = SUPREME_ADMIN_EMAIL) {
+        const logs = getAuditLogs();
+        const entry = {
+            id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            timestamp: new Date().toISOString(),
+            action: String(action),
+            target_type: String(targetType),
+            target_id: String(targetId),
+            reason: String(reason || 'Action administrative directe'),
+            admin_email: String(adminEmail || SUPREME_ADMIN_EMAIL)
+        };
+        logs.unshift(entry);
+        if (logs.length > 500) logs.pop();
+
+        if (typeof window !== 'undefined' && window.localStorage) {
+            try {
+                window.localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(logs));
+            } catch (_) {}
+        }
+        return entry;
+    }
+
+    /**
+     * Récupère la liste des entrées du journal d'audit
+     */
+    function getAuditLogs() {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return [];
+        }
+        try {
+            const raw = window.localStorage.getItem(AUDIT_LOG_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    /**
+     * Exécute une action administrative suprême avec traçabilité immédiate
+     */
+    function executeSupremeAction(actionType, targetType, targetId, reason = '') {
+        const idStr = String(targetId);
+        const adminEmail = SUPREME_ADMIN_EMAIL;
+        let successMessage = "Action exécutée avec succès";
+        const client = (typeof window !== 'undefined' && window.supabaseClient)
+            || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+
+        if (targetType === 'user') {
+            const user = (rawData?.profiles?.find(p => String(p.id) === idStr))
+                || (computedMetrics?.users?.list?.find(u => String(u.id) === idStr));
+            const metricUser = computedMetrics?.users?.list?.find(u => String(u.id) === idStr);
+
+            if (actionType === 'toggle_pro') {
+                const newPro = !user?.is_pro;
+                if (user) user.is_pro = newPro;
+                if (metricUser && metricUser !== user) metricUser.is_pro = newPro;
+                if (client) {
+                    client.from('profiles').update({ is_pro: newPro }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = newPro 
+                    ? `Utilisateur @${user?.username || idStr} promu PRO (0% commission)` 
+                    : `Statut PRO retiré pour @${user?.username || idStr}`;
+            } else if (actionType === 'toggle_ban') {
+                const newBanned = !user?.is_banned;
+                if (user) user.is_banned = newBanned;
+                if (metricUser && metricUser !== user) metricUser.is_banned = newBanned;
+                if (client) {
+                    client.from('profiles').update({ is_banned: newBanned }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = newBanned 
+                    ? `Utilisateur @${user?.username || idStr} banni de la plateforme` 
+                    : `Utilisateur @${user?.username || idStr} débanni`;
+            }
+        } else if (targetType === 'trailer') {
+            const trailer = (rawData?.trailers?.find(t => String(t.id) === idStr))
+                || (computedMetrics?.trailers?.list?.find(t => String(t.id) === idStr));
+            const metricTrailer = computedMetrics?.trailers?.list?.find(t => String(t.id) === idStr);
+
+            if (actionType === 'toggle_active') {
+                const newActive = trailer ? (trailer.is_active === false) : true;
+                if (trailer) trailer.is_active = newActive;
+                if (metricTrailer && metricTrailer !== trailer) metricTrailer.is_active = newActive;
+                if (client) {
+                    client.from('trailers').update({ is_active: newActive }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = newActive ? `Remorque #${idStr} réactivée` : `Remorque #${idStr} masquée du catalogue`;
+            } else if (actionType === 'boost_7d') {
+                const boostEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+                if (trailer) {
+                    trailer.boost_end_date = boostEnd;
+                    trailer.boost_type = 'week';
+                }
+                if (metricTrailer && metricTrailer !== trailer) {
+                    metricTrailer.boost_end_date = boostEnd;
+                    metricTrailer.boost_type = 'week';
+                }
+                if (client) {
+                    client.from('trailers').update({ boost_end_date: boostEnd, boost_type: 'week' }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Boost de visibilité 7 jours offert sur la remorque #${idStr}`;
+            }
+        } else if (targetType === 'booking') {
+            const booking = (rawData?.bookings?.find(b => String(b.id) === idStr))
+                || (computedMetrics?.bookings?.list?.find(b => String(b.id) === idStr));
+            const metricBooking = computedMetrics?.bookings?.list?.find(b => String(b.id) === idStr);
+
+            if (actionType === 'release_caution') {
+                if (booking) {
+                    booking.deposit_status = 'libere';
+                    booking.caution_released = true;
+                }
+                if (metricBooking && metricBooking !== booking) {
+                    metricBooking.deposit_status = 'libere';
+                    metricBooking.caution_released = true;
+                }
+                if (client) {
+                    client.from('bookings').update({ deposit_status: 'libere' }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Empreinte Stripe de caution libérée pour la réservation #${idStr}`;
+            } else if (actionType === 'capture_caution') {
+                if (booking) {
+                    booking.deposit_status = 'capture';
+                    booking.caution_captured = true;
+                }
+                if (metricBooking && metricBooking !== booking) {
+                    metricBooking.deposit_status = 'capture';
+                    metricBooking.caution_captured = true;
+                }
+                if (client) {
+                    client.from('bookings').update({ deposit_status: 'capture' }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Caution capturée pour litige sur la réservation #${idStr}`;
+            } else if (actionType === 'cancel_booking') {
+                if (booking) {
+                    booking.status = 'annule';
+                }
+                if (metricBooking && metricBooking !== booking) {
+                    metricBooking.status = 'annule';
+                }
+                if (client) {
+                    client.from('bookings').update({ status: 'annule' }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Réservation #${idStr} annulée administrativement`;
+            }
+        }
+
+        // Journalisation dans l'Audit Trail
+        const logEntry = recordAuditLog(actionType, targetType, idStr, reason || successMessage, adminEmail);
+
+        // Réactualisation des métriques si les données existent
+        if (rawData) {
+            computedMetrics = computeSyniMetrics(rawData, currentTimeRange);
+            renderCurrentModule();
+        } else if (computedMetrics) {
+            renderCurrentModule();
+        }
+
+        return { success: true, message: successMessage, log: logEntry };
     }
 
     function renderUsersTable() {
@@ -1139,6 +1458,7 @@
                         ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">PRO (0% com)</span>'
                         : '<span class="bg-stone-700 text-stone-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Standard</span>'}
                     ${u.is_admin ? '<span class="ml-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Admin</span>' : ''}
+                    ${u.is_banned ? '<span class="ml-1 bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Banni</span>' : ''}
                 </td>
                 <td class="py-3 px-4 text-xs text-stone-300">
                     <span class="font-bold text-white">${u.trailers_count || 0}</span> remorque(s) • <span class="font-bold text-white">${u.bookings_count || 0}</span> location(s)
@@ -1149,8 +1469,62 @@
                 <td class="py-3 px-4 text-xs text-stone-400 font-mono">
                     ${escapeHtml(u.id)}
                 </td>
+                <td class="py-3 px-4 text-center">
+                    <div class="flex items-center justify-center gap-1.5 flex-nowrap">
+                        <button type="button" class="btn-syni-user-pro px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${u.is_pro ? 'bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow'}" data-user-id="${escapeHtml(u.id)}" data-is-pro="${u.is_pro ? 'true' : 'false'}">
+                            ${u.is_pro ? 'Retirer PRO' : 'Passer PRO'}
+                        </button>
+                        <button type="button" class="btn-syni-user-ban px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${u.is_banned ? 'bg-stone-700 hover:bg-stone-600 text-stone-200' : 'bg-red-900/40 hover:bg-red-800/60 text-red-400 border border-red-800/40'}" data-user-id="${escapeHtml(u.id)}" data-is-banned="${u.is_banned ? 'true' : 'false'}">
+                            ${u.is_banned ? 'Débannir' : 'Bannir'}
+                        </button>
+                    </div>
+                </td>
             </tr>
         `).join('');
+
+        attachUsersTableActionListeners();
+    }
+
+    function attachUsersTableActionListeners() {
+        document.querySelectorAll('.btn-syni-user-pro').forEach(btn => {
+            btn.onclick = () => {
+                const userId = btn.getAttribute('data-user-id');
+                const isPro = btn.getAttribute('data-is-pro') === 'true';
+                openActionModal({
+                    title: isPro ? "Retrait du Statut PRO" : "Attribution du Statut PRO",
+                    message: isPro 
+                        ? "Voulez-vous retirer le statut PRO pour cet utilisateur ? La commission plateforme de 20% sera réappliquée sur ses prochaines locations."
+                        : "Voulez-vous accorder le statut Renger PRO à cet utilisateur ? Il bénéficiera instantanément de 0% de commission plateforme et du badge PRO.",
+                    actionType: 'toggle_pro',
+                    targetType: 'user',
+                    targetId: userId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('toggle_pro', 'user', userId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-user-ban').forEach(btn => {
+            btn.onclick = () => {
+                const userId = btn.getAttribute('data-user-id');
+                const isBanned = btn.getAttribute('data-is-banned') === 'true';
+                openActionModal({
+                    title: isBanned ? "Débannir l'Utilisateur" : "Bannir l'Utilisateur",
+                    message: isBanned
+                        ? "Voulez-vous rétablir l'accès à la plateforme pour cet utilisateur ?"
+                        : "Attention : le bannissement suspendra immédiatement tout accès de cet utilisateur à la plateforme Renger.",
+                    actionType: 'toggle_ban',
+                    targetType: 'user',
+                    targetId: userId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('toggle_ban', 'user', userId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'warning');
+                    }
+                });
+            };
+        });
     }
 
     function renderBookingsTable() {
@@ -1179,6 +1553,9 @@
             else if (b.status === 'termine') statusBadge = '<span class="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Terminée</span>';
             else if (b.status === 'annule') statusBadge = '<span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Annulée Zero-Loss</span>';
 
+            const depositReleased = b.deposit_status === 'libere' || b.caution_released === true;
+            const depositCaptured = b.deposit_status === 'capture' || b.caution_captured === true;
+
             return `
                 <tr class="border-b border-stone-800 hover:bg-stone-800/40 transition">
                     <td class="py-3 px-4 text-xs font-mono text-stone-300 font-bold">${escapeHtml(b.id)}</td>
@@ -1195,10 +1572,84 @@
                     <td class="py-3 px-4 text-xs font-bold text-white text-right">${formatChf(fin.totalPaid)}</td>
                     <td class="py-3 px-4 text-xs text-emerald-400 text-right">${formatChf(fin.platformNetRevenue)}</td>
                     <td class="py-3 px-4 text-xs text-stone-300 text-right">${formatChf(fin.ownerPayout)}</td>
-                    <td class="py-3 px-4 text-xs text-amber-400 text-right">${formatChf(fin.depositAmount)}</td>
+                    <td class="py-3 px-4 text-xs text-right">
+                        <span class="font-bold ${depositCaptured ? 'text-red-400' : (depositReleased ? 'text-emerald-400' : 'text-amber-400')}">${formatChf(fin.depositAmount)}</span>
+                        ${depositReleased ? '<div class="text-[9px] text-emerald-400 font-mono">Libérée</div>' : ''}
+                        ${depositCaptured ? '<div class="text-[9px] text-red-400 font-mono">Capturée</div>' : ''}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center gap-1 flex-nowrap">
+                            <button type="button" class="btn-syni-booking-release px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 ${depositReleased ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40'}" data-booking-id="${escapeHtml(b.id)}" ${depositReleased ? 'disabled' : ''} title="Libérer manuellement la caution">
+                                Libérer
+                            </button>
+                            <button type="button" class="btn-syni-booking-capture px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 ${depositCaptured ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border border-amber-800/40'}" data-booking-id="${escapeHtml(b.id)}" ${depositCaptured ? 'disabled' : ''} title="Capturer la caution">
+                                Capturer
+                            </button>
+                            ${b.status !== 'annule' ? `
+                                <button type="button" class="btn-syni-booking-cancel px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-red-950/60 hover:bg-red-900/80 text-red-400 border border-red-800/40" data-booking-id="${escapeHtml(b.id)}" title="Annuler administrativement la réservation">
+                                    Annuler
+                                </button>
+                            ` : '<span class="text-[10px] text-stone-500 italic">Annulée</span>'}
+                        </div>
+                    </td>
                 </tr>
             `;
         }).join('');
+
+        attachBookingsTableActionListeners();
+    }
+
+    function attachBookingsTableActionListeners() {
+        document.querySelectorAll('.btn-syni-booking-release').forEach(btn => {
+            btn.onclick = () => {
+                const bookingId = btn.getAttribute('data-booking-id');
+                openActionModal({
+                    title: "Libérer la Caution Stripe",
+                    message: "Voulez-vous lever définitivement l'empreinte bancaire Stripe non débitée associée à cette réservation ?",
+                    actionType: 'release_caution',
+                    targetType: 'booking',
+                    targetId: bookingId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('release_caution', 'booking', bookingId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-booking-capture').forEach(btn => {
+            btn.onclick = () => {
+                const bookingId = btn.getAttribute('data-booking-id');
+                openActionModal({
+                    title: "Capturer la Caution pour Litige",
+                    message: "Attention : la capture de caution réclamera les fonds auprès de la banque du locataire suite à des dégâts constatés lors de l'état des lieux de retour.",
+                    actionType: 'capture_caution',
+                    targetType: 'booking',
+                    targetId: bookingId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('capture_caution', 'booking', bookingId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'warning');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-booking-cancel').forEach(btn => {
+            btn.onclick = () => {
+                const bookingId = btn.getAttribute('data-booking-id');
+                openActionModal({
+                    title: "Annulation Administrative de Réservation",
+                    message: "Voulez-vous annuler administrativement cette réservation ? Les parties prenantes seront notifiées et les fonds traités selon la politique Zero-Loss.",
+                    actionType: 'cancel_booking',
+                    targetType: 'booking',
+                    targetId: bookingId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('cancel_booking', 'booking', bookingId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'info');
+                    }
+                });
+            };
+        });
     }
 
     function renderTrailersTable() {
@@ -1236,6 +1687,8 @@
                 boostBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">${boostLabel} (${diffDays}j)</span>`;
             }
 
+            const isActive = t.is_active !== false;
+
             return `
                 <tr class="border-b border-stone-800 hover:bg-stone-800/40 transition">
                     <td class="py-3 px-4">
@@ -1263,13 +1716,64 @@
                         <span class="font-bold text-white">${t.views || 0}</span> vues / <span class="font-bold text-white">${t.clicks || 0}</span> clics <span class="text-[10px] text-emerald-400 font-mono">(${t.ctr || 0}%)</span>
                     </td>
                     <td class="py-3 px-4 text-xs">
-                        ${t.is_active !== false 
+                        ${isActive 
                             ? '<span class="text-emerald-400 font-bold">Active</span>' 
                             : '<span class="text-red-400 font-bold">Inactive</span>'}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center gap-1.5 flex-nowrap">
+                            <button type="button" class="btn-syni-trailer-toggle px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${isActive ? 'bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}" data-trailer-id="${escapeHtml(t.id)}" data-is-active="${isActive ? 'true' : 'false'}">
+                                ${isActive ? 'Masquer' : 'Activer'}
+                            </button>
+                            <button type="button" class="btn-syni-trailer-boost px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-amber-600 hover:bg-amber-500 text-white shadow" data-trailer-id="${escapeHtml(t.id)}">
+                                Offrir Boost 7j
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
         }).join('');
+
+        attachTrailersTableActionListeners();
+    }
+
+    function attachTrailersTableActionListeners() {
+        document.querySelectorAll('.btn-syni-trailer-toggle').forEach(btn => {
+            btn.onclick = () => {
+                const trailerId = btn.getAttribute('data-trailer-id');
+                const isActive = btn.getAttribute('data-is-active') === 'true';
+                openActionModal({
+                    title: isActive ? "Masquer la Remorque" : "Activer la Remorque",
+                    message: isActive
+                        ? "Voulez-vous masquer cette remorque ? Elle ne sera plus visible sur la carte interactive ni dans le catalogue des annonces."
+                        : "Voulez-vous réactiver cette annonce de remorque et la rendre réservable immédiatement ?",
+                    actionType: 'toggle_active',
+                    targetType: 'trailer',
+                    targetId: trailerId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('toggle_active', 'trailer', trailerId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-trailer-boost').forEach(btn => {
+            btn.onclick = () => {
+                const trailerId = btn.getAttribute('data-trailer-id');
+                openActionModal({
+                    title: "Offrir un Boost de 7 Jours",
+                    message: "Voulez-vous activer immédiatement un boost d'annonce de 7 jours (valeur 9.90 CHF) pour propulser cette remorque en tête des résultats ?",
+                    actionType: 'boost_7d',
+                    targetType: 'trailer',
+                    targetId: trailerId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('boost_7d', 'trailer', trailerId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
+                    }
+                });
+            };
+        });
     }
 
     function renderInspectionsTable() {
@@ -1401,6 +1905,357 @@
                     </div>
                 `;
             }).join('');
+        }
+    }
+
+    // ==========================================
+    // MODULE 7 : CONTRÔLE GLOBAL & DIFFUSION
+    // ==========================================
+
+    function getBroadcastBannerConfig() {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return { enabled: false, type: 'info', message: '', linkText: '', linkUrl: '', dismissible: true };
+        }
+        try {
+            const raw = window.localStorage.getItem(BROADCAST_BANNER_KEY);
+            return raw ? JSON.parse(raw) : { enabled: false, type: 'info', message: '', linkText: '', linkUrl: '', dismissible: true };
+        } catch (_) {
+            return { enabled: false, type: 'info', message: '', linkText: '', linkUrl: '', dismissible: true };
+        }
+    }
+
+    function setBroadcastBannerConfig(config) {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(BROADCAST_BANNER_KEY, JSON.stringify(config));
+        }
+    }
+
+    function getMaintenanceModeConfig() {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return { enabled: false, message: "Maintenance technique en cours sur Renger.ch. Retour du service d'ici quelques instants. Merci de votre patience." };
+        }
+        try {
+            const raw = window.localStorage.getItem(MAINTENANCE_MODE_KEY);
+            return raw ? JSON.parse(raw) : { enabled: false, message: "Maintenance technique en cours sur Renger.ch. Retour du service d'ici quelques instants. Merci de votre patience." };
+        } catch (_) {
+            return { enabled: false, message: "Maintenance technique en cours sur Renger.ch. Retour du service d'ici quelques instants. Merci de votre patience." };
+        }
+    }
+
+    function setMaintenanceModeConfig(config) {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(MAINTENANCE_MODE_KEY, JSON.stringify(config));
+        }
+    }
+
+    function updateBannerPreview() {
+        const preview = document.getElementById('broadcast-banner-preview');
+        if (!preview) return;
+
+        const isEnabled = document.getElementById('broadcast-banner-enabled')?.checked || false;
+        const type = document.getElementById('broadcast-banner-type')?.value || 'info';
+        const text = (document.getElementById('broadcast-banner-text')?.value || '').trim() || 'Aperçu du message de diffusion sur Renger.ch...';
+        const linkText = (document.getElementById('broadcast-banner-link-text')?.value || '').trim();
+        const linkUrl = (document.getElementById('broadcast-banner-link-url')?.value || '').trim();
+        const dismissible = document.getElementById('broadcast-banner-dismissible')?.checked ?? true;
+
+        let styleClasses = 'bg-sky-600 border-sky-500 text-white';
+        if (type === 'success') styleClasses = 'bg-emerald-600 border-emerald-500 text-white';
+        else if (type === 'warning') styleClasses = 'bg-amber-600 border-amber-500 text-white';
+        else if (type === 'danger') styleClasses = 'bg-red-600 border-red-500 text-white';
+
+        const linkPart = (linkText && linkUrl) ? ` <span class="underline font-bold ml-1">${escapeHtml(linkText)} &rarr;</span>` : '';
+        const closePart = dismissible ? '<span class="ml-auto opacity-70 hover:opacity-100 cursor-pointer font-bold">✕</span>' : '';
+
+        preview.className = `p-3 rounded-xl border text-xs flex items-center justify-between gap-3 shadow-inner ${styleClasses} ${isEnabled ? '' : 'opacity-60'}`;
+        preview.innerHTML = `
+            <div class="flex items-center gap-2 flex-1">
+                <span class="font-bold text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/20">${type}</span>
+                <span>${escapeHtml(text)}${linkPart}</span>
+            </div>
+            ${closePart}
+        `;
+    }
+
+    function renderControlSection() {
+        if (typeof document === 'undefined') return;
+        // 1. Bandeau
+        const bannerConfig = getBroadcastBannerConfig();
+        const bannerCheck = document.getElementById('broadcast-banner-enabled');
+        const bannerType = document.getElementById('broadcast-banner-type');
+        const bannerText = document.getElementById('broadcast-banner-text');
+        const bannerLinkText = document.getElementById('broadcast-banner-link-text');
+        const bannerLinkUrl = document.getElementById('broadcast-banner-link-url');
+        const bannerDismiss = document.getElementById('broadcast-banner-dismissible');
+        const bannerStatusLabel = document.getElementById('broadcast-banner-status-label');
+
+        if (bannerCheck && !bannerCheck.dataset.initialized) {
+            bannerCheck.checked = !!bannerConfig.enabled;
+            if (bannerType) bannerType.value = bannerConfig.type || 'info';
+            if (bannerText) bannerText.value = bannerConfig.message || '';
+            if (bannerLinkText) bannerLinkText.value = bannerConfig.linkText || '';
+            if (bannerLinkUrl) bannerLinkUrl.value = bannerConfig.linkUrl || '';
+            if (bannerDismiss) bannerDismiss.checked = bannerConfig.dismissible !== false;
+            bannerCheck.dataset.initialized = 'true';
+        }
+
+        if (bannerStatusLabel) {
+            const isChecked = bannerCheck ? bannerCheck.checked : bannerConfig.enabled;
+            bannerStatusLabel.textContent = isChecked ? 'Actif' : 'Inactif';
+            bannerStatusLabel.className = isChecked ? 'ml-2 text-xs font-mono font-bold text-emerald-400' : 'ml-2 text-xs font-mono text-stone-400';
+        }
+
+        updateBannerPreview();
+
+        // 2. Mode maintenance
+        const maintConfig = getMaintenanceModeConfig();
+        const maintCheck = document.getElementById('maintenance-mode-enabled');
+        const maintMsg = document.getElementById('maintenance-mode-message');
+        const maintStatusLabel = document.getElementById('maintenance-mode-status-label');
+
+        if (maintCheck && !maintCheck.dataset.initialized) {
+            maintCheck.checked = !!maintConfig.enabled;
+            if (maintMsg) maintMsg.value = maintConfig.message || '';
+            maintCheck.dataset.initialized = 'true';
+        }
+
+        if (maintStatusLabel) {
+            const isMaint = maintCheck ? maintCheck.checked : maintConfig.enabled;
+            maintStatusLabel.textContent = isMaint ? 'Actif (Site Bloqué)' : 'Inactif';
+            maintStatusLabel.className = isMaint ? 'ml-2 text-xs font-mono font-bold text-red-400 animate-pulse' : 'ml-2 text-xs font-mono text-stone-400';
+        }
+
+        // 3. Journal d'audit
+        renderAuditLogTable();
+    }
+
+    function renderAuditLogTable() {
+        const tbody = document.getElementById('syni-audit-log-tbody');
+        if (!tbody) return;
+
+        const logs = getAuditLogs();
+        const query = (document.getElementById('audit-log-search-input')?.value || '').toLowerCase().trim();
+        const filterType = document.getElementById('audit-log-filter-type')?.value || 'all';
+
+        const filtered = logs.filter(l => {
+            if (filterType !== 'all' && l.target_type !== filterType) return false;
+            if (query) {
+                const matchAction = (l.action || '').toLowerCase().includes(query);
+                const matchTarget = (l.target_id || '').toLowerCase().includes(query);
+                const matchReason = (l.reason || '').toLowerCase().includes(query);
+                if (!matchAction && !matchTarget && !matchReason) return false;
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="py-6 px-4 text-center text-xs text-stone-500 italic">
+                        Aucune action enregistrée pour le moment.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(l => {
+            let actionBadge = `<span class="bg-stone-800 text-stone-300 px-2 py-0.5 rounded text-[10px] font-mono font-bold">${escapeHtml(l.action)}</span>`;
+            if (l.action.includes('pro')) {
+                actionBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-mono font-bold">${escapeHtml(l.action)}</span>`;
+            } else if (l.action.includes('ban') || l.action.includes('cancel')) {
+                actionBadge = `<span class="bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-mono font-bold">${escapeHtml(l.action)}</span>`;
+            } else if (l.action.includes('boost') || l.action.includes('caution')) {
+                actionBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-mono font-bold">${escapeHtml(l.action)}</span>`;
+            }
+
+            return `
+                <tr class="border-b border-stone-800 hover:bg-stone-800/40 transition">
+                    <td class="py-3 px-4 text-xs text-stone-300 font-mono">
+                        ${l.timestamp ? new Date(l.timestamp).toLocaleString('fr-CH') : '—'}
+                    </td>
+                    <td class="py-3 px-4">${actionBadge}</td>
+                    <td class="py-3 px-4 text-xs font-mono text-stone-200">
+                        <span class="text-stone-400 font-sans">${escapeHtml(l.target_type)} :</span> ${escapeHtml(l.target_id)}
+                    </td>
+                    <td class="py-3 px-4 text-xs text-stone-300">
+                        ${escapeHtml(l.reason || '—')}
+                    </td>
+                    <td class="py-3 px-4 text-xs text-stone-400 font-mono">
+                        ${escapeHtml(l.admin_email || SUPREME_ADMIN_EMAIL)}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function generateAuditCsv(logs = []) {
+        const BOM = '\uFEFF';
+        const headers = ['Horodatage', 'Action', 'Type Cible', 'ID Cible', 'Motif', 'Administrateur'];
+        const rows = logs.map(l => [
+            `"${(l.timestamp || '').replace(/"/g, '""')}"`,
+            `"${(l.action || '').replace(/"/g, '""')}"`,
+            `"${(l.target_type || '').replace(/"/g, '""')}"`,
+            `"${(l.target_id || '').replace(/"/g, '""')}"`,
+            `"${(l.reason || '').replace(/"/g, '""')}"`,
+            `"${(l.admin_email || '').replace(/"/g, '""')}"`
+        ]);
+        return BOM + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
+    }
+
+    // ==========================================
+    // MODULE 8 : SIMULATEUR BUSINESS & CROISSANCE
+    // ==========================================
+
+    function renderSimulatorSection() {
+        if (typeof document === 'undefined') return;
+        const inputTrailers = document.getElementById('sim-active-trailers');
+        const inputProRate = document.getElementById('sim-pro-rate');
+        const inputRentalDays = document.getElementById('sim-rental-days');
+        const inputDailyPrice = document.getElementById('sim-daily-price');
+        const inputBoostRate = document.getElementById('sim-boost-rate');
+        const inputFixedCosts = document.getElementById('sim-fixed-costs');
+
+        const activeTrailers = inputTrailers ? Number(inputTrailers.value) : 50;
+        const proRate = inputProRate ? Number(inputProRate.value) : 20;
+        const rentalDays = inputRentalDays ? Number(inputRentalDays.value) : 4;
+        const dailyPrice = inputDailyPrice ? Number(inputDailyPrice.value) : 65;
+        const boostRate = inputBoostRate ? Number(inputBoostRate.value) : 15;
+        const fixedCosts = inputFixedCosts ? Number(inputFixedCosts.value) : 250;
+
+        // Mise à jour des libellés affichés
+        const elValTrailers = document.getElementById('sim-active-trailers-val');
+        if (elValTrailers) elValTrailers.textContent = String(activeTrailers);
+
+        const elValPro = document.getElementById('sim-pro-rate-val');
+        if (elValPro) elValPro.textContent = `${proRate}%`;
+
+        const elValDays = document.getElementById('sim-rental-days-val');
+        if (elValDays) elValDays.textContent = `${rentalDays} jour(s)`;
+
+        const elValPrice = document.getElementById('sim-daily-price-val');
+        if (elValPrice) elValPrice.textContent = `${dailyPrice} CHF`;
+
+        const elValBoost = document.getElementById('sim-boost-rate-val');
+        if (elValBoost) elValBoost.textContent = `${boostRate}%`;
+
+        const elValCosts = document.getElementById('sim-fixed-costs-val');
+        if (elValCosts) elValCosts.textContent = `${fixedCosts} CHF`;
+
+        // Calcul mathématique
+        const proj = calculateSimulatorProjections({
+            activeTrailers,
+            proRate,
+            rentalDays,
+            dailyPrice,
+            boostRate,
+            fixedCosts
+        });
+
+        // Mise à jour des cartes de résultats
+        const elGmvM = document.getElementById('sim-out-gmv-monthly');
+        if (elGmvM) elGmvM.textContent = formatChf(proj.gmvMonthly);
+
+        const elGmvA = document.getElementById('sim-out-gmv-annual');
+        if (elGmvA) elGmvA.textContent = formatChf(proj.gmvAnnual);
+
+        const elMrr = document.getElementById('sim-out-mrr');
+        if (elMrr) elMrr.textContent = formatChf(proj.mrr);
+
+        const elArr = document.getElementById('sim-out-arr');
+        if (elArr) elArr.textContent = formatChf(proj.arr);
+
+        const elProCount = document.getElementById('sim-out-pro-count');
+        if (elProCount) elProCount.textContent = String(proj.nbPro);
+
+        const elTotRev = document.getElementById('sim-out-total-revenue');
+        if (elTotRev) elTotRev.textContent = formatChf(proj.totalNetRevenue);
+
+        const elNetProfit = document.getElementById('sim-out-net-profit');
+        if (elNetProfit) {
+            elNetProfit.textContent = formatChf(proj.netProfit);
+            elNetProfit.className = proj.netProfit >= 0 ? 'text-2xl font-black text-emerald-400' : 'text-2xl font-black text-red-400';
+        }
+
+        const elNetMargin = document.getElementById('sim-out-net-margin');
+        if (elNetMargin) {
+            elNetMargin.textContent = `${proj.netMargin}%`;
+            elNetMargin.className = proj.netMargin >= 0 ? 'font-bold text-emerald-400' : 'font-bold text-red-400';
+        }
+
+        // Breakdown
+        const elBdCom = document.getElementById('sim-breakdown-commissions');
+        if (elBdCom) elBdCom.textContent = formatChf(proj.platformCommissions);
+
+        const elBdFees = document.getElementById('sim-breakdown-renter-fees');
+        if (elBdFees) elBdFees.textContent = formatChf(proj.renterFees);
+
+        const elBdPro = document.getElementById('sim-breakdown-pro');
+        if (elBdPro) elBdPro.textContent = formatChf(proj.mrr);
+
+        const elBdBoost = document.getElementById('sim-breakdown-boosts');
+        if (elBdBoost) elBdBoost.textContent = formatChf(proj.boostRevenue);
+
+        const elBdCosts = document.getElementById('sim-breakdown-costs');
+        if (elBdCosts) elBdCosts.textContent = `-${formatChf(proj.fixedCosts)}`;
+
+        // Break-Even Point
+        const elBeTrailers = document.getElementById('sim-out-breakeven-trailers');
+        if (elBeTrailers) elBeTrailers.textContent = String(proj.breakEvenTrailers);
+
+        const elBeBookings = document.getElementById('sim-out-breakeven-bookings');
+        if (elBeBookings) elBeBookings.textContent = String(proj.breakEvenBookings);
+
+        // Table comparative Données Réelles vs Scénario Simulé
+        const compTbody = document.getElementById('sim-comparison-tbody');
+        if (compTbody && computedMetrics) {
+            const realTrailers = computedMetrics.trailers.active || 0;
+            const realProRate = computedMetrics.users.proRate || 0;
+            const realGmv = computedMetrics.bookings.grossVolume || 0;
+            const realNet = computedMetrics.bookings.platformNetRevenue || 0;
+            const realBookings = computedMetrics.bookings.confirmed || 0;
+
+            const rows = [
+                {
+                    name: 'Flotte de Remorques Actives',
+                    real: `${realTrailers} remorque(s)`,
+                    sim: `${proj.activeTrailers} remorques`,
+                    diff: `${proj.activeTrailers - realTrailers >= 0 ? '+' : ''}${proj.activeTrailers - realTrailers}`
+                },
+                {
+                    name: "Taux d'Abonnés PRO (%)",
+                    real: `${realProRate}%`,
+                    sim: `${proj.proRate}%`,
+                    diff: `${proj.proRate - realProRate >= 0 ? '+' : ''}${Math.round((proj.proRate - realProRate) * 10) / 10}%`
+                },
+                {
+                    name: "Volume Brut Mensuel (GMV)",
+                    real: formatChf(realGmv),
+                    sim: formatChf(proj.gmvMonthly),
+                    diff: `${proj.gmvMonthly - realGmv >= 0 ? '+' : ''}${formatChf(proj.gmvMonthly - realGmv)}`
+                },
+                {
+                    name: "Revenu Net Mensuel Renger",
+                    real: formatChf(realNet),
+                    sim: formatChf(proj.totalNetRevenue),
+                    diff: `${proj.totalNetRevenue - realNet >= 0 ? '+' : ''}${formatChf(proj.totalNetRevenue - realNet)}`
+                },
+                {
+                    name: "Réservations Payées Mensuelles",
+                    real: `${realBookings} loc(s)`,
+                    sim: `${proj.totalBookings} locs`,
+                    diff: `${proj.totalBookings - realBookings >= 0 ? '+' : ''}${proj.totalBookings - realBookings}`
+                }
+            ];
+
+            compTbody.innerHTML = rows.map(r => `
+                <tr class="border-b border-stone-800 hover:bg-stone-800/40 transition">
+                    <td class="py-3 px-4 font-bold text-white text-xs">${escapeHtml(r.name)}</td>
+                    <td class="py-3 px-4 text-xs text-stone-300 font-mono text-right">${escapeHtml(r.real)}</td>
+                    <td class="py-3 px-4 text-xs text-terracotta-400 font-mono font-bold text-right">${escapeHtml(r.sim)}</td>
+                    <td class="py-3 px-4 text-xs font-mono font-bold text-right ${r.diff.startsWith('+') ? 'text-emerald-400' : 'text-stone-400'}">${escapeHtml(r.diff)}</td>
+                </tr>
+            `).join('');
         }
     }
 
@@ -1623,12 +2478,160 @@
                 if (typeof showToast === 'function') showToast("Connecteur Search Console mis à jour", "success");
             };
         }
+
+        // Module 7 : Bandeau d'Annonce Global (écouteurs de prévisualisation live)
+        const bannerInputs = [
+            'broadcast-banner-enabled',
+            'broadcast-banner-type',
+            'broadcast-banner-text',
+            'broadcast-banner-link-text',
+            'broadcast-banner-link-url',
+            'broadcast-banner-dismissible'
+        ];
+        bannerInputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.oninput = updateBannerPreview;
+                el.onchange = () => {
+                    updateBannerPreview();
+                    const statusLabel = document.getElementById('broadcast-banner-status-label');
+                    if (statusLabel && id === 'broadcast-banner-enabled') {
+                        statusLabel.textContent = el.checked ? 'Actif' : 'Inactif';
+                        statusLabel.className = el.checked ? 'ml-2 text-xs font-mono font-bold text-emerald-400' : 'ml-2 text-xs font-mono text-stone-400';
+                    }
+                };
+            }
+        });
+
+        // Sauvegarde Bandeau
+        const btnSaveBanner = document.getElementById('btn-save-broadcast-banner');
+        if (btnSaveBanner) {
+            btnSaveBanner.onclick = () => {
+                const isEnabled = document.getElementById('broadcast-banner-enabled')?.checked || false;
+                const type = document.getElementById('broadcast-banner-type')?.value || 'info';
+                const message = (document.getElementById('broadcast-banner-text')?.value || '').trim();
+                const linkText = (document.getElementById('broadcast-banner-link-text')?.value || '').trim();
+                const linkUrl = (document.getElementById('broadcast-banner-link-url')?.value || '').trim();
+                const dismissible = document.getElementById('broadcast-banner-dismissible')?.checked ?? true;
+
+                const cfg = {
+                    enabled: isEnabled,
+                    type,
+                    message,
+                    linkText,
+                    linkUrl,
+                    dismissible,
+                    updatedAt: new Date().toISOString()
+                };
+
+                setBroadcastBannerConfig(cfg);
+                recordAuditLog('update_broadcast_banner', 'system', 'banner', `Bandeau ${isEnabled ? 'activé' : 'désactivé'} : ${message}`);
+                
+                if (typeof initBroadcastBanner === 'function') {
+                    initBroadcastBanner();
+                } else if (typeof window !== 'undefined' && typeof window.initBroadcastBanner === 'function') {
+                    window.initBroadcastBanner();
+                }
+
+                renderControlSection();
+                if (typeof showToast === 'function') showToast("Bandeau d'annonce global synchronisé sur tout le site", "success");
+            };
+        }
+
+        // Sauvegarde Mode Maintenance
+        const maintCheck = document.getElementById('maintenance-mode-enabled');
+        if (maintCheck) {
+            maintCheck.onchange = () => {
+                const label = document.getElementById('maintenance-mode-status-label');
+                if (label) {
+                    label.textContent = maintCheck.checked ? 'Actif (Site Bloqué)' : 'Inactif';
+                    label.className = maintCheck.checked ? 'ml-2 text-xs font-mono font-bold text-red-400 animate-pulse' : 'ml-2 text-xs font-mono text-stone-400';
+                }
+            };
+        }
+
+        const btnSaveMaint = document.getElementById('btn-save-maintenance-mode');
+        if (btnSaveMaint) {
+            btnSaveMaint.onclick = () => {
+                const enabled = document.getElementById('maintenance-mode-enabled')?.checked || false;
+                const message = (document.getElementById('maintenance-mode-message')?.value || '').trim();
+
+                const cfg = {
+                    enabled,
+                    message: message || "Maintenance technique en cours sur Renger.ch. Retour du service d'ici quelques instants. Merci de votre patience.",
+                    updatedAt: new Date().toISOString()
+                };
+
+                setMaintenanceModeConfig(cfg);
+                recordAuditLog('update_maintenance_mode', 'system', 'maintenance', `Mode maintenance : ${enabled ? 'Activé' : 'Désactivé'}`);
+
+                if (typeof initMaintenanceMode === 'function') {
+                    initMaintenanceMode();
+                } else if (typeof window !== 'undefined' && typeof window.initMaintenanceMode === 'function') {
+                    window.initMaintenanceMode();
+                }
+
+                renderControlSection();
+                if (typeof showToast === 'function') showToast(`Mode maintenance ${enabled ? 'activé' : 'désactivé'}`, enabled ? 'warning' : 'success');
+            };
+        }
+
+        // Recherche & filtre journal d'audit
+        const auditSearch = document.getElementById('audit-log-search-input');
+        if (auditSearch) auditSearch.oninput = () => renderAuditLogTable();
+
+        const auditFilter = document.getElementById('audit-log-filter-type');
+        if (auditFilter) auditFilter.onchange = () => renderAuditLogTable();
+
+        const btnExportAudit = document.getElementById('btn-export-audit-csv');
+        if (btnExportAudit) {
+            btnExportAudit.onclick = () => {
+                const logs = getAuditLogs();
+                const csv = generateAuditCsv(logs);
+                triggerDownload(`syni-audit-log-${new Date().toISOString().split('T')[0]}.csv`, csv);
+            };
+        }
+
+        // Module 8 : Simulateur Business (sliders temps réel)
+        const simSliderIds = [
+            'sim-active-trailers',
+            'sim-pro-rate',
+            'sim-rental-days',
+            'sim-daily-price',
+            'sim-boost-rate',
+            'sim-fixed-costs'
+        ];
+        simSliderIds.forEach(id => {
+            const slider = document.getElementById(id);
+            if (slider) {
+                slider.oninput = renderSimulatorSection;
+            }
+        });
+
+        // Bouton réinitialiser simulateur
+        const btnResetSim = document.getElementById('btn-reset-simulator');
+        if (btnResetSim) {
+            btnResetSim.onclick = () => {
+                const setVal = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = val;
+                };
+                setVal('sim-active-trailers', 50);
+                setVal('sim-pro-rate', 20);
+                setVal('sim-rental-days', 4);
+                setVal('sim-daily-price', 65);
+                setVal('sim-boost-rate', 15);
+                setVal('sim-fixed-costs', 250);
+                renderSimulatorSection();
+                if (typeof showToast === 'function') showToast("Simulateur réinitialisé aux valeurs par défaut", "info");
+            };
+        }
     }
 
     // Auto-démarrage dans le navigateur si syni.html
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
         window.addEventListener('DOMContentLoaded', () => {
-            if (window.location.pathname.includes('syni.html')) {
+            if (window.location && typeof window.location.pathname === 'string' && window.location.pathname.includes('syni.html')) {
                 // Petit délai pour laisser Supabase et core.js s'initialiser
                 setTimeout(initSyni, 80);
             }
@@ -1647,6 +2650,23 @@
         calculateBookingFinancials,
         computeSyniMetrics,
         computeGoogleSeoMetrics,
+        // Module 8 : Simulateur Business
+        calculateSimulatorProjections,
+        renderSimulatorSection,
+        // Module 7 : Contrôle Global, Diffusion & Maintenance
+        getBroadcastBannerConfig,
+        setBroadcastBannerConfig,
+        getMaintenanceModeConfig,
+        setMaintenanceModeConfig,
+        renderControlSection,
+        updateBannerPreview,
+        // Modération & Actions Opérationnelles Suprêmes
+        openActionModal,
+        closeActionModal,
+        executeSupremeAction,
+        recordAuditLog,
+        getAuditLogs,
+        generateAuditCsv,
         // CSV Exports
         generateUsersCsv,
         generateBookingsCsv,
@@ -1658,6 +2678,9 @@
         SUPREME_ADMIN_EMAIL,
         SYNI_MASTER_KEY_DEFAULT,
         MODULES,
-        PRIORITY_SWISS_KEYWORDS
+        PRIORITY_SWISS_KEYWORDS,
+        BROADCAST_BANNER_KEY,
+        MAINTENANCE_MODE_KEY,
+        AUDIT_LOG_KEY
     };
 }));
