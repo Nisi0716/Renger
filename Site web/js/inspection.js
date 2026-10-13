@@ -42,7 +42,9 @@ let inspectionContext = {
     isCapturing: false,
     facingMode: 'environment',
     clockInterval: null,
-    cachedCoords: null
+    cachedCoords: null,
+    geoWatchId: null,
+    pendingUploads: []
 };
 
 async function startGuidedInspection(mode, trailerId, receiverId, bookingId) {
@@ -59,10 +61,12 @@ async function startGuidedInspection(mode, trailerId, receiverId, bookingId) {
     inspectionContext.currentStepIndex = 0;
     inspectionContext.isCapturing = false;
     inspectionContext.capturedPhotos = [];
+    inspectionContext.pendingUploads = [];
 
     showPage('inspection-page');
     updateInspectionHUD();
     startInspectionClock();
+    startGPSTracking();
     await startCamera(inspectionContext.facingMode);
     updateGPSStatusBadge();
 }
@@ -140,13 +144,62 @@ function stopInspectionClock() {
     }
 }
 
-async function getCurrentCoordinates() {
+function startGPSTracking() {
+    if (!('geolocation' in navigator)) return;
+    if (inspectionContext.geoWatchId !== null) return;
+    try {
+        inspectionContext.geoWatchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                const coords = {
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: Math.round(pos.coords.accuracy),
+                    text: `${pos.coords.latitude.toFixed(4)}°N, ${pos.coords.longitude.toFixed(4)}°E (±${Math.round(pos.coords.accuracy)}m)`
+                };
+                inspectionContext.cachedCoords = coords;
+                const gpsText = document.getElementById('camera-gps-text');
+                if (gpsText) {
+                    gpsText.textContent = `GPS Précis (±${coords.accuracy}m)`;
+                }
+            },
+            (err) => {
+                console.warn("watchPosition warning:", err.message);
+            },
+            { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 }
+        );
+    } catch (e) {
+        console.warn("watchPosition error:", e);
+    }
+}
+
+function stopGPSTracking() {
+    if (inspectionContext.geoWatchId !== null && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(inspectionContext.geoWatchId);
+        inspectionContext.geoWatchId = null;
+    }
+}
+
+async function getCurrentCoordinates(forceFresh = false) {
+    if (!forceFresh && inspectionContext.cachedCoords && inspectionContext.cachedCoords.latitude) {
+        return inspectionContext.cachedCoords;
+    }
     if (!('geolocation' in navigator)) {
         return { latitude: null, longitude: null, accuracy: null, text: 'Non supporté' };
     }
     return new Promise((resolve) => {
+        let hasResolved = false;
+        const timer = setTimeout(() => {
+            if (!hasResolved) {
+                hasResolved = true;
+                resolve(inspectionContext.cachedCoords || { latitude: null, longitude: null, accuracy: null, text: 'Coordonnées approximatives' });
+            }
+        }, 2000);
+
         navigator.geolocation.getCurrentPosition(
             (pos) => {
+                if (hasResolved) return;
+                hasResolved = true;
+                clearTimeout(timer);
                 const coords = {
                     latitude: pos.coords.latitude,
                     longitude: pos.coords.longitude,
@@ -157,10 +210,13 @@ async function getCurrentCoordinates() {
                 resolve(coords);
             },
             (err) => {
+                if (hasResolved) return;
+                hasResolved = true;
+                clearTimeout(timer);
                 console.warn("Géolocalisation inaccessible :", err.message);
-                resolve({ latitude: null, longitude: null, accuracy: null, text: 'Coordonnées approximatives' });
+                resolve(inspectionContext.cachedCoords || { latitude: null, longitude: null, accuracy: null, text: 'Coordonnées approximatives' });
             },
-            { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+            { enableHighAccuracy: true, timeout: 2000, maximumAge: 60000 }
         );
     });
 }
@@ -202,6 +258,7 @@ function stopCamera() {
         videoStream = null;
     }
     stopInspectionClock();
+    stopGPSTracking();
 }
 
 async function switchCamera() {
@@ -262,45 +319,44 @@ async function takeGuidedInspectionPhoto() {
 
     inspectionContext.isCapturing = true;
 
-    // 1. Effet Flash visuel
+    // 1. Déclenchement flash visuel immédiat (effet instantané et réactif)
     const flashEl = document.getElementById('camera-flash');
     if (flashEl) {
         flashEl.style.opacity = '1';
-        setTimeout(() => { flashEl.style.opacity = '0'; }, 150);
+        setTimeout(() => { flashEl.style.opacity = '0'; }, 100);
     }
 
-    showToast(`Certification de l'étape ${currentStep.step}/4 en cours...`, "info");
-
     try {
-        // 2. Extraire la photo sur canvas
+        // 2. Extraire la photo sur canvas avec dimension optimisée (max 1280px pour réactivité maximale)
         const canvas = document.createElement('canvas');
-        canvas.width = feed.videoWidth || 1280;
-        canvas.height = feed.videoHeight || 720;
+        const maxDimension = 1280;
+        let cWidth = feed.videoWidth || 1280;
+        let cHeight = feed.videoHeight || 720;
+        if (cWidth > maxDimension || cHeight > maxDimension) {
+            if (cWidth >= cHeight) {
+                cHeight = Math.round((cHeight * maxDimension) / cWidth);
+                cWidth = maxDimension;
+            } else {
+                cWidth = Math.round((cWidth * maxDimension) / cHeight);
+                cHeight = maxDimension;
+            }
+        }
+        canvas.width = cWidth;
+        canvas.height = cHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(feed, 0, 0, canvas.width, canvas.height);
 
-        // 3. Obtenir géolocalisation et horodatage précis
+        // 3. Obtenir géolocalisation (instantanée grâce au cache / watchPosition) et date
         const now = new Date();
         const coords = await getCurrentCoordinates();
 
         // 4. Incruster le filigrane légal inaltérable sur l'image
         applyInspectionWatermark(ctx, canvas.width, canvas.height, currentStep, coords, now);
 
-        // 5. Convertir en Blob JPEG et extraire DataURL en mémoire
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
-        if (!blob) throw new Error("Échec de la génération de l'image.");
+        // 5. Extraire DataURL immédiatement pour mémoire et PDF (ultra-rapide à 1280px)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
 
-        let dataUrl = null;
-        try {
-            dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        } catch (e) {
-            console.warn("Canvas toDataURL warning:", e);
-        }
-
-        if (!inspectionContext.capturedPhotos) {
-            inspectionContext.capturedPhotos = [];
-        }
-        inspectionContext.capturedPhotos.push({
+        const photoRecord = {
             step: currentStep.step,
             title: currentStep.title,
             desc: currentStep.instruction,
@@ -310,71 +366,102 @@ async function takeGuidedInspectionPhoto() {
             accuracy: coords.accuracy,
             timestamp: now.toISOString(),
             image_url: null
-        });
+        };
 
-        // 6. Upload dans le bucket PRIVÉ 'inspections'
-        const timestamp = Date.now();
-        const mode = inspectionContext.mode;
-        const trailerId = inspectionContext.trailerId || 'generale';
-        const filePath = `${currentUser.id}/${trailerId}/${mode}_step${currentStep.step}_${timestamp}.jpg`;
-        if (inspectionContext.capturedPhotos.length > 0) {
-            inspectionContext.capturedPhotos[inspectionContext.capturedPhotos.length - 1].image_url = filePath;
+        if (!inspectionContext.capturedPhotos) {
+            inspectionContext.capturedPhotos = [];
         }
+        inspectionContext.capturedPhotos.push(photoRecord);
 
-        if (supabaseClient && currentUser) {
-            const { error: uploadError } = await supabaseClient.storage
-                .from('inspections')
-                .upload(filePath, blob, {
-                    contentType: 'image/jpeg',
-                    upsert: false
-                });
+        const isFinalStep = inspectionContext.currentStepIndex >= 3;
+        const stepNum = currentStep.step;
 
-            if (uploadError) {
-                console.warn("Upload inspection warning:", uploadError.message);
-            }
-        }
-
-        // 7. Insérer le message dans la table messages du chat
-        const dateStr = now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const modeLabel = mode === 'departure' ? 'départ' : 'retour';
-        const content = `[État des lieux de ${modeLabel}] Étape ${currentStep.step}/4 : ${currentStep.title} — Certifié le ${dateStr} à ${timeStr} (${coords.text})`;
-
-        const receiverId = inspectionContext.receiverId || activeChatPartnerId || (currentUser.id === currentTrailer?.owner_id ? null : currentTrailer?.owner_id);
-
-        if (supabaseClient && currentUser) {
-            await supabaseClient.from('messages').insert([{
-                sender_id: currentUser.id,
-                receiver_id: receiverId,
-                trailer_id: trailerId,
-                content: content,
-                image_url: filePath
-            }]);
-            
-            // 7.5 Sauvegarde structurée dans la table inspections (Anti-arnaque)
-            await supabaseClient.from('inspections').insert([{
-                trailer_id: trailerId,
-                user_id: currentUser.id,
-                mode: mode,
-                step: currentStep.step,
-                image_url: filePath,
-                latitude: coords.latitude,
-                longitude: coords.longitude,
-                accuracy: coords.accuracy,
-                timestamp: now.toISOString()
-            }]);
-        }
-
-        // 8. Passage à l'étape suivante ou clôture
-        if (inspectionContext.currentStepIndex < 3) {
+        // 6. Passage IMMÉDIAT à l'étape suivante (Transition instantanée sans bloquer l'utilisateur)
+        if (!isFinalStep) {
             inspectionContext.currentStepIndex++;
-            showToast(`Étape ${currentStep.step}/4 validée ! Passez à l'étape ${inspectionContext.currentStepIndex + 1}.`, "success");
             updateInspectionHUD();
-        } else {
-            // Toutes les 4 étapes sont validées !
+            showToast(`Étape ${stepNum}/4 validée ! Passez à l'étape ${inspectionContext.currentStepIndex + 1}.`, "success");
+            inspectionContext.isCapturing = false;
+        }
+
+        // 7. Enregistrement en tâche de fond asynchrone (Storage & BDD sans ralentir la prise de vue)
+        const uploadTask = (async () => {
+            try {
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+                if (!blob) return;
+
+                const timestamp = Date.now();
+                const mode = inspectionContext.mode;
+                const trailerId = inspectionContext.trailerId || 'generale';
+                const filePath = `${currentUser?.id || 'public'}/${trailerId}/${mode}_step${stepNum}_${timestamp}.jpg`;
+                photoRecord.image_url = filePath;
+
+                if (supabaseClient && currentUser) {
+                    const { error: uploadError } = await supabaseClient.storage
+                        .from('inspections')
+                        .upload(filePath, blob, {
+                            contentType: 'image/jpeg',
+                            upsert: false
+                        });
+
+                    if (uploadError) {
+                        console.warn(`[Inspection] Erreur upload étape ${stepNum}:`, uploadError.message);
+                    }
+
+                    const dateStr = now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const timeStr = now.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const modeLabel = mode === 'departure' ? 'départ' : 'retour';
+                    const content = `[État des lieux de ${modeLabel}] Étape ${stepNum}/4 : ${currentStep.title} — Enregistré le ${dateStr} à ${timeStr} (${coords.text})`;
+                    const receiverId = inspectionContext.receiverId || activeChatPartnerId || (currentUser.id === currentTrailer?.owner_id ? null : currentTrailer?.owner_id);
+
+                    // Inserts parallélisés dans messages et inspections
+                    await Promise.allSettled([
+                        supabaseClient.from('messages').insert([{
+                            sender_id: currentUser.id,
+                            receiver_id: receiverId,
+                            trailer_id: trailerId,
+                            content: content,
+                            image_url: filePath
+                        }]),
+                        supabaseClient.from('inspections').insert([{
+                            trailer_id: trailerId,
+                            user_id: currentUser.id,
+                            mode: mode,
+                            step: stepNum,
+                            image_url: filePath,
+                            latitude: coords.latitude,
+                            longitude: coords.longitude,
+                            accuracy: coords.accuracy,
+                            timestamp: now.toISOString()
+                        }])
+                    ]);
+                }
+            } catch (bgErr) {
+                console.warn(`[Inspection] Tâche de fond étape ${stepNum} warning:`, bgErr);
+            }
+        })();
+
+        if (!inspectionContext.pendingUploads) {
+            inspectionContext.pendingUploads = [];
+        }
+        inspectionContext.pendingUploads.push(uploadTask);
+
+        // 8. Clôture lors de la 4ème et dernière photo
+        if (isFinalStep) {
             stopCamera();
             stopInspectionClock();
-            showToast("État des lieux complet certifié (4/4 photos enregistrées) !", "success");
+            stopGPSTracking();
+
+            showToast("Finalisation de l'enregistrement...", "info");
+
+            // On attend que les uploads en arrière-plan se finalisent
+            try {
+                await Promise.allSettled(inspectionContext.pendingUploads);
+            } catch (waitErr) {
+                console.warn("[Inspection] Erreur attente uploads:", waitErr);
+            }
+
+            showToast("État des lieux complet enregistré (4/4 photos) !", "success");
 
             const completedSession = {
                 id: inspectionContext.bookingId || inspectionContext.trailerId || 'EDL' + Date.now().toString(36),
@@ -391,11 +478,11 @@ async function takeGuidedInspectionPhoto() {
             }
 
             showInspectionSuccessModal(completedSession);
+            inspectionContext.isCapturing = false;
         }
 
     } catch (err) {
         showToast("Erreur lors de la capture : " + err.message, "error");
-    } finally {
         inspectionContext.isCapturing = false;
     }
 }
