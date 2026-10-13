@@ -238,16 +238,16 @@ function applyInspectionWatermark(ctx, canvasWidth, canvasHeight, stepConfig, co
     // Ligne 1 : Titre & Étape
     ctx.fillStyle = '#FFFFFF';
     ctx.font = `bold ${fontSizeTitle}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-    const modeLabel = inspectionContext.mode === 'departure' ? 'DÉPART (PROPRIÉTAIRE)' : 'RETOUR (LOCATAIRE)';
-    ctx.fillText(`RENGER CERTIFIÉ — ÉTAT DES LIEUX ${modeLabel} | ÉTAPE ${stepConfig.step}/4 : ${stepConfig.title.toUpperCase()}`, 18, canvasHeight - bannerHeight + fontSizeTitle + 10);
+    const modeLabel = inspectionContext.mode === 'departure' ? 'DÉPART' : 'RETOUR';
+    ctx.fillText(`CONSTAT CONTRADICTOIRE — ÉTAT DES LIEUX ${modeLabel} | ÉTAPE ${stepConfig.step}/4 : ${stepConfig.title.toUpperCase()}`, 18, canvasHeight - bannerHeight + fontSizeTitle + 10);
 
-    // Ligne 2 : Horodatage & Géolocalisation
+    // Ligne 2 : Horodatage, Géolocalisation & Mention légale
     ctx.fillStyle = '#94A3B8';
     ctx.font = `${fontSizeMeta}px monospace`;
     const dateStr = date.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const timeStr = date.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const gpsStr = coords.latitude ? coords.text : 'GPS non accessible';
-    ctx.fillText(`${dateStr} ${timeStr} CEST  |  ${gpsStr}`, 18, canvasHeight - 12);
+    ctx.fillText(`${dateStr} ${timeStr} CEST  |  ${gpsStr}  |  Renger tiers technique (non responsable)`, 18, canvasHeight - 12);
 }
 
 async function takeGuidedInspectionPhoto() {

@@ -84,6 +84,7 @@
             roundedRect(x, y, w, h, rx, ry, style) { records.push({ op: 'roundedRect', x, y, w, h, rx, ry, style }); return this; },
             line(x1, y1, x2, y2) { records.push({ op: 'line', x1, y1, x2, y2 }); return this; },
             addImage(data, format, x, y, w, h) { records.push({ op: 'image', format, x, y, w, h }); return this; },
+            getImageProperties(data) { return { width: 1200, height: 900 }; },
             text(txt, x, y, options) {
                 const lines = Array.isArray(txt) ? txt : [String(txt)];
                 lines.forEach(l => records.push({ op: 'text', text: l, x, y, options }));
@@ -285,7 +286,12 @@
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         doc.setTextColor(255, 255, 255);
-        doc.text('CONTRAT OFFICIEL DE LOCATION DE REMORQUE', 14, 22);
+        doc.text('CONTRAT OFFICIEL DE LOCATION DE REMORQUE', 14, 21);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(214, 211, 209);
+        doc.text('Contrat direct Bailleur - Preneur (CO art. 253 ss) • Renger intermédiaire technique', 14, 25.5);
 
         // Référence et date d'émission (droite)
         doc.setFont('helvetica', 'bold');
@@ -483,8 +489,8 @@
 
         const clauses = [
             {
-                title: 'Droit applicable & Code des Obligations (CO)',
-                body: "Le présent contrat est expressément soumis au droit suisse, en particulier aux art. 253 et suivants du Code des Obligations (CO) régissant le bail à loyer de choses mobilières. Tout litige relève de la compétence exclusive des tribunaux du siège de Renger ou du lieu de situation de la remorque."
+                title: 'Droit applicable, Code des Obligations (CO) & Statut de tiers de Renger',
+                body: "Le présent contrat lie exclusivement le Bailleur et le Preneur sous le régime du bail de choses mobilières (art. 253 et suivants du Code des Obligations - CO). Renger Sàrl agit en simple intermédiaire technique de mise en relation et de facilitation de paiement ; elle n'est partie prenante à aucun titre au contrat et décline toute responsabilité quant au véhicule loué ou à son utilisation. Tout litige relève du for ordinaire entre les parties ou du lieu de remise de la remorque."
             },
             {
                 title: 'Assurance Responsabilité Civile (RC) & Circulation',
@@ -519,6 +525,27 @@
 
             clauseY += 3.2 + (splitLines.length * 2.8) + 1.5;
         });
+
+        // --- BANDEAU D'EXCLUSION DE RESPONSABILITÉ RENGER ---
+        const platformDisclaimerY = 208;
+        doc.setFillColor(ACCENT_BG[0], ACCENT_BG[1], ACCENT_BG[2]);
+        doc.setDrawColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(14, platformDisclaimerY, 182, 13, 1.5, 1.5, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
+        doc.text('AVERTISSEMENT LÉGAL — RENGER N\'EST ABSOLUMENT PAS PARTIE PRENANTE AU CONTRAT', 18, platformDisclaimerY + 4);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
+        const platformDisclaimerText =
+            "Renger Sàrl fournit exclusivement la solution technique de mise en relation. Renger n'est pas partie prenante au contrat " +
+            "de location conclu directement entre le Bailleur et le Preneur. Renger n'effectue aucun contrôle physique du matériel et " +
+            "n'assume aucune responsabilité quant à l'état, l'entretien, le chargement ou l'utilisation de la remorque (CGU art. 2 & 5).";
+        doc.text(doc.splitTextToSize(platformDisclaimerText, 174), 18, platformDisclaimerY + 8);
 
         // --- SECTION 5 : ZONES DE SIGNATURES DATÉES ---
         currentY = 224;
@@ -593,7 +620,7 @@
         doc.setFontSize(6.5);
         doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);
         doc.text(
-            'Renger Sàrl • Plateforme suisse de location de remorques (renger.ch) • Document contractuel original • Page 1/1',
+            'Renger Sàrl • Plateforme d\'intermédiation technique (renger.ch) • Renger n\'est pas partie au contrat de location • Page 1/1',
             105,
             286,
             { align: 'center' }
@@ -668,6 +695,7 @@
         const BORDER_COLOR = [231, 229, 228];    // #e7e5e4
         const SUCCESS_GREEN = [21, 128, 61];     // #15803d
         const SUCCESS_BG = [240, 253, 244];      // #f0fdf4
+        const ACCENT_BG = [255, 244, 240];       // #fff4f0
 
         // Mode : départ ou retour
         const mode = String(options.mode || bookingOrData.mode || 'departure').toLowerCase();
@@ -739,7 +767,12 @@
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         doc.setTextColor(255, 255, 255);
-        doc.text(`RAPPORT CERTIFIÉ D'ÉTAT DES LIEUX — ${modeLabel}`, 14, 22);
+        doc.text(`ÉTAT DES LIEUX CONTRADICTOIRE — ${modeLabel}`, 14, 21);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(214, 211, 209);
+        doc.text('Relevé photo direct Bailleur - Preneur • Renger outil technique non responsable', 14, 25.5);
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
@@ -770,13 +803,13 @@
         doc.text(`Bailleur : ${ownerName}  |  Preneur : ${renterName}`, 18, currentY + 10.5);
         doc.text(`Mode d'inspection : ${modeLabel} (${modeParty})`, 18, currentY + 14.5);
 
-        // --- GRILLE DES 4 CLICHÉS CERTIFIÉS (2x2) ---
+        // --- GRILLE DES 4 CLICHÉS CONTRADICTOIRES (2x2) ---
         currentY += 21;
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8.5);
         doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
-        doc.text('CONSTAT VISUEL DES 4 CLICHÉS OBLIGATOIRES HORODATÉS & GÉOLOCALISÉS', 14, currentY);
+        doc.text('CONSTAT VISUEL DES 4 CLICHÉS HORODATÉS & GÉOLOCALISÉS (RÉALISÉS PAR LES PARTIES)', 14, currentY);
 
         currentY += 3;
 
@@ -806,16 +839,51 @@
             doc.setTextColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
             doc.text(`${item.step}/4. ${item.title}`, pos.x + 3, pos.y + 5);
 
-            // Zone d'image (52 mm de haut)
+            // Zone d'image (54 mm de haut max)
             const imgBoxX = pos.x + 3;
             const imgBoxY = pos.y + 9;
             const imgBoxW = cellW - 6;
             const imgBoxH = 54;
 
+            // Fond neutre pour la boîte d'image (letterboxing élégant sans déformation)
+            doc.setFillColor(245, 245, 244);
+            doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
+            doc.roundedRect(imgBoxX, imgBoxY, imgBoxW, imgBoxH, 1, 1, 'FD');
+
             let imageRendered = false;
             if (item.dataUrl && typeof doc.addImage === 'function') {
                 try {
-                    doc.addImage(item.dataUrl, 'JPEG', imgBoxX, imgBoxY, imgBoxW, imgBoxH);
+                    let drawX = imgBoxX;
+                    let drawY = imgBoxY;
+                    let drawW = imgBoxW;
+                    let drawH = imgBoxH;
+
+                    if (typeof doc.getImageProperties === 'function') {
+                        try {
+                            const props = doc.getImageProperties(item.dataUrl);
+                            if (props && props.width > 0 && props.height > 0) {
+                                const imgAspect = props.width / props.height;
+                                const boxAspect = imgBoxW / imgBoxH;
+                                if (imgAspect >= boxAspect) {
+                                    // Image plus large que le cadre : ajuster à la largeur, centrer verticalement
+                                    drawW = imgBoxW;
+                                    drawH = imgBoxW / imgAspect;
+                                    drawX = imgBoxX;
+                                    drawY = imgBoxY + (imgBoxH - drawH) / 2;
+                                } else {
+                                    // Image plus haute (portrait smartphone) : ajuster à la hauteur, centrer horizontalement
+                                    drawH = imgBoxH;
+                                    drawW = imgBoxH * imgAspect;
+                                    drawX = imgBoxX + (imgBoxW - drawW) / 2;
+                                    drawY = imgBoxY;
+                                }
+                            }
+                        } catch (propErr) {
+                            console.warn(`[RengerContracts] Ratio photo étape ${item.step}:`, propErr);
+                        }
+                    }
+
+                    doc.addImage(item.dataUrl, 'JPEG', drawX, drawY, drawW, drawH);
                     imageRendered = true;
                 } catch (imgErr) {
                     console.warn(`[RengerContracts] Cliché étape ${item.step} non rendu via addImage:`, imgErr);
@@ -823,7 +891,7 @@
             }
 
             if (!imageRendered) {
-                // Rendu fallback badge certifié élégant
+                // Rendu fallback badge élégant
                 doc.setFillColor(LIGHT_BG[0], LIGHT_BG[1], LIGHT_BG[2]);
                 doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
                 doc.roundedRect(imgBoxX, imgBoxY, imgBoxW, imgBoxH, 1.5, 1.5, 'FD');
@@ -831,13 +899,13 @@
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(7.5);
                 doc.setTextColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
-                doc.text('PREUVE NUMÉRIQUE CERTIFIÉE', imgBoxX + (imgBoxW / 2), imgBoxY + 20, { align: 'center' });
+                doc.text('CONSTAT PHOTO ENREGISTRÉ', imgBoxX + (imgBoxW / 2), imgBoxY + 20, { align: 'center' });
 
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(6.8);
                 doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
-                doc.text('Cliché haute définition sécurisé', imgBoxX + (imgBoxW / 2), imgBoxY + 27, { align: 'center' });
-                doc.text('Stockage inaltérable Supabase Storage', imgBoxX + (imgBoxW / 2), imgBoxY + 33, { align: 'center' });
+                doc.text('Cliché transmis par l\'utilisateur', imgBoxX + (imgBoxW / 2), imgBoxY + 27, { align: 'center' });
+                doc.text('Stockage sécurisé sur serveur', imgBoxX + (imgBoxW / 2), imgBoxY + 33, { align: 'center' });
 
                 doc.setFont('helvetica', 'italic');
                 doc.setFontSize(6.2);
@@ -845,7 +913,7 @@
                 doc.text(item.desc, imgBoxX + (imgBoxW / 2), imgBoxY + 41, { align: 'center' });
             }
 
-            // Bandeau inférieur : Horodatage, GPS & Conformité
+            // Bandeau inférieur : Horodatage, GPS & Conformité contradictoire
             const metaY = imgBoxY + imgBoxH + 3;
 
             doc.setFont('helvetica', 'bold');
@@ -865,54 +933,72 @@
             doc.text(gpsText, pos.x + 3, metaY + 13);
 
             doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);
-            doc.text(`Cadrage : ${item.desc}`, pos.x + 3, metaY + 18);
+            doc.text(`Prise de vue : ${item.desc}`, pos.x + 3, metaY + 18);
         });
 
         // --- ATTESTATION & SIGNATURES ---
-        const footerY = currentY + (cellH * 2) + 8;
+        const footerY = currentY + (cellH * 2) + 5;
 
-        doc.setFillColor(SUCCESS_BG[0], SUCCESS_BG[1], SUCCESS_BG[2]);
-        doc.setDrawColor(SUCCESS_GREEN[0], SUCCESS_GREEN[1], SUCCESS_GREEN[2]);
-        doc.roundedRect(14, footerY, 182, 34, 2, 2, 'FD');
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
+        doc.roundedRect(14, footerY, 182, 44, 2, 2, 'FD');
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.5);
-        doc.setTextColor(SUCCESS_GREEN[0], SUCCESS_GREEN[1], SUCCESS_GREEN[2]);
-        doc.text('ATTESTATION CONTRADICTOIRE & VALEUR PROBANTE (ART. 257a ss CO)', 18, footerY + 5);
+        doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
+        doc.text('ATTESTATION CONTRADICTOIRE & VALEUR PROBANTE (ART. 257a ss CO)', 18, footerY + 4.5);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
+        doc.setFontSize(6.2);
         doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
         const certStatement =
-            "Les parties soussignées reconnaissent que les 4 clichés ci-dessus ont été pris contradictoirement à l'aide de l'application Renger " +
-            "aux coordonnées géographiques et à l'horodatage infalsifiable mentionnés. Ce constat constitue un titre de preuve authentique " +
-            "faisant foi entre les parties pour tout litige ou réclamation ultérieure relative à l'état de la remorque.";
-        doc.text(doc.splitTextToSize(certStatement, 174), 18, footerY + 10);
+            "Les parties soussignées (Bailleur et Preneur) attestent que les 4 clichés ci-dessus ont été pris contradictoirement " +
+            "via la plateforme Renger aux coordonnées et horodatages indiqués. Ce constat constitue un titre de preuve authentique " +
+            "faisant foi exclusivement entre les parties pour tout litige ou réclamation ultérieure relative à l'état de la remorque.";
+        doc.text(doc.splitTextToSize(certStatement, 174), 18, footerY + 8.5);
+
+        // AVERTISSEMENT RENGER (TIERS NON RESPONSABLE)
+        doc.setFillColor(ACCENT_BG[0], ACCENT_BG[1], ACCENT_BG[2]);
+        doc.roundedRect(18, footerY + 16, 174, 12, 1, 1, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.2);
+        doc.setTextColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
+        doc.text('EXCLUSION DE RESPONSABILITÉ RENGER (CGU ART. 2 & 5) :', 21, footerY + 19.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5.8);
+        doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
+        const rengerDisclaimer =
+            "Renger Sàrl agit exclusivement comme intermédiaire technique. Renger n'est ABSOLUMENT PAS partie au contrat de bail, " +
+            "ne procède à aucune inspection physique ou mécanique du matériel, et décline toute responsabilité contractuelle ou délictuelle " +
+            "relative à l'état, la conformité routière, l'attelage, la surcharge ou l'utilisation de la remorque louée.";
+        doc.text(doc.splitTextToSize(rengerDisclaimer, 168), 21, footerY + 23.5);
 
         // Visa / Empreinte de signature
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7);
+        doc.setFontSize(6.8);
         doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
-        doc.text(`Visa numérique du Bailleur : ${ownerName}`, 18, footerY + 23);
-        doc.text(`Visa numérique du Preneur : ${renterName}`, 110, footerY + 23);
+        doc.text(`Visa numérique du Bailleur : ${ownerName}`, 18, footerY + 33);
+        doc.text(`Visa numérique du Preneur : ${renterName}`, 110, footerY + 33);
 
         doc.setFont('helvetica', 'italic');
-        doc.setFontSize(6.2);
+        doc.setFontSize(5.8);
         doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);
-        doc.text(`Horodatage certifié Renger — ${inspectionDate}`, 18, footerY + 28);
-        doc.text('Empreinte inaltérable — SHA-256 certifiée', 110, footerY + 28);
+        doc.text(`Horodatage technique de transmission — ${inspectionDate}`, 18, footerY + 38);
+        doc.text('Empreinte inaltérable — SHA-256 certifiée', 110, footerY + 38);
 
         // Ligne de bas de page
         doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
-        doc.line(14, 284, 196, 284);
+        doc.line(14, 283, 196, 283);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
+        doc.setFontSize(6.2);
         doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);
         doc.text(
-            'Renger Sàrl • Module certifié d\'état des lieux (renger.ch) • Document officiel inaltérable • Page 1/1',
+            'Renger Sàrl • Plateforme d\'intermédiation technique (renger.ch) • Renger n\'est pas partie prenante au contrat de location • Page 1/1',
             105,
-            288,
+            287,
             { align: 'center' }
         );
 

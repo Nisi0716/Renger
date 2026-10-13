@@ -361,28 +361,39 @@ function updateChatInspectionBar(messages) {
         ownerActions.classList.add('hidden');
         renterActions.classList.remove('hidden');
 
+        const isDepartureDone = departureCount >= 4;
+        const currentCount = isDepartureDone ? returnCount : departureCount;
+        const currentPhase = isDepartureDone ? 'retour' : 'départ';
+
         const stepBadge = document.getElementById('chat-renter-step-badge');
         if (stepBadge) {
-            stepBadge.textContent = `${returnCount} / 4 photo(s)`;
-            stepBadge.className = returnCount === 4
+            stepBadge.textContent = `${currentCount} / 4 photo(s) (${currentPhase})`;
+            stepBadge.className = currentCount === 4
                 ? 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
                 : 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
         }
 
         const inspectionBtn = document.getElementById('chat-renter-inspection-btn');
         if (inspectionBtn) {
-            inspectionBtn.innerHTML = returnCount === 4
-                ? '<svg class="w-3.5 h-3.5 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Retour validé (4/4)</span>'
-                : `<svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>État des lieux retour (${returnCount}/4)</span>`;
+            if (!isDepartureDone) {
+                inspectionBtn.innerHTML = `<svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>État des lieux départ (${departureCount}/4)</span>`;
+            } else if (returnCount >= 4) {
+                inspectionBtn.innerHTML = '<svg class="w-3.5 h-3.5 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Retour validé (4/4)</span>';
+            } else {
+                inspectionBtn.innerHTML = `<svg class="w-3.5 h-3.5 text-stone-600 dark:text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>État des lieux retour (${returnCount}/4)</span>`;
+            }
         }
 
         const closeHint = document.getElementById('chat-renter-close-hint');
         if (closeHint) {
-            if (returnCount >= 4) {
-                closeHint.textContent = '4 photos enregistrées. Vous pouvez clôturer sereinement la location.';
+            if (!isDepartureDone) {
+                closeHint.textContent = `Étape 1/2 : Réalisez d'abord les 4 photos de départ lors de la prise en charge (${departureCount}/4 effectuées).`;
+                closeHint.className = 'text-[11px] text-amber-600 dark:text-amber-400 font-medium';
+            } else if (returnCount >= 4) {
+                closeHint.textContent = '4 photos de retour enregistrées. Vous pouvez clôturer sereinement la location.';
                 closeHint.className = 'text-[11px] text-emerald-600 dark:text-emerald-400 font-medium';
             } else {
-                closeHint.textContent = `Attention : sans photos de retour (${returnCount}/4), 50 CHF de pénalité sont facturés à la clôture.`;
+                closeHint.textContent = `Étape 2/2 : 4 photos de retour requises avant clôture (${returnCount}/4 effectuées).`;
                 closeHint.className = 'text-[11px] text-amber-600 dark:text-amber-400';
             }
         }
@@ -474,14 +485,16 @@ function getReturnPhotosCount() {
 }
 
 /**
- * Déclenche l'état des lieux de départ par le propriétaire
+ * Déclenche l'état des lieux de départ par le propriétaire (ou retour si départ déjà complet)
  */
 function startOwnerInspection() {
     closeChatModal();
+    const departureCount = getDeparturePhotosCount();
+    const step = (departureCount < 4) ? 'departure' : 'return';
     if (typeof startGuidedInspection === 'undefined') {
         const url = new URL('inspection.html', window.location.href);
         url.searchParams.set('action', 'start_inspection');
-        url.searchParams.set('step', 'departure');
+        url.searchParams.set('step', step);
         if (typeof currentTrailer !== 'undefined' && currentTrailer?.id) url.searchParams.set('trailerId', currentTrailer.id);
         if (typeof activeChatPartnerId !== 'undefined' && activeChatPartnerId) url.searchParams.set('partnerId', activeChatPartnerId);
         if (typeof currentBookingContext !== 'undefined' && currentBookingContext?.id) url.searchParams.set('bookingId', currentBookingContext.id);
@@ -490,19 +503,21 @@ function startOwnerInspection() {
         const tId = (typeof currentTrailer !== 'undefined' && currentTrailer) ? currentTrailer.id : null;
         const pId = (typeof activeChatPartnerId !== 'undefined') ? activeChatPartnerId : null;
         const bId = (typeof currentBookingContext !== 'undefined' && currentBookingContext) ? currentBookingContext.id : null;
-        startGuidedInspection('departure', tId, pId, bId);
+        startGuidedInspection(step, tId, pId, bId);
     }
 }
 
 /**
- * Déclenche l'état des lieux de retour par le locataire
+ * Déclenche l'état des lieux par le locataire (Départ d'abord, puis retour une fois le départ validé)
  */
 function startRenterInspection() {
     closeChatModal();
+    const departureCount = getDeparturePhotosCount();
+    const step = (departureCount < 4) ? 'departure' : 'return';
     if (typeof startGuidedInspection === 'undefined') {
         const url = new URL('inspection.html', window.location.href);
         url.searchParams.set('action', 'start_inspection');
-        url.searchParams.set('step', 'return');
+        url.searchParams.set('step', step);
         if (typeof currentTrailer !== 'undefined' && currentTrailer?.id) url.searchParams.set('trailerId', currentTrailer.id);
         if (typeof activeChatPartnerId !== 'undefined' && activeChatPartnerId) url.searchParams.set('partnerId', activeChatPartnerId);
         if (typeof currentBookingContext !== 'undefined' && currentBookingContext?.id) url.searchParams.set('bookingId', currentBookingContext.id);
@@ -511,7 +526,7 @@ function startRenterInspection() {
         const tId = (typeof currentTrailer !== 'undefined' && currentTrailer) ? currentTrailer.id : null;
         const pId = (typeof activeChatPartnerId !== 'undefined') ? activeChatPartnerId : null;
         const bId = (typeof currentBookingContext !== 'undefined' && currentBookingContext) ? currentBookingContext.id : null;
-        startGuidedInspection('return', tId, pId, bId);
+        startGuidedInspection(step, tId, pId, bId);
     }
 }
 

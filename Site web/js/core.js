@@ -1488,7 +1488,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.location.pathname.includes('inspection.html')) {
         const action = urlParams.get('action');
         if (action === 'start_inspection' && typeof startGuidedInspection === 'function') {
-            const step = urlParams.get('step');
+            const step = urlParams.get('step') || 'departure';
             const trailerId = urlParams.get('trailerId');
             const partnerId = urlParams.get('partnerId');
             const bookingId = urlParams.get('bookingId');
