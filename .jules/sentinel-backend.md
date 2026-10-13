@@ -1,5 +1,16 @@
 # Sentinel-Backend Journal
 
+## 2026-04-02 - Overly Permissive Public INSERT RLS Policies on Impressions and Clicks Tables
+
+**Vulnerability:**
+The `impressions` and `clicks` tables used `CREATE POLICY "Allow public insert..." FOR INSERT TO public WITH CHECK (true);`. This permitted any unauthenticated or authenticated actor on the platform to insert impression and click events with arbitrary `user_id` values, enabling identity spoofing in telemetry logs and corrupting owner analytics metrics and user tracking data.
+
+**Learning:**
+Public INSERT policies created with `WITH CHECK (true)` on telemetry tables with an optional `user_id` column fail to restrict `user_id` to `auth.uid()` or `NULL`.
+
+**Prevention:**
+Always restrict public `INSERT` policies on telemetry tables storing optional user identifiers using `WITH CHECK (user_id IS NULL OR user_id = auth.uid())` to prevent user impersonation in analytics and event logs.
+
 ## 2026-04-01 - Missing Row-Level Security Policies on Profiles Table for Mutations
 
 **Vulnerability:**
