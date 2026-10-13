@@ -586,11 +586,11 @@ function startInspectionFromWarning() {
 }
 
 async function confirmCloseWithoutInspection() {
-    const confirmed = confirm("DERNIÈRE CONFIRMATION :\n\nEn clôturant sans photos de retour, vous acceptez la facturation de 50 CHF de pénalité et êtes présumé responsable de tout dommage déclaré.\n\nVoulez-vous vraiment continuer ?");
+    const confirmed = confirm("DERNIÈRE CONFIRMATION :\n\nEn clôturant sans photos de retour, vous êtes présumé responsable de tout dommage déclaré par le propriétaire conformément au droit suisse.\n\nVoulez-vous vraiment continuer ?");
     if (!confirmed) return;
 
     closeInspectionWarningModal();
-    showToast("Clôture effectuée avec pénalité forfaitaire de 50 CHF.", "info");
+    showToast("Clôture effectuée sans photos de retour (présomption de responsabilité).", "info");
 
     if (supabaseClient && currentUser && currentTrailer) {
         const receiverId = activeChatPartnerId || (currentUser.id === currentTrailer.owner_id ? null : currentTrailer.owner_id);
@@ -598,17 +598,17 @@ async function confirmCloseWithoutInspection() {
             sender_id: currentUser.id,
             receiver_id: receiverId,
             trailer_id: currentTrailer.id,
-            content: "[Clôture sans photos] Le locataire a clôturé la location sans état des lieux de retour. Pénalité de 50 CHF appliquée."
+            content: "[Clôture sans photos] Le locataire a clôturé la location sans état des lieux de retour. Présomption de responsabilité appliquée conformément au droit suisse."
         }]);
     }
 
     finishRentalSuccessfully(true);
 }
 
-function finishRentalSuccessfully(hadPenalty = false) {
+function finishRentalSuccessfully(withoutPhotos = false) {
     closeChatModal();
-    if (hadPenalty) {
-        showToast("Location clôturée (pénalité 50 CHF enregistrée). Merci de laisser un avis !", "info");
+    if (withoutPhotos) {
+        showToast("Location clôturée sans photos. Merci de laisser un avis !", "info");
     } else {
         showToast("Location clôturée avec succès ! Merci de prendre soin de la communauté.", "success");
     }

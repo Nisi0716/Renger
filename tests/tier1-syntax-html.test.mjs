@@ -55,7 +55,8 @@ describe('Tier 1: HTML Structure, Well-Formedness & Artifact Cleanup', () => {
         'pro.html',
         'cgu.html',
         'politique-confidentialite.html',
-        'stats.html'
+        'stats.html',
+        'mentions-legales.html'
     ];
 
     for (const fileName of htmlFiles) {

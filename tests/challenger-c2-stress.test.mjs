@@ -422,21 +422,27 @@ describe('Challenger 2 - Suite 3: Certified Inspection Report Structure & Eviden
         const imageRecords = doc.records.filter(r => r.op === 'image');
         assert.strictEqual(imageRecords.length, 4, "Les 4 photos doivent être enregistrées via doc.addImage");
 
-        // Vérification des coordonnées x,y de la grille 2x2
-        // Case 1 (Haut Gauche) : x = 17, y = 65, w = 83, h = 54
-        assert.strictEqual(imageRecords[0].x, 17);
+        // Vérification des coordonnées x,y de la grille 2x2 (avec centrage/letterboxing préservant le ratio d'aspect)
+        // Case 1 (Haut Gauche) : drawX = 22.5, y = 65, w = 72, h = 54
+        assert.strictEqual(imageRecords[0].x, 22.5);
         assert.strictEqual(imageRecords[0].y, 65);
-        assert.strictEqual(imageRecords[0].w, 83);
+        assert.strictEqual(imageRecords[0].w, 72);
         assert.strictEqual(imageRecords[0].h, 54);
-        // Case 2 (Haut Droite) : x = 110, y = 65, w = 83, h = 54
-        assert.strictEqual(imageRecords[1].x, 110);
+        // Case 2 (Haut Droite) : drawX = 115.5, y = 65, w = 72, h = 54
+        assert.strictEqual(imageRecords[1].x, 115.5);
         assert.strictEqual(imageRecords[1].y, 65);
-        // Case 3 (Bas Gauche) : x = 17, y = 156, w = 83, h = 54
-        assert.strictEqual(imageRecords[2].x, 17);
+        assert.strictEqual(imageRecords[1].w, 72);
+        assert.strictEqual(imageRecords[1].h, 54);
+        // Case 3 (Bas Gauche) : drawX = 22.5, y = 156, w = 72, h = 54
+        assert.strictEqual(imageRecords[2].x, 22.5);
         assert.strictEqual(imageRecords[2].y, 156);
-        // Case 4 (Bas Droite) : x = 110, y = 156, w = 83, h = 54
-        assert.strictEqual(imageRecords[3].x, 110);
+        assert.strictEqual(imageRecords[2].w, 72);
+        assert.strictEqual(imageRecords[2].h, 54);
+        // Case 4 (Bas Droite) : drawX = 115.5, y = 156, w = 72, h = 54
+        assert.strictEqual(imageRecords[3].x, 115.5);
         assert.strictEqual(imageRecords[3].y, 156);
+        assert.strictEqual(imageRecords[3].w, 72);
+        assert.strictEqual(imageRecords[3].h, 54);
     });
 
     it('must render certified fallback badge when photo dataUrl is missing or invalid', () => {

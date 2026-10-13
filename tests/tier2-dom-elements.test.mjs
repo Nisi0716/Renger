@@ -110,7 +110,8 @@ describe('Tier 2: Mobile Navigation Settings Link Destination', () => {
         'pro.html',
         'cgu.html',
         'politique-confidentialite.html',
-        'stats.html'
+        'stats.html',
+        'mentions-legales.html'
     ];
 
     for (const fileName of htmlFiles) {

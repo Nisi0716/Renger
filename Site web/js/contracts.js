@@ -490,7 +490,7 @@
         const clauses = [
             {
                 title: 'Droit applicable, Code des Obligations (CO) & Statut de tiers de Renger',
-                body: "Le présent contrat lie exclusivement le Bailleur et le Preneur sous le régime du bail de choses mobilières (art. 253 et suivants du Code des Obligations - CO). Renger Sàrl agit en simple intermédiaire technique de mise en relation et de facilitation de paiement ; elle n'est partie prenante à aucun titre au contrat et décline toute responsabilité quant au véhicule loué ou à son utilisation. Tout litige relève du for ordinaire entre les parties ou du lieu de remise de la remorque."
+                body: "Le présent contrat lie exclusivement le Bailleur et le Preneur sous le régime du bail de choses mobilières (art. 253 et suivants du Code des Obligations - CO). Renger agit en simple intermédiaire technique de mise en relation et de facilitation de paiement ; elle n'est partie prenante à aucun titre au contrat et décline toute responsabilité quant au véhicule loué ou à son utilisation. Tout litige relève du for ordinaire entre les parties ou du lieu de remise de la remorque."
             },
             {
                 title: 'Assurance Responsabilité Civile (RC) & Circulation',
@@ -502,7 +502,7 @@
             },
             {
                 title: 'Obligation d\'état des lieux contradictoire certifié Renger',
-                body: "Les parties ont l'obligation légale d'exécuter l'état des lieux numérique contradictoire Renger (4 photos horodatées et géolocalisées) au départ et au retour. À défaut de photos de retour par le Preneur, une pénalité forfaitaire de 50 CHF est due et les dégradations signalées par le Bailleur sont présumées imputables au Preneur."
+                body: "Les parties ont l'obligation légale d'exécuter l'état des lieux numérique contradictoire Renger (4 photos horodatées et géolocalisées) au départ et au retour. À défaut de photos de retour par le Preneur, les dégradations constatées par le Bailleur sont présumées imputables au Preneur conformément au droit suisse."
             }
         ];
 
@@ -542,7 +542,7 @@
         doc.setFontSize(6);
         doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
         const platformDisclaimerText =
-            "Renger Sàrl fournit exclusivement la solution technique de mise en relation. Renger n'est pas partie prenante au contrat " +
+            "Renger fournit exclusivement la solution technique de mise en relation. Renger n'est pas partie prenante au contrat " +
             "de location conclu directement entre le Bailleur et le Preneur. Renger n'effectue aucun contrôle physique du matériel et " +
             "n'assume aucune responsabilité quant à l'état, l'entretien, le chargement ou l'utilisation de la remorque (CGU art. 2 & 5).";
         doc.text(doc.splitTextToSize(platformDisclaimerText, 174), 18, platformDisclaimerY + 8);
@@ -620,7 +620,7 @@
         doc.setFontSize(6.5);
         doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);
         doc.text(
-            'Renger Sàrl • Plateforme d\'intermédiation technique (renger.ch) • Renger n\'est pas partie au contrat de location • Page 1/1',
+            'Renger • Plateforme d\'intermédiation technique (renger.ch) • Renger n\'est pas partie au contrat de location • Page 1/1',
             105,
             286,
             { align: 'center' }
@@ -899,13 +899,13 @@
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(7.5);
                 doc.setTextColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
-                doc.text('CONSTAT PHOTO ENREGISTRÉ', imgBoxX + (imgBoxW / 2), imgBoxY + 20, { align: 'center' });
+                doc.text('PREUVE NUMÉRIQUE CERTIFIÉE', imgBoxX + (imgBoxW / 2), imgBoxY + 20, { align: 'center' });
 
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(6.8);
                 doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
-                doc.text('Cliché transmis par l\'utilisateur', imgBoxX + (imgBoxW / 2), imgBoxY + 27, { align: 'center' });
-                doc.text('Stockage sécurisé sur serveur', imgBoxX + (imgBoxW / 2), imgBoxY + 33, { align: 'center' });
+                doc.text('Cliché haute définition sécurisé', imgBoxX + (imgBoxW / 2), imgBoxY + 27, { align: 'center' });
+                doc.text('Stockage inaltérable Supabase Storage', imgBoxX + (imgBoxW / 2), imgBoxY + 33, { align: 'center' });
 
                 doc.setFont('helvetica', 'italic');
                 doc.setFontSize(6.2);
@@ -970,7 +970,7 @@
         doc.setFontSize(5.8);
         doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
         const rengerDisclaimer =
-            "Renger Sàrl agit exclusivement comme intermédiaire technique. Renger n'est ABSOLUMENT PAS partie au contrat de bail, " +
+            "Renger agit exclusivement comme intermédiaire technique. Renger n'est ABSOLUMENT PAS partie au contrat de bail, " +
             "ne procède à aucune inspection physique ou mécanique du matériel, et décline toute responsabilité contractuelle ou délictuelle " +
             "relative à l'état, la conformité routière, l'attelage, la surcharge ou l'utilisation de la remorque louée.";
         doc.text(doc.splitTextToSize(rengerDisclaimer, 168), 21, footerY + 23.5);
@@ -996,7 +996,7 @@
         doc.setFontSize(6.2);
         doc.setTextColor(MUTED_STONE[0], MUTED_STONE[1], MUTED_STONE[2]);
         doc.text(
-            'Renger Sàrl • Plateforme d\'intermédiation technique (renger.ch) • Renger n\'est pas partie prenante au contrat de location • Page 1/1',
+            'Renger • Plateforme d\'intermédiation technique (renger.ch) • Renger n\'est pas partie prenante au contrat de location • Page 1/1',
             105,
             287,
             { align: 'center' }
