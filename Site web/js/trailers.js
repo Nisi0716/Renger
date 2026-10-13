@@ -742,7 +742,10 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
     // Badge de statut (texte statique uniquement, zéro donnée utilisateur)
     const statusSpan = document.createElement('span');
     statusSpan.className = 'text-xs font-bold px-2.5 py-1 rounded-md flex-shrink-0';
-    if (todayStr >= startStr && todayStr <= endStr) {
+    if (booking.status === 'annule') {
+        statusSpan.className += ' bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300';
+        statusSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500 inline-block mr-1"></span>Annulée';
+    } else if (todayStr >= startStr && todayStr <= endStr) {
         statusSpan.className += ' bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
         statusSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block mr-1"></span>En cours';
     } else if (todayStr < startStr) {
@@ -819,6 +822,19 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
     };
     actionsRow.appendChild(reportBtn);
 
+    // Bouton d'annulation : réservations payées dont la période n'est pas expirée
+    const statusNorm = String(booking.status || '').toLowerCase().trim();
+    const isPaidRenter = ['paye', 'paid', 'confirmed', 'payé'].includes(statusNorm) || (Number(booking.total_price) > 0 && statusNorm !== 'annule' && statusNorm !== 'indisponible');
+    const isCancelableRenter = isPaidRenter && (!endStr || endStr >= todayStr);
+    if (isCancelableRenter) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'text-xs font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95 shadow-xs';
+        cancelBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span>Annuler la réservation</span>';
+        cancelBtn.onclick = () => openCancelBookingModal(booking, false);
+        actionsRow.appendChild(cancelBtn);
+    }
+
     if (booking.trailers) {
         if (reviewsByBooking.has(booking.id)) {
             const rev = reviewsByBooking.get(booking.id);
@@ -861,7 +877,10 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro =
     // Badge statut
     const statusSpan = document.createElement('span');
     statusSpan.className = 'text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0';
-    if (todayStr >= startStr && todayStr <= endStr) {
+    if (booking.status === 'annule') {
+        statusSpan.className += ' bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300';
+        statusSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500 inline-block mr-1"></span>Annulée';
+    } else if (todayStr >= startStr && todayStr <= endStr) {
         statusSpan.className += ' bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
         statusSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block mr-1"></span>En cours';
     } else if (todayStr < startStr) {
@@ -940,6 +959,19 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro =
     };
     actionsRow.appendChild(reportBtn);
 
+    // Bouton d'annulation propriétaire pour les réservations payées non expirées
+    const statusNormOwner = String(booking.status || '').toLowerCase().trim();
+    const isPaidOwner = ['paye', 'paid', 'confirmed', 'payé'].includes(statusNormOwner) || (Number(booking.total_price) > 0 && statusNormOwner !== 'annule' && statusNormOwner !== 'indisponible');
+    const isCancelableOwner = isPaidOwner && (!endStr || endStr >= todayStr);
+    if (isCancelableOwner) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'text-xs font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95 shadow-xs';
+        cancelBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span>Annuler la réservation</span>';
+        cancelBtn.onclick = () => openCancelBookingModal(booking, true);
+        actionsRow.appendChild(cancelBtn);
+    }
+
     const infoDiv = document.createElement('div');
     infoDiv.className = 'flex-1 min-w-0';
     infoDiv.appendChild(titleEl);
@@ -991,7 +1023,7 @@ async function loadProfileData() {
         .from('bookings')
         .select('*, trailers(*)')
         .eq('renter_id', currentUser.id)
-        .in('status', ['paid', 'confirmed', 'paye'])
+        .in('status', ['paid', 'confirmed', 'paye', 'annule'])
         .order('start_date', { ascending: false });
 
     const { data: myTrailersRaw } = await supabaseClient
@@ -1005,7 +1037,7 @@ async function loadProfileData() {
         .from('bookings')
         .select('*, trailers(*)')
         .eq('owner_id', currentUser.id)
-        .in('status', ['paid', 'confirmed', 'paye', 'indisponible'])
+        .in('status', ['paid', 'confirmed', 'paye', 'indisponible', 'annule'])
         .order('start_date', { ascending: false });
     cachedSellerBookings = sellerBookings || [];
 
@@ -1035,11 +1067,13 @@ async function loadProfileData() {
     // ==========================================
     const allRenterBookings = myBookings || [];
     const activeBookings = allRenterBookings.filter(b => {
+        if (b.status === 'annule') return false;
         const endStr = b.end_date ? b.end_date.split('T')[0] : '';
         return todayStr <= endStr;
     }).sort((a, b) => new Date(a.start_date) - new Date(b.start_date)); // Prochaines d'abord
 
     const pastBookings = allRenterBookings.filter(b => {
+        if (b.status === 'annule') return true;
         const endStr = b.end_date ? b.end_date.split('T')[0] : '';
         return todayStr > endStr;
     }); // Les plus récentes d'abord
@@ -1984,3 +2018,198 @@ try {
         configurable: true
     });
 } catch (e) {}
+
+// ==============================================================================
+// GESTIONNAIRE D'ANNULATION DE RÉSERVATION (POLITIQUE PROGRESSIVE STRIPE)
+// ==============================================================================
+
+let currentCancelBookingTarget = null;
+let currentCancelIsOwner = false;
+
+/**
+ * Ouvre la modale d'annulation et calcule côté client l'impact informatif
+ */
+function openCancelBookingModal(booking, isOwner = false) {
+    if (!booking) return;
+    currentCancelBookingTarget = booking;
+    currentCancelIsOwner = isOwner;
+
+    const modal = document.getElementById('cancel-booking-modal');
+    if (!modal) return;
+
+    const trailerTitleEl = document.getElementById('cancel-modal-trailer-title');
+    if (trailerTitleEl) {
+        trailerTitleEl.textContent = booking.trailers?.title || 'Remorque';
+    }
+
+    const datesEl = document.getElementById('cancel-modal-dates');
+    if (datesEl) {
+        const s = new Date(booking.start_date);
+        const e = new Date(booking.end_date);
+        datesEl.textContent = `Du ${s.toLocaleDateString('fr-CH')} au ${e.toLocaleDateString('fr-CH')}`;
+    }
+
+    // Calcul mathématique du temps restant avant le début de la location
+    const now = new Date();
+    const startDate = new Date(booking.start_date.includes('T') ? booking.start_date : `${booking.start_date}T00:00:00`);
+    const diffMs = startDate.getTime() - now.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    const timeBadgeEl = document.getElementById('cancel-modal-time-badge');
+    if (timeBadgeEl) {
+        if (diffHours >= 48) {
+            const diffDays = Math.floor(diffHours / 24);
+            timeBadgeEl.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 mt-0.5';
+            timeBadgeEl.textContent = `${diffDays} jour${diffDays > 1 ? 's' : ''} restant${diffDays > 1 ? 's' : ''} (> 48h)`;
+        } else if (diffHours > 0) {
+            const roundedHours = Math.max(1, Math.round(diffHours));
+            timeBadgeEl.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 mt-0.5';
+            timeBadgeEl.textContent = `${roundedHours} heure${roundedHours > 1 ? 's' : ''} restante${roundedHours > 1 ? 's' : ''} (< 48h)`;
+        } else {
+            timeBadgeEl.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 mt-0.5';
+            timeBadgeEl.textContent = 'Début immédiat ou passé';
+        }
+    }
+
+    // Messages dynamiques selon la politique d'annulation à l'équilibre ("Zero-Loss")
+    const policyTextEl = document.getElementById('cancel-modal-policy-text');
+    const policyBoxEl = document.getElementById('cancel-modal-policy-box');
+    const refundEstimateEl = document.getElementById('cancel-modal-refund-estimate');
+
+    const totalPaid = Number(booking.total_price) || 0;
+
+    if (isOwner) {
+        if (policyTextEl) {
+            policyTextEl.textContent = "Annulation propriétaire : Le locataire sera intégralement remboursé à 100% du montant payé. Les frais de transaction bancaire restent à votre charge.";
+        }
+        if (refundEstimateEl) {
+            refundEstimateEl.textContent = `Montant remboursé au locataire : ${totalPaid.toFixed(2)} CHF (Remboursement intégral 100%).`;
+        }
+        if (policyBoxEl) {
+            policyBoxEl.className = 'p-4 rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-sm leading-relaxed text-blue-900 dark:text-blue-200';
+        }
+    } else {
+        // Message d'avertissement strict Zero-Loss requis par le cahier des charges
+        if (policyTextEl) {
+            policyTextEl.textContent = "Annulation libre : Vous serez remboursé du montant total de la location, déduction faite des frais de transaction bancaire incompressibles prélevés par Stripe (environ 3%).";
+        }
+        // Estimation indicative des frais réels Stripe (env. 2.9% + 0.30 CHF)
+        const estStripeFee = Math.round((totalPaid * 0.029 + 0.30) * 100) / 100;
+        const estRefund = Math.max(0, totalPaid - estStripeFee);
+        if (refundEstimateEl) {
+            refundEstimateEl.textContent = `Montant total payé : ${totalPaid.toFixed(2)} CHF. Estimation indicative du remboursement : env. ${estRefund.toFixed(2)} CHF (frais Stripe déduits : env. ${estStripeFee.toFixed(2)} CHF). Renger applique une stricte politique Zero-Loss et ne conserve aucun bénéfice.`;
+        }
+        if (policyBoxEl) {
+            policyBoxEl.className = 'p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-sm leading-relaxed text-emerald-900 dark:text-emerald-200';
+        }
+    }
+
+    // Réinitialisation du bouton de confirmation
+    const confirmBtn = document.getElementById('cancel-booking-confirm-btn');
+    const btnText = document.getElementById('cancel-booking-btn-text');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+    }
+    if (btnText) btnText.innerHTML = "<span>Confirmer l'annulation</span>";
+
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Ferme la modale d'annulation
+ */
+function closeCancelBookingModal() {
+    const modal = document.getElementById('cancel-booking-modal');
+    if (modal) modal.classList.add('hidden');
+    currentCancelBookingTarget = null;
+    currentCancelIsOwner = false;
+}
+
+/**
+ * Ferme la modale au clic extérieur
+ */
+function handleCancelModalBackdrop(event) {
+    if (event.target && event.target.id === 'cancel-booking-modal') {
+        closeCancelBookingModal();
+    }
+}
+
+/**
+ * Exécute l'annulation via l'Edge Function cancel-booking
+ */
+async function executeCancelBooking() {
+    if (!currentCancelBookingTarget) return;
+    const booking = currentCancelBookingTarget;
+    const confirmBtn = document.getElementById('cancel-booking-confirm-btn');
+    const btnText = document.getElementById('cancel-booking-btn-text');
+
+    try {
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        }
+        if (btnText) {
+            btnText.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Annulation en cours...</span>';
+        }
+
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) {
+            throw new Error("Vous devez être authentifié pour annuler une réservation.");
+        }
+
+        const supabaseUrl = (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL)
+            ? SUPABASE_URL
+            : 'https://cwifrzajxrcpnqceyxnj.supabase.co';
+
+        // Appel API sécurisé (Zero Trust : bookingId uniquement, calculs côté serveur)
+        const response = await fetch(`${supabaseUrl}/functions/v1/cancel-booking`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ bookingId: booking.id })
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.error || `Erreur ${response.status} lors de l'annulation.`);
+        }
+
+        closeCancelBookingModal();
+
+        if (typeof showToast === 'function') {
+            showToast(result.message || "Réservation annulée. Remboursement Stripe initié.", 'success');
+        } else {
+            alert(result.message || "Réservation annulée.");
+        }
+
+        // Rechargement des réservations du profil pour refléter le changement
+        if (typeof loadProfileData === 'function') {
+            await loadProfileData();
+        }
+
+    } catch (err) {
+        console.error("Erreur annulation réservation :", err);
+        if (typeof showToast === 'function') {
+            showToast(err.message || "Échec de l'annulation.", 'error');
+        } else {
+            alert(err.message || "Échec de l'annulation.");
+        }
+    } finally {
+        if (confirmBtn) confirmBtn.disabled = false;
+        if (btnText) btnText.textContent = "Confirmer l'annulation";
+    }
+}
+
+// Enregistrement des fonctions dans le scope global window
+if (typeof window !== 'undefined') {
+    window.openCancelBookingModal = openCancelBookingModal;
+    window.closeCancelBookingModal = closeCancelBookingModal;
+    window.handleCancelModalBackdrop = handleCancelModalBackdrop;
+    window.executeCancelBooking = executeCancelBooking;
+}
+
