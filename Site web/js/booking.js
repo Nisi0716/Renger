@@ -1,6 +1,22 @@
 // ==========================================
 // 5. RÉSERVATION, BLOCAGE DATES & PAIEMENT
 // ==========================================
+/**
+ * Échappe une chaîne pour prévenir les failles XSS
+ */
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+if (typeof window !== 'undefined') {
+    window.escapeHtml = escapeHtml;
+}
+
 async function openTrailerDetail(trailer) {
     if (trailer && typeof logClick === 'function') logClick(trailer.id);
     // MPA : hors de la fiche détail, on navigue vers remorque.html?id=... (la page recharge l'annonce)
@@ -107,21 +123,39 @@ async function openTrailerDetail(trailer) {
     if (equipTitle) equipTitle.classList.add('hidden');
     if (upsellTitle) upsellTitle.classList.add('hidden');
 
+    const safeEscape = (typeof escapeHtml === 'function') ? escapeHtml : function(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
     /// 2. Affichage des équipements (Sécurisé contre les XSS)
-    if (trailer.equipments && trailer.equipments.length > 0) {
-        equipTitle.classList.remove('hidden');
-        trailer.equipments.forEach(eq => {
+    let equipList = trailer.equipments;
+    if (typeof equipList === 'string') {
+        try { equipList = JSON.parse(equipList); } catch (e) { equipList = equipList.split(',').map(s => s.trim()).filter(Boolean); }
+    }
+    if (Array.isArray(equipList) && equipList.length > 0) {
+        if (equipTitle) equipTitle.classList.remove('hidden');
+        equipList.forEach(eq => {
             const span = document.createElement('span');
             span.className = "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-3 py-1.5 rounded-lg text-sm font-semibold capitalize inline-flex items-center gap-1.5";
-            span.innerHTML = `<svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>${escapeHtml(eq)}</span>`;
-            equipContainer.appendChild(span);
+            span.innerHTML = `<svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>${safeEscape(eq)}</span>`;
+            if (equipContainer) equipContainer.appendChild(span);
         });
     }
 
     // 3. Affichage des Upsells (Sécurisé contre les XSS)
-    if (trailer.upsells && trailer.upsells.length > 0) {
-        upsellTitle.classList.remove('hidden');
-        trailer.upsells.forEach(up => {
+    let upsellList = trailer.upsells;
+    if (typeof upsellList === 'string') {
+        try { upsellList = JSON.parse(upsellList); } catch (e) { upsellList = upsellList.split(',').map(s => s.trim()).filter(Boolean); }
+    }
+    if (Array.isArray(upsellList) && upsellList.length > 0) {
+        if (upsellTitle) upsellTitle.classList.remove('hidden');
+        upsellList.forEach(up => {
             let upIconSvg = `<svg class="w-4 h-4 text-terracotta-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
             let upText = up;
             let upPrice = "";
@@ -142,7 +176,7 @@ async function openTrailerDetail(trailer) {
             
             const spanTitle = document.createElement('span');
             spanTitle.className = "font-bold text-terracotta-700 dark:text-terracotta-400 capitalize inline-flex items-center gap-1.5";
-            spanTitle.innerHTML = `${upIconSvg}<span>${escapeHtml(upText)}</span>`;
+            spanTitle.innerHTML = `${upIconSvg}<span>${safeEscape(upText)}</span>`;
 
             const spanPrice = document.createElement('span');
             spanPrice.className = "text-terracotta-600 dark:text-terracotta-400 font-bold text-sm";
@@ -150,7 +184,7 @@ async function openTrailerDetail(trailer) {
 
             div.appendChild(spanTitle);
             div.appendChild(spanPrice);
-            upsellContainer.appendChild(div);
+            if (upsellContainer) upsellContainer.appendChild(div);
         });
     }
     
@@ -185,10 +219,12 @@ async function openTrailerDetail(trailer) {
         }
     }
 
-    const disabledDates = bookings ? bookings.map(b => ({
-        from: b.start_date,
-        to: b.end_date
-    })) : [];
+    const disabledDates = Array.isArray(bookings) ? bookings
+        .filter(b => b && b.start_date && b.end_date)
+        .map(b => ({
+            from: b.start_date,
+            to: b.end_date
+        })) : [];
 
     // GESTION DU PROPRIÉTAIRE VS LOCATAIRE
     const isOwner = currentUser && currentUser.id === trailer.owner_id;
@@ -197,16 +233,20 @@ async function openTrailerDetail(trailer) {
 
     if (isOwner) {
         // Mode Propriétaire
-        priceHeader.classList.add('hidden');
-        actionBtn.innerText = "Bloquer ces dates";
-        actionBtn.onclick = blockOwnerDates;
-        actionBtn.className = "w-full bg-stone-800 hover:bg-stone-900 dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-4";
+        if (priceHeader) priceHeader.classList.add('hidden');
+        if (actionBtn) {
+            actionBtn.innerText = "Bloquer ces dates";
+            actionBtn.onclick = blockOwnerDates;
+            actionBtn.className = "w-full bg-stone-800 hover:bg-stone-900 dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-4";
+        }
     } else {
         // Mode Locataire
-        priceHeader.classList.remove('hidden');
-        actionBtn.innerText = "Réserver";
-        actionBtn.onclick = submitBooking;
-        actionBtn.className = "w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-3";
+        if (priceHeader) priceHeader.classList.remove('hidden');
+        if (actionBtn) {
+            actionBtn.innerText = "Réserver";
+            actionBtn.onclick = submitBooking;
+            actionBtn.className = "w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 rounded-2xl shadow-xl transition transform active:scale-95 text-lg mb-3";
+        }
     }
 
     // Initialisation immédiate des montants de caution pour cette remorque
@@ -216,58 +256,68 @@ async function openTrailerDetail(trailer) {
     const cautionExplainEl = document.getElementById('caution-explain-amount');
     if (cautionExplainEl) cautionExplainEl.innerText = `${initialCaution} CHF`;
 
-    if (bookingCalendar) bookingCalendar.destroy();
+    if (bookingCalendar && typeof bookingCalendar.destroy === 'function') {
+        bookingCalendar.destroy();
+    }
     
-    bookingCalendar = flatpickr("#booking-dates", {
-        mode: "range",
-        minDate: "today",
-        locale: "fr",
-        disable: disabledDates,
-        onChange: function(selectedDates) {
-            if (selectedDates.length === 2) {
-                selectedStartDate = selectedDates[0];
-                selectedEndDate = selectedDates[1];
-                
-                // Normalisation UTC minuit pour immuniser contre les décalages DST (changement d'heure)
-                const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
-                const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
-                const diffTime = Math.abs(utcEnd - utcStart);
-                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1; 
-                const rentalPrice = diffDays * currentTrailer.price;
-                const serviceFee = calculateRengerServiceFee(rentalPrice);
-                const totalWithFee = rentalPrice + serviceFee;
-                const caution = getTrailerCaution(currentTrailer);
-                
-                const daysEl = document.getElementById('total-days');
-                if (daysEl) daysEl.innerText = diffDays;
-                const pluralEl = document.getElementById('total-days-plural');
-                if (pluralEl) pluralEl.innerText = diffDays > 1 ? 's' : '';
+    if (typeof flatpickr !== 'undefined') {
+        const fpLocale = (flatpickr.l10ns && flatpickr.l10ns.fr) ? flatpickr.l10ns.fr : undefined;
+        bookingCalendar = flatpickr("#booking-dates", {
+            mode: "range",
+            minDate: "today",
+            locale: fpLocale || "fr",
+            disable: disabledDates,
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2) {
+                    selectedStartDate = selectedDates[0];
+                    selectedEndDate = selectedDates[1];
+                    
+                    // Normalisation UTC minuit pour immuniser contre les décalages DST (changement d'heure)
+                    const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+                    const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
+                    const diffTime = Math.abs(utcEnd - utcStart);
+                    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1; 
+                    const rentalPrice = diffDays * currentTrailer.price;
+                    const serviceFee = calculateRengerServiceFee(rentalPrice);
+                    const totalWithFee = rentalPrice + serviceFee;
+                    const caution = getTrailerCaution(currentTrailer);
+                    
+                    const daysEl = document.getElementById('total-days');
+                    if (daysEl) daysEl.innerText = diffDays;
+                    const pluralEl = document.getElementById('total-days-plural');
+                    if (pluralEl) pluralEl.innerText = diffDays > 1 ? 's' : '';
 
-                const rentalPriceEl = document.getElementById('total-rental-price');
-                if (rentalPriceEl) rentalPriceEl.innerText = `${rentalPrice} CHF`;
+                    const rentalPriceEl = document.getElementById('total-rental-price');
+                    if (rentalPriceEl) rentalPriceEl.innerText = `${rentalPrice} CHF`;
 
-                const serviceFeeEl = document.getElementById('service-fee-price');
-                if (serviceFeeEl) serviceFeeEl.innerText = `${serviceFee.toFixed(2)} CHF`;
+                    const serviceFeeEl = document.getElementById('service-fee-price');
+                    if (serviceFeeEl) serviceFeeEl.innerText = `${serviceFee.toFixed(2)} CHF`;
 
-                const cautionEl = document.getElementById('caution-amount');
-                if (cautionEl) cautionEl.innerText = `${caution} CHF`;
+                    const cautionEl = document.getElementById('caution-amount');
+                    if (cautionEl) cautionEl.innerText = `${caution} CHF`;
 
-                const cautionExpEl = document.getElementById('caution-explain-amount');
-                if (cautionExpEl) cautionExpEl.innerText = `${caution} CHF`;
+                    const cautionExpEl = document.getElementById('caution-explain-amount');
+                    if (cautionExpEl) cautionExpEl.innerText = `${caution} CHF`;
 
-                const totalPriceEl = document.getElementById('total-price');
-                if (totalPriceEl) totalPriceEl.innerText = isOwner ? "0 CHF" : `${totalWithFee.toFixed(2)} CHF`;
+                    const totalPriceEl = document.getElementById('total-price');
+                    if (totalPriceEl) totalPriceEl.innerText = isOwner ? "0 CHF" : `${totalWithFee.toFixed(2)} CHF`;
 
-                document.getElementById('booking-summary').classList.remove('hidden');
-                updateChatButtonState();
-            } else {
-                selectedStartDate = null;
-                selectedEndDate = null;
-                document.getElementById('booking-summary').classList.add('hidden');
-                updateChatButtonState();
+                    const bookingSummary = document.getElementById('booking-summary');
+                    if (bookingSummary) bookingSummary.classList.remove('hidden');
+                    updateChatButtonState();
+                } else {
+                    selectedStartDate = null;
+                    selectedEndDate = null;
+                    const bookingSummary = document.getElementById('booking-summary');
+                    if (bookingSummary) bookingSummary.classList.add('hidden');
+                    updateChatButtonState();
+                }
             }
+        });
+        if (typeof window !== 'undefined') {
+            window.bookingCalendar = bookingCalendar;
         }
-    });
+    }
 
     // Charger et afficher la carte propriétaire (async, non bloquant)
     if (trailer.owner_id) {

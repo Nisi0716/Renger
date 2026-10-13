@@ -855,6 +855,60 @@ describe('Adversarial Stress Suite 4: Booked Dates Fallback & Mock Offline / Err
         assert.ok(Array.isArray(capturedDisable), "flatpickr.disable doit être un tableau");
         assert.strictEqual(capturedDisable.length, 0, "En mode hors-ligne, disabledDates doit être une liste vide sans lever d'exception");
     });
+
+    it('must initialize calendar and render equipments and upsells without escapeHtml ReferenceError crash', async () => {
+        let calendarInitialized = false;
+        let capturedDisable = null;
+
+        const trailerWithEquipsAndUpsells = {
+            id: 'trailer-equip-13',
+            title: 'Plateau 2 voitures',
+            price: 120,
+            payload: 3500,
+            category: 'voiture',
+            equipments: ['sangles', 'treuil'],
+            upsells: ['livraison', 'diable'],
+            owner_id: 'owner-user-99'
+        };
+
+        const { ctx } = loadBookingContext({
+            flatpickr: (sel, cfg) => {
+                calendarInitialized = true;
+                capturedDisable = cfg.disable;
+                return { destroy() {} };
+            },
+            supabaseClient: {
+                rpc: () => Promise.resolve(),
+                from: (table) => {
+                    if (table === 'trailer_booked_dates') {
+                        return {
+                            select: () => ({
+                                eq: () => Promise.resolve({
+                                    data: [{ start_date: '2026-11-01', end_date: '2026-11-05' }],
+                                    error: null
+                                })
+                            })
+                        };
+                    }
+                    return {
+                        select: () => ({
+                            eq: () => ({
+                                maybeSingle: () => Promise.resolve({ data: null }),
+                                eq: () => Promise.resolve({ data: [] })
+                            })
+                        })
+                    };
+                }
+            }
+        });
+
+        await assert.doesNotReject(async () => {
+            await ctx.openTrailerDetail(trailerWithEquipsAndUpsells);
+        }, "openTrailerDetail ne doit pas crasher sur escapeHtml lors du rendu des équipements ou upsells");
+
+        assert.strictEqual(calendarInitialized, true, "Flatpickr doit être initialisé avec succès");
+        assert.strictEqual(capturedDisable.length, 1, "Les dates réservées doivent être configurées");
+    });
 });
 
 describe('Adversarial Stress Suite 5: Paid Products, Boosts & Stripe Lifecycle Resilience', () => {

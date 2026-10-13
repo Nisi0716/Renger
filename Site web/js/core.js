@@ -16,6 +16,21 @@ let currentFilter = 'all'; // Filtre actif sur la page des annonces
 let currentStartDate = null; // Date de début du filtre de disponibilité (YYYY-MM-DD)
 let currentEndDate = null; // Date de fin du filtre de disponibilité (YYYY-MM-DD)
 try {
+    Object.defineProperty(window, 'bookingCalendar', {
+        get() { return bookingCalendar; },
+        set(v) { bookingCalendar = v; },
+        configurable: true
+    });
+    Object.defineProperty(window, 'selectedStartDate', {
+        get() { return selectedStartDate; },
+        set(v) { selectedStartDate = v; },
+        configurable: true
+    });
+    Object.defineProperty(window, 'selectedEndDate', {
+        get() { return selectedEndDate; },
+        set(v) { selectedEndDate = v; },
+        configurable: true
+    });
     Object.defineProperty(window, 'currentStartDate', {
         get() { return currentStartDate; },
         set(v) { currentStartDate = v; },
@@ -117,6 +132,22 @@ function formatDateToLocalISO(date) {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+/**
+ * Échappe une chaîne pour prévenir les failles XSS
+ */
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+if (typeof window !== 'undefined') {
+    window.escapeHtml = escapeHtml;
 }
 
 const translations = {
@@ -1441,8 +1472,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.location.pathname.includes('remorque.html')) {
         const id = urlParams.get('id');
         if (id && typeof openTrailerDetail === 'function') {
-            supabaseClient.from('trailers').select('*').eq('id', id).single().then(({data}) => {
-                if(data) openTrailerDetail(data);
+            supabaseClient.from('trailers').select('*').eq('id', id).single().then(({data, error}) => {
+                if (error) {
+                    console.error("Erreur récupération remorque:", error);
+                    return;
+                }
+                if (data) openTrailerDetail(data);
+            }).catch(err => {
+                console.error("Erreur chargement détail remorque:", err);
             });
         }
     }
