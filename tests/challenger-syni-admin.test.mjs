@@ -787,10 +787,11 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.equal(projNegative.fixedCosts, 0);
         });
 
-        it('syniModule expose toutes les constantes et fonctions opérationnelles Syni V2', () => {
-            assert.equal(syniModule.MODULES.length, 8, '8 modules officiels dans Syni');
+        it('syniModule expose toutes les constantes et fonctions opérationnelles Syni Palantir 3.0', () => {
+            assert.equal(syniModule.MODULES.length, 9, '9 modules officiels dans Syni Palantir');
             assert.ok(syniModule.MODULES.includes('control'), 'Module control exposé');
             assert.ok(syniModule.MODULES.includes('simulator'), 'Module simulator exposé');
+            assert.ok(syniModule.MODULES.includes('palantir'), 'Module palantir exposé');
             assert.equal(syniModule.BROADCAST_BANNER_KEY, 'renger_broadcast_banner');
             assert.equal(syniModule.MAINTENANCE_MODE_KEY, 'renger_maintenance_mode');
             assert.equal(syniModule.AUDIT_LOG_KEY, 'syni_audit_log');
@@ -800,7 +801,327 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.equal(typeof syniModule.closeActionModal, 'function');
             assert.equal(typeof syniModule.getAuditLogs, 'function');
             assert.equal(typeof syniModule.generateAuditCsv, 'function');
+            // Master Editor & CRUD Absolu
+            assert.equal(typeof syniModule.openMasterEditor, 'function');
+            assert.equal(typeof syniModule.closeMasterEditor, 'function');
+            assert.equal(typeof syniModule.saveMasterEntity, 'function');
+            // Business Brain V3
+            assert.equal(typeof syniModule.computeStrategicRecommendations, 'function');
+            assert.equal(typeof syniModule.calculateOkrBreakdown, 'function');
+            assert.equal(typeof syniModule.calculateExpansionScenarios, 'function');
+            // Module 9 Palantir
+            assert.equal(typeof syniModule.computeSentinelRiskScores, 'function');
+            assert.equal(typeof syniModule.getNetworkConstellation, 'function');
+            assert.equal(typeof syniModule.renderPalantirSection, 'function');
+            assert.equal(typeof syniModule.generatePalantirBackup, 'function');
+            assert.equal(typeof syniModule.exportDatabaseBackup, 'function');
+            assert.equal(typeof syniModule.searchCommandPalette, 'function');
+            assert.equal(typeof syniModule.openCommandPalette, 'function');
+            assert.equal(typeof syniModule.closeCommandPalette, 'function');
+        });
+    });
+
+    describe('11. God Mode CRUD : Soft-Delete Universel & Corbeille (CO art. 958f)', () => {
+        it('executeSupremeAction soft_delete et restore sur un utilisateur avec journal d\'audit', () => {
+            const resDelete = syniModule.executeSupremeAction('soft_delete', 'user', 'usr-owner-1', 'Test suppression compte');
+            assert.equal(resDelete.success, true);
+            assert.ok(resDelete.message.includes('corbeille'));
+            assert.equal(resDelete.log.action, 'soft_delete');
+            assert.equal(resDelete.log.target_type, 'user');
+            assert.equal(resDelete.log.target_id, 'usr-owner-1');
+
+            const resRestore = syniModule.executeSupremeAction('restore', 'user', 'usr-owner-1', 'Restauration compte');
+            assert.equal(resRestore.success, true);
+            assert.ok(resRestore.message.includes('restauré'));
+            assert.equal(resRestore.log.action, 'restore');
+        });
+
+        it('executeSupremeAction soft_delete et restore sur une remorque (masquage et réactivation)', () => {
+            const resDelete = syniModule.executeSupremeAction('soft_delete', 'trailer', '1', 'Retrait remorque');
+            assert.equal(resDelete.success, true);
+            assert.ok(resDelete.message.includes('corbeille'));
+
+            const resRestore = syniModule.executeSupremeAction('restore', 'trailer', '1', 'Restauration remorque');
+            assert.equal(resRestore.success, true);
+            assert.ok(resRestore.message.includes('restaurée'));
+        });
+
+        it('executeSupremeAction soft_delete et restore sur une réservation (archivage CO 958f)', () => {
+            const resDelete = syniModule.executeSupremeAction('soft_delete', 'booking', 'bkg-101', 'Archivage réservation');
+            assert.equal(resDelete.success, true);
+            assert.ok(resDelete.message.includes('corbeille'));
+
+            const resRestore = syniModule.executeSupremeAction('restore', 'booking', 'bkg-101', 'Restauration réservation');
+            assert.equal(resRestore.success, true);
+            assert.ok(resRestore.message.includes('restaurée'));
+        });
+
+        it('computeSyniMetrics compte fidèlement les entités dans la corbeille et exclut les remorques supprimées', () => {
+            const mockData = {
+                profiles: [
+                    { id: 'u1', username: 'u1', is_deleted: false },
+                    { id: 'u2', username: 'u2', is_deleted: true }
+                ],
+                trailers: [
+                    { id: 1, title: 'T1', is_deleted: false, is_active: true },
+                    { id: 2, title: 'T2', is_deleted: true, is_active: false }
+                ],
+                bookings: [
+                    { id: 'b1', total_price: 100, is_deleted: false },
+                    { id: 'b2', total_price: 200, is_deleted: true }
+                ]
+            };
+            const metrics = syniModule.computeSyniMetrics(mockData);
+            assert.equal(metrics.trash.usersCount, 1);
+            assert.equal(metrics.trash.trailersCount, 1);
+            assert.equal(metrics.trash.bookingsCount, 1);
+            assert.equal(metrics.trailers.active, 1, 'Seule la remorque non supprimée et active est comptée');
+        });
+    });
+
+    describe('12. Master Editor Universel (Édition & Création Toutes Entités)', () => {
+        it('saveMasterEntity crée un nouvel utilisateur et l\'enregistre dans l\'audit log', () => {
+            const res = syniModule.saveMasterEntity('user', null, {
+                username: 'jean_palantir',
+                email: 'jean@renger.ch',
+                is_pro: true,
+                is_admin: false
+            }, 'Création administrative directe');
+
+            assert.equal(res.success, true);
+            assert.equal(res.isNew, true);
+            assert.ok(res.id);
+            assert.equal(res.entity.username, 'jean_palantir');
+            assert.equal(res.entity.is_pro, true);
+            assert.equal(res.entity.is_deleted, false);
+
+            const logs = syniModule.getAuditLogs();
+            assert.ok(logs.some(l => l.action === 'create_user' && l.target_id === String(res.id)));
+        });
+
+        it('saveMasterEntity met à jour un utilisateur existant', () => {
+            const resCreate = syniModule.saveMasterEntity('user', null, {
+                username: 'alice_temp',
+                email: 'alice@renger.ch'
+            });
+
+            const resUpdate = syniModule.saveMasterEntity('user', resCreate.id, {
+                username: 'alice_officielle',
+                is_admin: true
+            }, 'Promotion administrateur');
+
+            assert.equal(resUpdate.success, true);
+            assert.equal(resUpdate.isNew, false);
+            assert.equal(resUpdate.entity.username, 'alice_officielle');
+            assert.equal(resUpdate.entity.is_admin, true);
+        });
+
+        it('saveMasterEntity crée et modifie une remorque avec tous ses paramètres', () => {
+            const res = syniModule.saveMasterEntity('trailer', null, {
+                title: 'Remorque Benne Saris 3000kg',
+                category: 'benne',
+                price: 95,
+                caution: 400,
+                payload: 2200,
+                location: '1000 Lausanne',
+                location_city: 'Lausanne',
+                owner_id: 'usr-pro-1',
+                is_active: true
+            }, 'Ajout remorque Master Editor');
+
+            assert.equal(res.success, true);
+            assert.ok(res.id);
+            assert.equal(res.entity.title, 'Remorque Benne Saris 3000kg');
+            assert.equal(res.entity.price, 95);
+            assert.equal(res.entity.caution, 400);
+        });
+
+        it('saveMasterEntity crée une réservation directe administrateur', () => {
+            const res = syniModule.saveMasterEntity('booking', null, {
+                trailer_id: 1,
+                user_id: 'usr-renter-1',
+                start_date: '2026-11-01',
+                end_date: '2026-11-03',
+                total_price: 210,
+                status: 'paye',
+                deposit_status: 'reserve'
+            }, 'Réservation directe admin');
+
+            assert.equal(res.success, true);
+            assert.equal(res.entity.status, 'paye');
+            assert.equal(res.entity.total_price, 210);
+        });
+    });
+
+    describe('13. Module 9 : Palantir Sentinel (Détection d\'Anomalies & Fraudes)', () => {
+        it('computeSentinelRiskScores calcule un score et 4 heuristiques de détection', () => {
+            const mockData = {
+                profiles: [{ id: 'u1' }],
+                trailers: [{ id: 1 }],
+                bookings: [
+                    { id: 'b1', deposit_status: 'capture', status: 'termine', end_date: '2026-09-01' },
+                    { id: 'b2', deposit_status: 'reserve', status: 'termine', end_date: '2026-09-05' }
+                ],
+                inspections: [
+                    { booking_id: 'b1', mode: 'departure' } // Manque retour
+                ],
+                rateLimits: [
+                    { id: 'r1', action: 'blocked', user_id: 'u1' }
+                ]
+            };
+
+            const sentinel = syniModule.computeSentinelRiskScores(mockData);
+            assert.ok(sentinel.globalScore >= 0 && sentinel.globalScore <= 100);
+            assert.ok(['NORMAL', 'VIGILANCE', 'CRITIQUE'].includes(sentinel.status));
+            assert.equal(typeof sentinel.heuristics.disputes, 'object');
+            assert.equal(typeof sentinel.heuristics.inspections, 'object');
+            assert.equal(typeof sentinel.heuristics.rateLimits, 'object');
+            assert.equal(typeof sentinel.heuristics.cancellations, 'object');
+            assert.ok(sentinel.alerts.length > 0, 'Des alertes sont remontées pour capture, photos manquantes et rate limit');
+        });
+
+        it('computeSentinelRiskScores renvoie un score nominal et sans alertes pour des données parfaites', () => {
+            const mockData = {
+                profiles: [{ id: 'u1' }],
+                trailers: [{ id: 1 }],
+                bookings: [
+                    { id: 'b1', deposit_status: 'libere', status: 'termine', end_date: '2026-09-01' }
+                ],
+                inspections: [
+                    { booking_id: 'b1', mode: 'departure' },
+                    { booking_id: 'b1', mode: 'return' }
+                ],
+                rateLimits: []
+            };
+
+            const sentinel = syniModule.computeSentinelRiskScores(mockData);
+            assert.equal(sentinel.globalScore, 0);
+            assert.equal(sentinel.status, 'NORMAL');
+            assert.equal(sentinel.alerts.length, 0);
+        });
+    });
+
+    describe('14. Module 9 : Network Explorer & Constellation Relationnelle', () => {
+        it('getNetworkConstellation extrait la constellation d\'un utilisateur (remorques, réservations, inspections, cautions)', () => {
+            const mockData = {
+                profiles: [{ id: 'usr-target', username: 'marc_cible' }],
+                trailers: [{ id: 10, owner_id: 'usr-target', title: 'Remorque Marc' }],
+                bookings: [
+                    { id: 'bkg-1', trailer_id: 10, user_id: 'autre-user', total_price: 150, deposit_status: 'reserve' }
+                ],
+                inspections: [
+                    { id: 'insp-1', booking_id: 'bkg-1', trailer_id: 10, mode: 'departure', step: 1 }
+                ]
+            };
+
+            const constellation = syniModule.getNetworkConstellation('user', 'usr-target', mockData);
+            assert.equal(constellation.entityType, 'user');
+            assert.equal(constellation.entity.username, 'marc_cible');
+            assert.equal(constellation.trailers.length, 1);
+            assert.equal(constellation.bookings.length, 1);
+            assert.equal(constellation.inspections.length, 1);
+            assert.equal(constellation.cautions.length, 1);
+            assert.equal(constellation.summary.totalVolume, 150);
+        });
+
+        it('getNetworkConstellation extrait la constellation d\'une remorque', () => {
+            const mockData = {
+                profiles: [{ id: 'usr-owner', username: 'proprio' }],
+                trailers: [{ id: 5, owner_id: 'usr-owner', title: 'Remorque N5' }],
+                bookings: [
+                    { id: 'bkg-5', trailer_id: 5, total_price: 200 }
+                ],
+                inspections: []
+            };
+
+            const constellation = syniModule.getNetworkConstellation('trailer', '5', mockData);
+            assert.equal(constellation.entityType, 'trailer');
+            assert.equal(constellation.entity.title, 'Remorque N5');
+            assert.equal(constellation.owner.username, 'proprio');
+            assert.equal(constellation.bookings.length, 1);
+            assert.equal(constellation.summary.totalVolume, 200);
+        });
+    });
+
+    describe('15. Module 9 : Sauvegarde Intégrale BDD 1-Clic JSON (CO art. 958f)', () => {
+        it('generatePalantirBackup produit un JSON complet, horodaté et conforme au droit suisse', () => {
+            const backupJson = syniModule.generatePalantirBackup();
+            assert.equal(typeof backupJson, 'string');
+            const parsed = JSON.parse(backupJson);
+
+            assert.equal(parsed.meta.system, 'Renger Syni Palantir 3.0');
+            assert.ok(parsed.meta.exported_at);
+            assert.ok(parsed.meta.legal_retention.includes('CO art. 958f'));
+            assert.ok(Array.isArray(parsed.data.profiles));
+            assert.ok(Array.isArray(parsed.data.trailers));
+            assert.ok(Array.isArray(parsed.data.bookings));
+            assert.ok(Array.isArray(parsed.data.inspections));
+            assert.ok(Array.isArray(parsed.data.audit_logs));
+        });
+    });
+
+    describe('16. Barre de Commande Rapide (Cmd+K / searchCommandPalette)', () => {
+        it('searchCommandPalette renvoie les modules officiels et les actions God Mode par défaut', () => {
+            const res = syniModule.searchCommandPalette('');
+            assert.ok(res.length >= 10);
+            assert.ok(res.some(r => r.title.includes('Cockpit Général')));
+            assert.ok(res.some(r => r.title.includes('Palantir Sentinel')));
+            assert.ok(res.some(r => r.title.includes('Nouveau') || r.title.includes('Nouvelle')));
+            assert.ok(res.some(r => r.title.includes('Sauvegarde Intégrale BDD')));
+        });
+
+        it('searchCommandPalette filtre pertinemment par mot-clé et cible les entités', () => {
+            const resPalantir = syniModule.searchCommandPalette('palantir');
+            assert.ok(resPalantir.some(r => r.title.includes('Palantir')));
+
+            const resCorbeille = syniModule.searchCommandPalette('corbeille');
+            assert.ok(resCorbeille.some(r => r.title.includes('Corbeille')));
+        });
+    });
+
+    describe('17. Business Brain V3 : Recommandations, Décomposeur OKR & 4 Scénarios d\'Expansion', () => {
+        it('computeStrategicRecommendations produit 3 recommandations stratégiques exploitables', () => {
+            const recs = syniModule.computeStrategicRecommendations();
+            assert.equal(recs.length, 3);
+            assert.ok(recs.some(r => r.title.includes('Élasticité Prix')));
+            assert.ok(recs.some(r => r.title.includes('Expansion Territoriale')));
+            assert.ok(recs.some(r => r.title.includes('Spécialisée')));
+            recs.forEach(r => {
+                assert.ok(r.tag);
+                assert.ok(r.description);
+                assert.ok(r.recommendation);
+            });
+        });
+
+        it('calculateOkrBreakdown décompose mathématiquement l\'objectif d\'ARR en jalons et quotas cantons', () => {
+            const okr = syniModule.calculateOkrBreakdown(100000);
+            assert.equal(okr.targetArr, 100000);
+            assert.ok(okr.currentArr >= 0);
+            assert.ok(okr.progressPct >= 0 && okr.progressPct <= 100);
+            assert.ok(okr.milestones.trailers.target > 0);
+            assert.ok(okr.milestones.proUsers.target > 0);
+            assert.ok(okr.milestones.monthlyBookings.target > 0);
+            assert.ok(okr.cantonsQuota.VD > 0);
+            assert.ok(okr.cantonsQuota.GE > 0);
+            assert.ok(okr.cantonsQuota.ZH > 0);
+        });
+
+        it('calculateExpansionScenarios calcule et compare fidèlement les 4 scénarios d\'expansion', () => {
+            const scenarios = syniModule.calculateExpansionScenarios();
+            assert.equal(scenarios.length, 4);
+
+            const [actuel, summer, alemanique, stress] = scenarios;
+            assert.equal(actuel.id, 'actuel');
+            assert.equal(summer.id, 'summer');
+            assert.equal(alemanique.id, 'alemanique');
+            assert.equal(stress.id, 'stress');
+
+            assert.ok(summer.bookings > actuel.bookings, 'Haute saison a plus de locations que l actuel');
+            assert.ok(alemanique.trailers > actuel.trailers, 'Expansion alémanique recrute plus de remorques');
+            assert.ok(alemanique.netMonthlyRevenue > actuel.netMonthlyRevenue);
+            assert.ok(stress.trailers <= actuel.trailers, 'Stress test plus conservateur');
         });
     });
 
 });
+

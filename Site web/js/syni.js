@@ -28,8 +28,8 @@
     const MAINTENANCE_MODE_KEY = 'renger_maintenance_mode';
     const AUDIT_LOG_KEY = 'syni_audit_log';
 
-    // Modules Syni (8 modules de gestion suprême)
-    const MODULES = ['cockpit', 'users', 'bookings', 'trailers', 'inspections', 'seo', 'control', 'simulator'];
+    // Modules Syni (9 modules de gestion suprême)
+    const MODULES = ['cockpit', 'users', 'bookings', 'trailers', 'inspections', 'seo', 'control', 'simulator', 'palantir'];
 
     // Cantons suisses
     const SWISS_CANTONS = {
@@ -63,6 +63,9 @@
     let rawData = null;
     let computedMetrics = null;
     let dataSourceMode = 'init'; // 'cloud' | 'fallback' | 'offline'
+    let uiEventListenersAttached = false;
+    let activePaletteResults = [];
+    let selectedPaletteIdx = 0;
 
     // Instances graphiques Chart.js
     let chartRevenueTrends = null;
@@ -382,8 +385,17 @@
         const filteredClicks = clicks.filter(c => matchesTimeRange(c.created_at, timeRange));
 
         // Indexation rapide des profils et remorques
-        const profilesMap = new Map(profiles.map(p => [p.id, p]));
-        const trailersMap = new Map(trailers.map(t => [t.id, t]));
+        const profilesMap = new Map();
+        profiles.forEach(p => {
+            profilesMap.set(p.id, p);
+            profilesMap.set(String(p.id), p);
+        });
+        const trailersMap = new Map();
+        trailers.forEach(t => {
+            trailersMap.set(t.id, t);
+            trailersMap.set(String(t.id), t);
+            if (!isNaN(Number(t.id))) trailersMap.set(Number(t.id), t);
+        });
 
         // 1. Métriques Utilisateurs
         const totalUsers = profiles.length;
@@ -421,7 +433,7 @@
 
         // 2. Métriques Remorques
         const totalTrailers = trailers.length;
-        const activeTrailers = trailers.filter(t => t.is_active !== false).length;
+        const activeTrailers = trailers.filter(t => !t.is_deleted && t.is_active !== false).length;
         const now = new Date();
         const boostedTrailers = trailers.filter(t => t.boost_end_date && new Date(t.boost_end_date) > now).length;
         const totalImpressionsCount = filteredImpressions.length;
@@ -481,7 +493,7 @@
             const renter = profilesMap.get(b.user_id) || null;
             const financials = calculateBookingFinancials(b, tr, owner);
 
-            const isConfirmed = b.status === 'paye' || b.status === 'termine';
+            const isConfirmed = (b.status === 'paye' || b.status === 'termine') && !b.is_deleted;
             if (isConfirmed) {
                 grossVolume += financials.totalPaid;
                 platformNetRevenue += financials.platformNetRevenue;
@@ -496,7 +508,7 @@
                 }
             }
 
-            if (b.status === 'annule') {
+            if (b.status === 'annule' && !b.is_deleted) {
                 cancelledBookingsCount++;
                 zeroLossRefundsTotal += financials.zeroLossRenterRefund;
             }
@@ -619,6 +631,11 @@
                 rateLimitsTotal: rateLimits.length,
                 rateLimitAlerts: rateLimitAlertsCount,
                 list: rateLimits
+            },
+            trash: {
+                usersCount: profiles.filter(p => !!p.is_deleted).length,
+                trailersCount: trailers.filter(t => !!t.is_deleted).length,
+                bookingsCount: bookings.filter(b => !!b.is_deleted).length
             }
         };
     }
@@ -747,15 +764,18 @@
         return csvContent;
     }
 
-    function triggerDownload(filename, content) {
-        if (typeof window === 'undefined' || typeof document === 'undefined') return;
-        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    function triggerDownload(filename, content, mimeType = 'text/csv;charset=utf-8;') {
+        if (typeof window === 'undefined' || typeof document === 'undefined') {
+            return { filename, content, mimeType };
+        }
+        const blob = new Blob([content], { type: mimeType });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.setAttribute('download', filename);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        return { filename, content, mimeType, blob };
     }
 
     // ==========================================
@@ -768,26 +788,29 @@
     function getFallbackSeedData() {
         return {
             profiles: [
-                { id: 'usr-admin-1', email: 'enism2007@hotmail.com', username: 'enis_admin', is_admin: true, is_pro: true, created_at: '2026-01-01T08:00:00Z', stripe_customer_id: 'cus_syni_admin' },
-                { id: 'usr-owner-1', email: 'marc.dubois@bluewin.ch', username: 'marc_remorques', is_admin: false, is_pro: true, created_at: '2026-01-15T10:00:00Z', stripe_customer_id: 'cus_101' },
-                { id: 'usr-owner-2', email: 'julien.rossier@gmail.com', username: 'j_rossier', is_admin: false, is_pro: false, created_at: '2026-02-01T12:00:00Z', stripe_customer_id: 'cus_102' },
-                { id: 'usr-renter-1', email: 'lucas.meier@sunrise.ch', username: 'lucas_m', is_admin: false, is_pro: false, created_at: '2026-02-10T14:30:00Z', stripe_customer_id: 'cus_201' },
-                { id: 'usr-renter-2', email: 'sophie.blanc@bluewin.ch', username: 'sophie_b', is_admin: false, is_pro: false, created_at: '2026-02-20T09:15:00Z', stripe_customer_id: 'cus_202' },
-                { id: 'usr-renter-3', email: 'david.favre@gmail.com', username: 'david_f', is_admin: false, is_pro: false, created_at: '2026-03-05T16:45:00Z', stripe_customer_id: 'cus_203' }
+                { id: 'usr-admin-1', email: 'enism2007@hotmail.com', username: 'enis_admin', is_admin: true, is_pro: true, is_deleted: false, created_at: '2026-01-01T08:00:00Z', stripe_customer_id: 'cus_syni_admin' },
+                { id: 'usr-owner-1', email: 'marc.dubois@bluewin.ch', username: 'marc_remorques', is_admin: false, is_pro: true, is_deleted: false, created_at: '2026-01-15T10:00:00Z', stripe_customer_id: 'cus_101' },
+                { id: 'usr-owner-2', email: 'julien.rossier@gmail.com', username: 'j_rossier', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-02-01T12:00:00Z', stripe_customer_id: 'cus_102' },
+                { id: 'usr-renter-1', email: 'lucas.meier@sunrise.ch', username: 'lucas_m', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-02-10T14:30:00Z', stripe_customer_id: 'cus_201' },
+                { id: 'usr-renter-2', email: 'sophie.blanc@bluewin.ch', username: 'sophie_b', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-02-20T09:15:00Z', stripe_customer_id: 'cus_202' },
+                { id: 'usr-renter-3', email: 'david.favre@gmail.com', username: 'david_f', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-03-05T16:45:00Z', stripe_customer_id: 'cus_203' },
+                { id: 'usr-deleted-1', email: 'ancien.client@archive.ch', username: 'compte_ferme', is_admin: false, is_pro: false, is_deleted: true, deleted_at: '2026-09-01T10:00:00Z', created_at: '2025-11-01T08:00:00Z', stripe_customer_id: 'cus_old' }
             ],
             trailers: [
-                { id: 1, title: 'Remorque Bâchée Haute Humbaur', category: 'utilitaire', price: 65, caution: 200, location_city: 'Lausanne', location: '1004 Lausanne (VD)', owner_id: 'usr-owner-1', is_active: true, boost_end_date: '2026-10-31T23:59:59Z', latitude: 46.52, longitude: 6.63, created_at: '2026-01-16T10:00:00Z' },
-                { id: 2, title: 'Porte-Voiture Double Essieu 2700kg', category: 'voiture', price: 120, caution: 400, location_city: 'Yverdon-les-Bains', location: '1400 Yverdon (VD)', owner_id: 'usr-owner-1', is_active: true, boost_end_date: null, latitude: 46.77, longitude: 6.64, created_at: '2026-01-18T11:00:00Z' },
-                { id: 3, title: 'Porte-Moto 3 Rails avec Rampe', category: 'moto', price: 50, caution: 300, location_city: 'Genève', location: '1201 Genève (GE)', owner_id: 'usr-owner-2', is_active: true, boost_end_date: '2026-10-25T18:00:00Z', latitude: 46.21, longitude: 6.14, created_at: '2026-02-02T13:00:00Z' },
-                { id: 4, title: 'Van à Chevaux 2 Places Bockmann', category: 'cheval', price: 110, caution: 400, location_city: 'Sion', location: '1950 Sion (VS)', owner_id: 'usr-owner-2', is_active: true, boost_end_date: null, latitude: 46.23, longitude: 7.36, created_at: '2026-02-05T09:00:00Z' },
-                { id: 5, title: 'Petite Bagagère Polyvalente 500kg', category: 'bagage', price: 40, caution: 200, location_city: 'Fribourg', location: '1700 Fribourg (FR)', owner_id: 'usr-admin-1', is_active: true, boost_end_date: null, latitude: 46.80, longitude: 7.15, created_at: '2026-02-12T15:00:00Z' }
+                { id: 1, title: 'Remorque Bâchée Haute Humbaur', category: 'utilitaire', price: 65, caution: 200, location_city: 'Lausanne', location: '1004 Lausanne (VD)', owner_id: 'usr-owner-1', is_active: true, is_deleted: false, boost_end_date: '2026-10-31T23:59:59Z', latitude: 46.52, longitude: 6.63, created_at: '2026-01-16T10:00:00Z' },
+                { id: 2, title: 'Porte-Voiture Double Essieu 2700kg', category: 'voiture', price: 120, caution: 400, location_city: 'Yverdon-les-Bains', location: '1400 Yverdon (VD)', owner_id: 'usr-owner-1', is_active: true, is_deleted: false, boost_end_date: null, latitude: 46.77, longitude: 6.64, created_at: '2026-01-18T11:00:00Z' },
+                { id: 3, title: 'Porte-Moto 3 Rails avec Rampe', category: 'moto', price: 50, caution: 300, location_city: 'Genève', location: '1201 Genève (GE)', owner_id: 'usr-owner-2', is_active: true, is_deleted: false, boost_end_date: '2026-10-25T18:00:00Z', latitude: 46.21, longitude: 6.14, created_at: '2026-02-02T13:00:00Z' },
+                { id: 4, title: 'Van à Chevaux 2 Places Bockmann', category: 'cheval', price: 110, caution: 400, location_city: 'Sion', location: '1950 Sion (VS)', owner_id: 'usr-owner-2', is_active: true, is_deleted: false, boost_end_date: null, latitude: 46.23, longitude: 7.36, created_at: '2026-02-05T09:00:00Z' },
+                { id: 5, title: 'Petite Bagagère Polyvalente 500kg', category: 'bagage', price: 40, caution: 200, location_city: 'Fribourg', location: '1700 Fribourg (FR)', owner_id: 'usr-admin-1', is_active: true, is_deleted: false, boost_end_date: null, latitude: 46.80, longitude: 7.15, created_at: '2026-02-12T15:00:00Z' },
+                { id: 6, title: 'Remorque Bateau Double Essieu (Vendu)', category: 'plateau', price: 95, caution: 400, location_city: 'Morges', location: '1110 Morges (VD)', owner_id: 'usr-owner-1', is_active: false, is_deleted: true, deleted_at: '2026-09-10T12:00:00Z', boost_end_date: null, latitude: 46.51, longitude: 6.50, created_at: '2026-01-20T10:00:00Z' }
             ],
             bookings: [
-                { id: 'bkg-101', trailer_id: 1, user_id: 'usr-renter-1', start_date: '2026-10-01', end_date: '2026-10-03', total_price: 204.75, status: 'paye', stripe_fee: 6.25, created_at: '2026-09-28T10:00:00Z' },
-                { id: 'bkg-102', trailer_id: 2, user_id: 'usr-renter-2', start_date: '2026-10-10', end_date: '2026-10-11', total_price: 252.00, status: 'paye', stripe_fee: 7.60, created_at: '2026-10-05T14:00:00Z' },
-                { id: 'bkg-103', trailer_id: 3, user_id: 'usr-renter-3', start_date: '2026-10-15', end_date: '2026-10-15', total_price: 54.90, status: 'paye', stripe_fee: 1.90, created_at: '2026-10-12T09:00:00Z' },
-                { id: 'bkg-104', trailer_id: 4, user_id: 'usr-renter-1', start_date: '2026-10-18', end_date: '2026-10-19', total_price: 231.00, status: 'paye', stripe_fee: 7.00, created_at: '2026-10-13T11:00:00Z' },
-                { id: 'bkg-105', trailer_id: 5, user_id: 'usr-renter-2', start_date: '2026-10-08', end_date: '2026-10-08', total_price: 44.90, status: 'annule', stripe_fee: 1.60, created_at: '2026-10-06T12:00:00Z' }
+                { id: 'bkg-101', trailer_id: 1, user_id: 'usr-renter-1', start_date: '2026-10-01', end_date: '2026-10-03', total_price: 204.75, status: 'paye', stripe_fee: 6.25, is_deleted: false, created_at: '2026-09-28T10:00:00Z' },
+                { id: 'bkg-102', trailer_id: 2, user_id: 'usr-renter-2', start_date: '2026-10-10', end_date: '2026-10-11', total_price: 252.00, status: 'paye', stripe_fee: 7.60, is_deleted: false, created_at: '2026-10-05T14:00:00Z' },
+                { id: 'bkg-103', trailer_id: 3, user_id: 'usr-renter-3', start_date: '2026-10-15', end_date: '2026-10-15', total_price: 54.90, status: 'paye', stripe_fee: 1.90, is_deleted: false, created_at: '2026-10-12T09:00:00Z' },
+                { id: 'bkg-104', trailer_id: 4, user_id: 'usr-renter-1', start_date: '2026-10-18', end_date: '2026-10-19', total_price: 231.00, status: 'paye', stripe_fee: 7.00, is_deleted: false, created_at: '2026-10-13T11:00:00Z' },
+                { id: 'bkg-105', trailer_id: 5, user_id: 'usr-renter-2', start_date: '2026-10-08', end_date: '2026-10-08', total_price: 44.90, status: 'annule', stripe_fee: 1.60, is_deleted: false, created_at: '2026-10-06T12:00:00Z' },
+                { id: 'bkg-106', trailer_id: 2, user_id: 'usr-renter-1', start_date: '2026-08-15', end_date: '2026-08-16', total_price: 252.00, status: 'termine', stripe_fee: 7.60, is_deleted: true, deleted_at: '2026-09-12T14:00:00Z', created_at: '2026-08-10T10:00:00Z' }
             ],
             inspections: [
                 { id: 'insp-1', booking_id: 'bkg-101', trailer_id: 1, user_id: 'usr-renter-1', mode: 'departure', step: 1, image_url: 'https://images.unsplash.com/photo-1586191582056-a67b5e197c36?auto=format&fit=crop&w=400&q=80', latitude: 46.5201, longitude: 6.6321, accuracy: 4.2, timestamp: '2026-10-01T08:00:00Z', created_at: '2026-10-01T08:00:00Z' },
@@ -1187,6 +1210,9 @@
 
         // Module 8 : Simulateur Business & Croissance
         renderSimulatorSection();
+
+        // Module 9 : Palantir Sentinel & Swiss Geo-Radar
+        renderPalantirSection();
     }
 
     // ==========================================
@@ -1252,6 +1278,8 @@
         pendingAction = null;
     }
 
+    let inMemoryAuditLogs = [];
+
     /**
      * Enregistre une entrée dans le journal d'audit des actions suprêmes
      */
@@ -1268,6 +1296,7 @@
         };
         logs.unshift(entry);
         if (logs.length > 500) logs.pop();
+        inMemoryAuditLogs = logs;
 
         if (typeof window !== 'undefined' && window.localStorage) {
             try {
@@ -1282,13 +1311,20 @@
      */
     function getAuditLogs() {
         if (typeof window === 'undefined' || !window.localStorage) {
-            return [];
+            return inMemoryAuditLogs;
         }
         try {
             const raw = window.localStorage.getItem(AUDIT_LOG_KEY);
-            return raw ? JSON.parse(raw) : [];
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    inMemoryAuditLogs = parsed;
+                    return parsed;
+                }
+            }
+            return inMemoryAuditLogs;
         } catch (_) {
-            return [];
+            return inMemoryAuditLogs;
         }
     }
 
@@ -1307,7 +1343,22 @@
                 || (computedMetrics?.users?.list?.find(u => String(u.id) === idStr));
             const metricUser = computedMetrics?.users?.list?.find(u => String(u.id) === idStr);
 
-            if (actionType === 'toggle_pro') {
+            if (actionType === 'soft_delete') {
+                const nowIso = new Date().toISOString();
+                if (user) { user.is_deleted = true; user.deleted_at = nowIso; }
+                if (metricUser && metricUser !== user) { metricUser.is_deleted = true; metricUser.deleted_at = nowIso; }
+                if (client) {
+                    client.from('profiles').update({ is_deleted: true, deleted_at: nowIso }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Compte utilisateur @${user?.username || idStr} placé dans la corbeille (Soft-delete CO art. 958f)`;
+            } else if (actionType === 'restore') {
+                if (user) { user.is_deleted = false; delete user.deleted_at; }
+                if (metricUser && metricUser !== user) { metricUser.is_deleted = false; delete metricUser.deleted_at; }
+                if (client) {
+                    client.from('profiles').update({ is_deleted: false, deleted_at: null }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Compte utilisateur @${user?.username || idStr} restauré avec succès`;
+            } else if (actionType === 'toggle_pro') {
                 const newPro = !user?.is_pro;
                 if (user) user.is_pro = newPro;
                 if (metricUser && metricUser !== user) metricUser.is_pro = newPro;
@@ -1333,7 +1384,22 @@
                 || (computedMetrics?.trailers?.list?.find(t => String(t.id) === idStr));
             const metricTrailer = computedMetrics?.trailers?.list?.find(t => String(t.id) === idStr);
 
-            if (actionType === 'toggle_active') {
+            if (actionType === 'soft_delete') {
+                const nowIso = new Date().toISOString();
+                if (trailer) { trailer.is_deleted = true; trailer.is_active = false; trailer.deleted_at = nowIso; }
+                if (metricTrailer && metricTrailer !== trailer) { metricTrailer.is_deleted = true; metricTrailer.is_active = false; metricTrailer.deleted_at = nowIso; }
+                if (client) {
+                    client.from('trailers').update({ is_deleted: true, is_active: false, deleted_at: nowIso }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Remorque #${idStr} placée dans la corbeille (masquage public immédiat)`;
+            } else if (actionType === 'restore') {
+                if (trailer) { trailer.is_deleted = false; trailer.is_active = true; delete trailer.deleted_at; }
+                if (metricTrailer && metricTrailer !== trailer) { metricTrailer.is_deleted = false; metricTrailer.is_active = true; delete metricTrailer.deleted_at; }
+                if (client) {
+                    client.from('trailers').update({ is_deleted: false, is_active: true, deleted_at: null }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Remorque #${idStr} restaurée depuis la corbeille`;
+            } else if (actionType === 'toggle_active') {
                 const newActive = trailer ? (trailer.is_active === false) : true;
                 if (trailer) trailer.is_active = newActive;
                 if (metricTrailer && metricTrailer !== trailer) metricTrailer.is_active = newActive;
@@ -1361,7 +1427,22 @@
                 || (computedMetrics?.bookings?.list?.find(b => String(b.id) === idStr));
             const metricBooking = computedMetrics?.bookings?.list?.find(b => String(b.id) === idStr);
 
-            if (actionType === 'release_caution') {
+            if (actionType === 'soft_delete') {
+                const nowIso = new Date().toISOString();
+                if (booking) { booking.is_deleted = true; booking.deleted_at = nowIso; }
+                if (metricBooking && metricBooking !== booking) { metricBooking.is_deleted = true; metricBooking.deleted_at = nowIso; }
+                if (client) {
+                    client.from('bookings').update({ is_deleted: true, deleted_at: nowIso }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Réservation #${idStr} placée dans la corbeille (archivage CO art. 958f)`;
+            } else if (actionType === 'restore') {
+                if (booking) { booking.is_deleted = false; delete booking.deleted_at; }
+                if (metricBooking && metricBooking !== booking) { metricBooking.is_deleted = false; delete metricBooking.deleted_at; }
+                if (client) {
+                    client.from('bookings').update({ is_deleted: false, deleted_at: null }).eq('id', idStr).catch(() => null);
+                }
+                successMessage = `Réservation #${idStr} restaurée depuis la corbeille`;
+            } else if (actionType === 'release_caution') {
                 if (booking) {
                     booking.deposit_status = 'libere';
                     booking.caution_released = true;
@@ -1424,10 +1505,15 @@
         const query = (document.getElementById('users-search-input')?.value || '').toLowerCase().trim();
 
         const filtered = users.filter(u => {
-            if (filterType === 'pro' && !u.is_pro) return false;
-            if (filterType === 'admin' && !u.is_admin) return false;
-            if (filterType === 'owners' && !(u.is_owner || (u.trailers_count > 0))) return false;
-            if (filterType === 'renters' && !(u.is_renter || (u.bookings_count > 0))) return false;
+            if (filterType === 'trash') {
+                if (!u.is_deleted) return false;
+            } else {
+                if (u.is_deleted) return false;
+                if (filterType === 'pro' && !u.is_pro) return false;
+                if (filterType === 'admin' && !u.is_admin) return false;
+                if (filterType === 'owners' && !(u.is_owner || (u.trailers_count > 0))) return false;
+                if (filterType === 'renters' && !(u.is_renter || (u.bookings_count > 0))) return false;
+            }
             if (query) {
                 const matchName = (u.username || '').toLowerCase().includes(query);
                 const matchEmail = (u.email || '').toLowerCase().includes(query);
@@ -1459,6 +1545,7 @@
                         : '<span class="bg-stone-700 text-stone-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Standard</span>'}
                     ${u.is_admin ? '<span class="ml-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Admin</span>' : ''}
                     ${u.is_banned ? '<span class="ml-1 bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Banni</span>' : ''}
+                    ${u.is_deleted ? '<span class="ml-1 bg-stone-700 text-stone-400 border border-stone-600 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Corbeille</span>' : ''}
                 </td>
                 <td class="py-3 px-4 text-xs text-stone-300">
                     <span class="font-bold text-white">${u.trailers_count || 0}</span> remorque(s) • <span class="font-bold text-white">${u.bookings_count || 0}</span> location(s)
@@ -1471,12 +1558,24 @@
                 </td>
                 <td class="py-3 px-4 text-center">
                     <div class="flex items-center justify-center gap-1.5 flex-nowrap">
-                        <button type="button" class="btn-syni-user-pro px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${u.is_pro ? 'bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow'}" data-user-id="${escapeHtml(u.id)}" data-is-pro="${u.is_pro ? 'true' : 'false'}">
-                            ${u.is_pro ? 'Retirer PRO' : 'Passer PRO'}
+                        <button type="button" class="btn-syni-user-edit px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700" data-user-id="${escapeHtml(u.id)}" title="Éditer tous les champs">
+                            Éditer
                         </button>
-                        <button type="button" class="btn-syni-user-ban px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${u.is_banned ? 'bg-stone-700 hover:bg-stone-600 text-stone-200' : 'bg-red-900/40 hover:bg-red-800/60 text-red-400 border border-red-800/40'}" data-user-id="${escapeHtml(u.id)}" data-is-banned="${u.is_banned ? 'true' : 'false'}">
-                            ${u.is_banned ? 'Débannir' : 'Bannir'}
-                        </button>
+                        ${u.is_deleted ? `
+                            <button type="button" class="btn-syni-user-restore px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40" data-user-id="${escapeHtml(u.id)}" title="Restaurer l'utilisateur">
+                                Restaurer
+                            </button>
+                        ` : `
+                            <button type="button" class="btn-syni-user-pro px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${u.is_pro ? 'bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow'}" data-user-id="${escapeHtml(u.id)}" data-is-pro="${u.is_pro ? 'true' : 'false'}">
+                                ${u.is_pro ? 'Retirer PRO' : 'Passer PRO'}
+                            </button>
+                            <button type="button" class="btn-syni-user-ban px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${u.is_banned ? 'bg-stone-700 hover:bg-stone-600 text-stone-200' : 'bg-red-900/40 hover:bg-red-800/60 text-red-400 border border-red-800/40'}" data-user-id="${escapeHtml(u.id)}" data-is-banned="${u.is_banned ? 'true' : 'false'}">
+                                ${u.is_banned ? 'Débannir' : 'Bannir'}
+                            </button>
+                            <button type="button" class="btn-syni-user-delete px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-user-id="${escapeHtml(u.id)}" title="Déplacer dans la corbeille (CO art. 958f)">
+                                Supprimer
+                            </button>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -1486,6 +1585,13 @@
     }
 
     function attachUsersTableActionListeners() {
+        document.querySelectorAll('.btn-syni-user-edit').forEach(btn => {
+            btn.onclick = () => {
+                const userId = btn.getAttribute('data-user-id');
+                openMasterEditor('user', userId);
+            };
+        });
+
         document.querySelectorAll('.btn-syni-user-pro').forEach(btn => {
             btn.onclick = () => {
                 const userId = btn.getAttribute('data-user-id');
@@ -1525,6 +1631,31 @@
                 });
             };
         });
+
+        document.querySelectorAll('.btn-syni-user-delete').forEach(btn => {
+            btn.onclick = () => {
+                const userId = btn.getAttribute('data-user-id');
+                openActionModal({
+                    title: "Placer l'Utilisateur dans la Corbeille",
+                    message: "Voulez-vous supprimer ce compte utilisateur ? Il sera masqué immédiatement et conservé dans la corbeille conformément au droit comptable suisse (CO art. 958f).",
+                    actionType: 'soft_delete',
+                    targetType: 'user',
+                    targetId: userId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('soft_delete', 'user', userId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'warning');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-user-restore').forEach(btn => {
+            btn.onclick = () => {
+                const userId = btn.getAttribute('data-user-id');
+                const res = executeSupremeAction('restore', 'user', userId, 'Restauration 1-clic depuis la corbeille');
+                if (typeof showToast === 'function') showToast(res.message, 'success');
+            };
+        });
     }
 
     function renderBookingsTable() {
@@ -1536,7 +1667,12 @@
         const query = (document.getElementById('bookings-search-input')?.value || '').toLowerCase().trim();
 
         const filtered = bookings.filter(b => {
-            if (filterStatus !== 'all' && b.status !== filterStatus) return false;
+            if (filterStatus === 'trash') {
+                if (!b.is_deleted) return false;
+            } else {
+                if (b.is_deleted) return false;
+                if (filterStatus !== 'all' && b.status !== filterStatus) return false;
+            }
             if (query) {
                 const matchId = String(b.id || '').toLowerCase().includes(query);
                 const matchTr = (b.trailer?.title || '').toLowerCase().includes(query);
@@ -1568,7 +1704,10 @@
                         <div class="text-[10px] text-stone-400">Proprio: ${escapeHtml(b.owner?.username || '—')} ${fin.isOwnerPro ? '<span class="text-emerald-400">(PRO)</span>' : ''}</div>
                     </td>
                     <td class="py-3 px-4 text-xs text-stone-300">${escapeHtml(b.renter?.username || b.user_id || '—')}</td>
-                    <td class="py-3 px-4">${statusBadge}</td>
+                    <td class="py-3 px-4">
+                        ${statusBadge}
+                        ${b.is_deleted ? '<span class="ml-1 bg-stone-700 text-stone-400 border border-stone-600 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Corbeille</span>' : ''}
+                    </td>
                     <td class="py-3 px-4 text-xs font-bold text-white text-right">${formatChf(fin.totalPaid)}</td>
                     <td class="py-3 px-4 text-xs text-emerald-400 text-right">${formatChf(fin.platformNetRevenue)}</td>
                     <td class="py-3 px-4 text-xs text-stone-300 text-right">${formatChf(fin.ownerPayout)}</td>
@@ -1579,17 +1718,29 @@
                     </td>
                     <td class="py-3 px-4 text-center">
                         <div class="flex items-center justify-center gap-1 flex-nowrap">
-                            <button type="button" class="btn-syni-booking-release px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 ${depositReleased ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40'}" data-booking-id="${escapeHtml(b.id)}" ${depositReleased ? 'disabled' : ''} title="Libérer manuellement la caution">
-                                Libérer
+                            <button type="button" class="btn-syni-booking-edit px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700" data-booking-id="${escapeHtml(b.id)}" title="Éditer tous les champs">
+                                Éditer
                             </button>
-                            <button type="button" class="btn-syni-booking-capture px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 ${depositCaptured ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border border-amber-800/40'}" data-booking-id="${escapeHtml(b.id)}" ${depositCaptured ? 'disabled' : ''} title="Capturer la caution">
-                                Capturer
-                            </button>
-                            ${b.status !== 'annule' ? `
-                                <button type="button" class="btn-syni-booking-cancel px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-red-950/60 hover:bg-red-900/80 text-red-400 border border-red-800/40" data-booking-id="${escapeHtml(b.id)}" title="Annuler administrativement la réservation">
-                                    Annuler
+                            ${b.is_deleted ? `
+                                <button type="button" class="btn-syni-booking-restore px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40" data-booking-id="${escapeHtml(b.id)}" title="Restaurer la réservation">
+                                    Restaurer
                                 </button>
-                            ` : '<span class="text-[10px] text-stone-500 italic">Annulée</span>'}
+                            ` : `
+                                <button type="button" class="btn-syni-booking-release px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 ${depositReleased ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40'}" data-booking-id="${escapeHtml(b.id)}" ${depositReleased ? 'disabled' : ''} title="Libérer manuellement la caution">
+                                    Libérer
+                                </button>
+                                <button type="button" class="btn-syni-booking-capture px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 ${depositCaptured ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border border-amber-800/40'}" data-booking-id="${escapeHtml(b.id)}" ${depositCaptured ? 'disabled' : ''} title="Capturer la caution">
+                                    Capturer
+                                </button>
+                                ${b.status !== 'annule' ? `
+                                    <button type="button" class="btn-syni-booking-cancel px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-red-950/60 hover:bg-red-900/80 text-red-400 border border-red-800/40" data-booking-id="${escapeHtml(b.id)}" title="Annuler administrativement la réservation">
+                                        Annuler
+                                    </button>
+                                ` : '<span class="text-[10px] text-stone-500 italic">Annulée</span>'}
+                                <button type="button" class="btn-syni-booking-delete px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-booking-id="${escapeHtml(b.id)}" title="Archiver dans la corbeille (CO art. 958f)">
+                                    Supprimer
+                                </button>
+                            `}
                         </div>
                     </td>
                 </tr>
@@ -1600,6 +1751,13 @@
     }
 
     function attachBookingsTableActionListeners() {
+        document.querySelectorAll('.btn-syni-booking-edit').forEach(btn => {
+            btn.onclick = () => {
+                const bookingId = btn.getAttribute('data-booking-id');
+                openMasterEditor('booking', bookingId);
+            };
+        });
+
         document.querySelectorAll('.btn-syni-booking-release').forEach(btn => {
             btn.onclick = () => {
                 const bookingId = btn.getAttribute('data-booking-id');
@@ -1650,6 +1808,31 @@
                 });
             };
         });
+
+        document.querySelectorAll('.btn-syni-booking-delete').forEach(btn => {
+            btn.onclick = () => {
+                const bookingId = btn.getAttribute('data-booking-id');
+                openActionModal({
+                    title: "Archiver la Réservation dans la Corbeille",
+                    message: "Voulez-vous archiver cette réservation ? Elle restera consultable dans la corbeille conformément à la conservation obligatoire (CO art. 958f).",
+                    actionType: 'soft_delete',
+                    targetType: 'booking',
+                    targetId: bookingId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('soft_delete', 'booking', bookingId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'warning');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-booking-restore').forEach(btn => {
+            btn.onclick = () => {
+                const bookingId = btn.getAttribute('data-booking-id');
+                const res = executeSupremeAction('restore', 'booking', bookingId, 'Restauration 1-clic depuis la corbeille');
+                if (typeof showToast === 'function') showToast(res.message, 'success');
+            };
+        });
     }
 
     function renderTrailersTable() {
@@ -1657,9 +1840,20 @@
         if (!tbody || !computedMetrics) return;
 
         const trailers = computedMetrics.trailers.list || [];
+        const filterStatus = document.getElementById('trailers-filter-status')?.value || 'all';
         const query = (document.getElementById('trailers-search-input')?.value || '').toLowerCase().trim();
+        const now = new Date();
 
         const filtered = trailers.filter(t => {
+            const hasBoost = t.boost_end_date && new Date(t.boost_end_date) > now;
+            if (filterStatus === 'trash') {
+                if (!t.is_deleted) return false;
+            } else {
+                if (t.is_deleted) return false;
+                if (filterStatus === 'active' && t.is_active === false) return false;
+                if (filterStatus === 'inactive' && t.is_active !== false) return false;
+                if (filterStatus === 'boosted' && !hasBoost) return false;
+            }
             if (query) {
                 const matchTitle = (t.title || '').toLowerCase().includes(query);
                 const matchCat = (t.category || '').toLowerCase().includes(query);
@@ -1669,15 +1863,12 @@
             return true;
         });
 
-        const now = new Date();
-
         tbody.innerHTML = filtered.map(t => {
             const hasBoost = t.boost_end_date && new Date(t.boost_end_date) > now;
             const canton = extractCanton(t.location, t.location_city);
             const photoUrl = t.image_url || (Array.isArray(t.images) && t.images[0]) || 'logo.png';
             const ptac = t.ptac ? `${t.ptac} kg` : (t.charge_utile ? `${t.charge_utile} kg` : '750 kg');
 
-            // Distinction Boost Week-end vs Boost 7 jours
             let boostBadge = '<span class="text-stone-500 text-xs">Standard</span>';
             if (hasBoost) {
                 const endDate = new Date(t.boost_end_date);
@@ -1719,15 +1910,28 @@
                         ${isActive 
                             ? '<span class="text-emerald-400 font-bold">Active</span>' 
                             : '<span class="text-red-400 font-bold">Inactive</span>'}
+                        ${t.is_deleted ? '<span class="ml-1 bg-stone-700 text-stone-400 border border-stone-600 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Corbeille</span>' : ''}
                     </td>
                     <td class="py-3 px-4 text-center">
                         <div class="flex items-center justify-center gap-1.5 flex-nowrap">
-                            <button type="button" class="btn-syni-trailer-toggle px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${isActive ? 'bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}" data-trailer-id="${escapeHtml(t.id)}" data-is-active="${isActive ? 'true' : 'false'}">
-                                ${isActive ? 'Masquer' : 'Activer'}
+                            <button type="button" class="btn-syni-trailer-edit px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700" data-trailer-id="${escapeHtml(t.id)}" title="Éditer tous les champs">
+                                Éditer
                             </button>
-                            <button type="button" class="btn-syni-trailer-boost px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-amber-600 hover:bg-amber-500 text-white shadow" data-trailer-id="${escapeHtml(t.id)}">
-                                Offrir Boost 7j
-                            </button>
+                            ${t.is_deleted ? `
+                                <button type="button" class="btn-syni-trailer-restore px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40" data-trailer-id="${escapeHtml(t.id)}" title="Restaurer la remorque">
+                                    Restaurer
+                                </button>
+                            ` : `
+                                <button type="button" class="btn-syni-trailer-toggle px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${isActive ? 'bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}" data-trailer-id="${escapeHtml(t.id)}" data-is-active="${isActive ? 'true' : 'false'}">
+                                    ${isActive ? 'Masquer' : 'Activer'}
+                                </button>
+                                <button type="button" class="btn-syni-trailer-boost px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-amber-600 hover:bg-amber-500 text-white shadow" data-trailer-id="${escapeHtml(t.id)}">
+                                    Boost 7j
+                                </button>
+                                <button type="button" class="btn-syni-trailer-delete px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-trailer-id="${escapeHtml(t.id)}" title="Déplacer dans la corbeille">
+                                    Supprimer
+                                </button>
+                            `}
                         </div>
                     </td>
                 </tr>
@@ -1738,6 +1942,13 @@
     }
 
     function attachTrailersTableActionListeners() {
+        document.querySelectorAll('.btn-syni-trailer-edit').forEach(btn => {
+            btn.onclick = () => {
+                const trailerId = btn.getAttribute('data-trailer-id');
+                openMasterEditor('trailer', trailerId);
+            };
+        });
+
         document.querySelectorAll('.btn-syni-trailer-toggle').forEach(btn => {
             btn.onclick = () => {
                 const trailerId = btn.getAttribute('data-trailer-id');
@@ -1774,7 +1985,360 @@
                 });
             };
         });
+
+        document.querySelectorAll('.btn-syni-trailer-delete').forEach(btn => {
+            btn.onclick = () => {
+                const trailerId = btn.getAttribute('data-trailer-id');
+                openActionModal({
+                    title: "Placer la Remorque dans la Corbeille",
+                    message: "Voulez-vous supprimer cette remorque ? Elle sera masquée immédiatement de la plateforme et conservée dans la corbeille.",
+                    actionType: 'soft_delete',
+                    targetType: 'trailer',
+                    targetId: trailerId,
+                    onConfirm: (reason) => {
+                        const res = executeSupremeAction('soft_delete', 'trailer', trailerId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'warning');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-trailer-restore').forEach(btn => {
+            btn.onclick = () => {
+                const trailerId = btn.getAttribute('data-trailer-id');
+                const res = executeSupremeAction('restore', 'trailer', trailerId, 'Restauration 1-clic depuis la corbeille');
+                if (typeof showToast === 'function') showToast(res.message, 'success');
+            };
+        });
     }
+
+    // ==========================================
+    // MODALE UNIVERSELLE MASTER EDITOR (CRUD ABSOLU)
+    // ==========================================
+    let pendingMasterEdit = null;
+
+    function openMasterEditor(entityType, entityId = null) {
+        if (typeof document === 'undefined') return;
+        const modal = document.getElementById('syni-master-editor-modal');
+        const titleEl = document.getElementById('master-editor-title');
+        const fieldsContainer = document.getElementById('master-editor-fields');
+        const reasonInput = document.getElementById('master-editor-reason');
+        if (!modal || !fieldsContainer) return;
+
+        pendingMasterEdit = { entityType, entityId };
+        if (reasonInput) reasonInput.value = '';
+
+        const isNew = !entityId || entityId === 'new';
+        const typeLabel = entityType === 'user' ? 'Utilisateur' : (entityType === 'trailer' ? 'Remorque' : 'Réservation');
+        if (titleEl) {
+            titleEl.textContent = isNew 
+                ? `Master Editor — Nouveau ${typeLabel}`
+                : `Master Editor — Éditer ${typeLabel} #${entityId}`;
+        }
+
+        let entity = null;
+        if (!isNew) {
+            const profiles = rawData?.profiles || computedMetrics?.users?.list || [];
+            const trailers = rawData?.trailers || computedMetrics?.trailers?.list || [];
+            const bookings = rawData?.bookings || computedMetrics?.bookings?.list || [];
+            if (entityType === 'user') {
+                entity = profiles.find(p => String(p.id) === String(entityId));
+            } else if (entityType === 'trailer') {
+                entity = trailers.find(t => String(t.id) === String(entityId));
+            } else if (entityType === 'booking') {
+                entity = bookings.find(b => String(b.id) === String(entityId));
+            }
+        }
+
+        if (entityType === 'user') {
+            fieldsContainer.innerHTML = `
+                <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">${isNew ? 'ID Utilisateur Personnalisé (Optionnel — auto-généré si vide)' : 'Identifiant Système (ID)'}</label>
+                    <input type="text" ${isNew ? 'id="me-field-custom-id" placeholder="ex: usr-dupont-1 ou UUID"' : `value="${escapeHtml(entity?.id || entityId)}" disabled`}
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none ${!isNew ? 'cursor-not-allowed opacity-75' : ''}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Pseudo / Username</label>
+                    <input type="text" id="me-field-username" value="${escapeHtml(entity?.username || '')}" placeholder="ex: marc_vd"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Email</label>
+                    <input type="email" id="me-field-email" value="${escapeHtml(entity?.email || '')}" placeholder="ex: marc@example.ch"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Statut PRO (0% commission)</label>
+                    <select id="me-field-is-pro" class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                        <option value="false" ${!entity?.is_pro ? 'selected' : ''}>Standard (20% com)</option>
+                        <option value="true" ${entity?.is_pro ? 'selected' : ''}>Renger PRO (0% com)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Statut Administrateur</label>
+                    <select id="me-field-is-admin" class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                        <option value="false" ${!entity?.is_admin ? 'selected' : ''}>Utilisateur normal</option>
+                        <option value="true" ${entity?.is_admin ? 'selected' : ''}>Administrateur Suprême</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Bannissement</label>
+                    <select id="me-field-is-banned" class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                        <option value="false" ${!entity?.is_banned ? 'selected' : ''}>Actif (autorisé)</option>
+                        <option value="true" ${entity?.is_banned ? 'selected' : ''}>Banni (bloqué)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Stripe Customer ID</label>
+                    <input type="text" id="me-field-stripe-id" value="${escapeHtml(entity?.stripe_customer_id || '')}" placeholder="cus_..."
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+            `;
+        } else if (entityType === 'trailer') {
+            fieldsContainer.innerHTML = `
+                <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">${isNew ? 'ID Remorque Personnalisé (Optionnel — auto-incrémenté si vide)' : 'Identifiant Remorque (ID)'}</label>
+                    <input type="text" ${isNew ? 'id="me-field-custom-id" placeholder="ex: 7 ou id unique"' : `value="${escapeHtml(entity?.id || entityId)}" disabled`}
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none ${!isNew ? 'cursor-not-allowed opacity-75' : ''}">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Titre de l'annonce</label>
+                    <input type="text" id="me-field-title" value="${escapeHtml(entity?.title || '')}" placeholder="ex: Remorque Plateau Saris 2500kg"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Catégorie</label>
+                    <select id="me-field-category" class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                        <option value="bagagere" ${entity?.category === 'bagagere' ? 'selected' : ''}>Bagagère</option>
+                        <option value="plateau" ${entity?.category === 'plateau' ? 'selected' : ''}>Plateau</option>
+                        <option value="porte-voiture" ${entity?.category === 'porte-voiture' ? 'selected' : ''}>Porte-Voiture</option>
+                        <option value="benne" ${entity?.category === 'benne' ? 'selected' : ''}>Benne basculante</option>
+                        <option value="fermee" ${entity?.category === 'fermee' ? 'selected' : ''}>Fermée / Fourgon</option>
+                        <option value="van-chevaux" ${entity?.category === 'van-chevaux' ? 'selected' : ''}>Van à chevaux</option>
+                        <option value="moto-velo" ${entity?.category === 'moto-velo' ? 'selected' : ''}>Porte Moto / Vélo</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Prix par jour (CHF)</label>
+                    <input type="number" id="me-field-price" value="${entity?.price ?? 65}" min="10" step="1"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Montant Caution (CHF)</label>
+                    <input type="number" id="me-field-caution" value="${entity?.caution ?? 200}" min="0" step="50"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Charge Utile / PTAC (kg)</label>
+                    <input type="number" id="me-field-payload" value="${entity?.payload || entity?.charge_utile || 750}" min="100" step="50"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Localisation / Ville</label>
+                    <input type="text" id="me-field-location" value="${escapeHtml(entity?.location || entity?.location_city || '1003 Lausanne')}" placeholder="ex: 1003 Lausanne"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">ID Propriétaire</label>
+                    <input type="text" id="me-field-owner-id" value="${escapeHtml(entity?.owner_id || 'usr-pro-1')}" placeholder="usr-..."
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Visibilité Catalogue</label>
+                    <select id="me-field-is-active" class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                        <option value="true" ${entity?.is_active !== false ? 'selected' : ''}>Active (visible)</option>
+                        <option value="false" ${entity?.is_active === false ? 'selected' : ''}>Inactive (masquée)</option>
+                    </select>
+                </div>
+            `;
+        } else if (entityType === 'booking') {
+            fieldsContainer.innerHTML = `
+                <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">${isNew ? 'ID Réservation Personnalisé (Optionnel — auto-généré si vide)' : 'Identifiant Réservation (ID)'}</label>
+                    <input type="text" ${isNew ? 'id="me-field-custom-id" placeholder="ex: bkg-direct-1"' : `value="${escapeHtml(entity?.id || entityId)}" disabled`}
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none ${!isNew ? 'cursor-not-allowed opacity-75' : ''}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">ID Remorque</label>
+                    <input type="text" id="me-field-trailer-id" value="${escapeHtml(entity?.trailer_id ?? 1)}" placeholder="ex: 1"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">ID Locataire</label>
+                    <input type="text" id="me-field-user-id" value="${escapeHtml(entity?.user_id || 'usr-renter-1')}" placeholder="usr-..."
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Date Début</label>
+                    <input type="date" id="me-field-start-date" value="${entity?.start_date || new Date().toISOString().split('T')[0]}"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Date Fin</label>
+                    <input type="date" id="me-field-end-date" value="${entity?.end_date || new Date().toISOString().split('T')[0]}"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Prix Total (CHF)</label>
+                    <input type="number" id="me-field-total-price" value="${entity?.total_price ?? 130}" min="10" step="0.05"
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Statut Réservation</label>
+                    <select id="me-field-status" class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                        <option value="paye" ${entity?.status === 'paye' ? 'selected' : ''}>Payée (active)</option>
+                        <option value="termine" ${entity?.status === 'termine' ? 'selected' : ''}>Terminée</option>
+                        <option value="attente" ${entity?.status === 'attente' ? 'selected' : ''}>En attente</option>
+                        <option value="annule" ${entity?.status === 'annule' ? 'selected' : ''}>Annulée</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Statut Caution Stripe</label>
+                    <select id="me-field-deposit-status" class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs focus:border-terracotta-500 focus:outline-none">
+                        <option value="reserve" ${entity?.deposit_status !== 'libere' && entity?.deposit_status !== 'capture' ? 'selected' : ''}>Réservée (Empreinte)</option>
+                        <option value="libere" ${entity?.deposit_status === 'libere' ? 'selected' : ''}>Libérée</option>
+                        <option value="capture" ${entity?.deposit_status === 'capture' ? 'selected' : ''}>Capturée pour litige</option>
+                    </select>
+                </div>
+            `;
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeMasterEditor() {
+        if (typeof document === 'undefined') return;
+        const modal = document.getElementById('syni-master-editor-modal');
+        if (modal) modal.classList.add('hidden');
+        pendingMasterEdit = null;
+    }
+
+    function saveMasterEntity(entityType, entityId, formData, reason = '') {
+        const isNew = !entityId || entityId === 'new';
+        const nowIso = new Date().toISOString();
+        const client = (typeof window !== 'undefined' && window.supabaseClient)
+            || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+
+        if (!rawData) {
+            rawData = getFallbackSeedData();
+        }
+
+        let targetCollection = [];
+        let tableName = '';
+        if (entityType === 'user') {
+            if (!rawData.profiles) rawData.profiles = [];
+            targetCollection = rawData.profiles;
+            tableName = 'profiles';
+        } else if (entityType === 'trailer') {
+            if (!rawData.trailers) rawData.trailers = [];
+            targetCollection = rawData.trailers;
+            tableName = 'trailers';
+        } else if (entityType === 'booking') {
+            if (!rawData.bookings) rawData.bookings = [];
+            targetCollection = rawData.bookings;
+            tableName = 'bookings';
+        }
+
+        let resultEntity = null;
+        let finalId = entityId;
+
+        if (isNew) {
+            if (entityType === 'user') {
+                finalId = formData.id || `usr-${Date.now().toString(36)}`;
+            } else if (entityType === 'trailer') {
+                finalId = formData.id || (Math.max(0, ...targetCollection.map(t => Number(t.id) || 0)) + 1);
+            } else {
+                finalId = formData.id || `bkg-${Date.now().toString(36)}`;
+            }
+
+            resultEntity = {
+                id: finalId,
+                ...formData,
+                is_deleted: false,
+                created_at: nowIso
+            };
+            targetCollection.push(resultEntity);
+
+            if (client) {
+                client.from(tableName).insert([resultEntity]).catch(() => null);
+            }
+
+            recordAuditLog(`create_${entityType}`, entityType, String(finalId), reason || `Création directe Master Editor ${entityType}`);
+        } else {
+            const idStr = String(entityId);
+            resultEntity = targetCollection.find(item => String(item.id) === idStr);
+            if (resultEntity) {
+                Object.assign(resultEntity, formData);
+            } else {
+                resultEntity = { id: entityId, ...formData };
+                targetCollection.push(resultEntity);
+            }
+
+            if (client) {
+                client.from(tableName).update(formData).eq('id', entityId).catch(() => null);
+            }
+
+            recordAuditLog(`edit_${entityType}`, entityType, String(entityId), reason || `Modification directe Master Editor ${entityType}`);
+        }
+
+        computedMetrics = computeSyniMetrics(rawData, currentTimeRange);
+        if (typeof document !== 'undefined') {
+            renderCurrentModule();
+        }
+
+        return {
+            success: true,
+            id: finalId,
+            entity: resultEntity,
+            isNew
+        };
+    }
+
+    function handleMasterEditorFormSave() {
+        if (!pendingMasterEdit) return;
+        const { entityType, entityId } = pendingMasterEdit;
+        const reason = document.getElementById('master-editor-reason')?.value || '';
+        const formData = {};
+
+        if (entityType === 'user') {
+            formData.username = document.getElementById('me-field-username')?.value || '';
+            formData.email = document.getElementById('me-field-email')?.value || '';
+            formData.is_pro = document.getElementById('me-field-is-pro')?.value === 'true';
+            formData.is_admin = document.getElementById('me-field-is-admin')?.value === 'true';
+            formData.is_banned = document.getElementById('me-field-is-banned')?.value === 'true';
+            formData.stripe_customer_id = document.getElementById('me-field-stripe-id')?.value || '';
+        } else if (entityType === 'trailer') {
+            formData.title = document.getElementById('me-field-title')?.value || 'Remorque Renger';
+            formData.category = document.getElementById('me-field-category')?.value || 'bagagere';
+            formData.price = Number(document.getElementById('me-field-price')?.value) || 65;
+            formData.caution = Number(document.getElementById('me-field-caution')?.value) || 200;
+            formData.payload = Number(document.getElementById('me-field-payload')?.value) || 750;
+            formData.charge_utile = formData.payload;
+            formData.location = document.getElementById('me-field-location')?.value || '1003 Lausanne';
+            formData.location_city = formData.location.replace(/^\d+\s*/, '') || 'Lausanne';
+            formData.owner_id = document.getElementById('me-field-owner-id')?.value || 'usr-pro-1';
+            formData.is_active = document.getElementById('me-field-is-active')?.value !== 'false';
+        } else if (entityType === 'booking') {
+            formData.trailer_id = document.getElementById('me-field-trailer-id')?.value || 1;
+            if (!isNaN(Number(formData.trailer_id))) formData.trailer_id = Number(formData.trailer_id);
+            formData.user_id = document.getElementById('me-field-user-id')?.value || 'usr-renter-1';
+            formData.start_date = document.getElementById('me-field-start-date')?.value || new Date().toISOString().split('T')[0];
+            formData.end_date = document.getElementById('me-field-end-date')?.value || new Date().toISOString().split('T')[0];
+            formData.total_price = Number(document.getElementById('me-field-total-price')?.value) || 100;
+            formData.status = document.getElementById('me-field-status')?.value || 'paye';
+            formData.deposit_status = document.getElementById('me-field-deposit-status')?.value || 'reserve';
+        }
+
+        const customId = (document.getElementById('me-field-custom-id')?.value || '').trim();
+        if (customId) formData.id = customId;
+
+        const res = saveMasterEntity(entityType, entityId, formData, reason);
+        closeMasterEditor();
+        if (typeof showToast === 'function') {
+            showToast(res.isNew ? `Entité créée avec succès (#${res.id})` : `Entité #${res.id} mise à jour`, 'success');
+        }
+    }
+
 
     function renderInspectionsTable() {
         const tbody = document.getElementById('syni-inspections-tbody');
@@ -1965,7 +2529,7 @@
         else if (type === 'danger') styleClasses = 'bg-red-600 border-red-500 text-white';
 
         const linkPart = (linkText && linkUrl) ? ` <span class="underline font-bold ml-1">${escapeHtml(linkText)} &rarr;</span>` : '';
-        const closePart = dismissible ? '<span class="ml-auto opacity-70 hover:opacity-100 cursor-pointer font-bold">✕</span>' : '';
+        const closePart = dismissible ? '<span class="ml-auto opacity-70 hover:opacity-100 cursor-pointer"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></span>' : '';
 
         preview.className = `p-3 rounded-xl border text-xs flex items-center justify-between gap-3 shadow-inner ${styleClasses} ${isEnabled ? '' : 'opacity-60'}`;
         preview.innerHTML = `
@@ -2257,7 +2821,1137 @@
                 </tr>
             `).join('');
         }
+
+        // Business Brain V3 : Recommandations Stratégiques Automatiques
+        const recsContainer = document.getElementById('sim-strategic-recommendations');
+        if (recsContainer) {
+            const recs = computeStrategicRecommendations(computedMetrics, proj);
+            recsContainer.innerHTML = recs.map(r => `
+                <div class="bg-stone-950/70 border border-stone-800 rounded-2xl p-4.5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-white">${escapeHtml(r.title)}</span>
+                        <span class="bg-${r.color}-500/20 text-${r.color}-400 border border-${r.color}-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">${escapeHtml(r.tag)}</span>
+                    </div>
+                    <p class="text-xs text-stone-300 leading-relaxed">${escapeHtml(r.description)}</p>
+                    <div class="pt-2 border-t border-stone-800/80 text-[11px] text-terracotta-400 font-medium">
+                        → ${escapeHtml(r.recommendation)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Business Brain V3 : Décomposeur d'Objectifs OKR
+        const okrContainer = document.getElementById('sim-okr-breakdown');
+        const targetArrInput = document.getElementById('sim-target-arr');
+        if (okrContainer) {
+            const targetArr = targetArrInput ? Number(targetArrInput.value) || 100000 : 100000;
+            const okr = calculateOkrBreakdown(targetArr, computedMetrics);
+            okrContainer.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between text-xs font-mono">
+                        <span class="text-stone-400">Progression vers le Cap ${formatChf(okr.targetArr)} :</span>
+                        <span class="font-bold text-emerald-400">${okr.progressPct}% (${formatChf(okr.currentArr)} / ${formatChf(okr.targetArr)})</span>
+                    </div>
+                    <div class="w-full bg-stone-900 rounded-full h-3 border border-stone-800 overflow-hidden">
+                        <div class="bg-gradient-to-r from-terracotta-500 to-emerald-500 h-full rounded-full transition-all duration-500" style="width: ${Math.max(3, Math.min(100, okr.progressPct))}%"></div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        <div class="bg-stone-900/80 border border-stone-800/80 p-3 rounded-xl">
+                            <div class="text-[10px] uppercase font-bold text-stone-400">Remorques à Recruter</div>
+                            <div class="text-base font-black text-white mt-0.5">${okr.milestones.trailers.target} remorques</div>
+                            <div class="text-[10px] text-stone-500 font-mono mt-0.5">Actuel: ${okr.milestones.trailers.current} (manque ${okr.milestones.trailers.remaining})</div>
+                        </div>
+                        <div class="bg-stone-900/80 border border-stone-800/80 p-3 rounded-xl">
+                            <div class="text-[10px] uppercase font-bold text-stone-400">Abonnés PRO Cibles (39 CHF)</div>
+                            <div class="text-base font-black text-emerald-400 mt-0.5">${okr.milestones.proUsers.target} abonnés</div>
+                            <div class="text-[10px] text-stone-500 font-mono mt-0.5">Actuel: ${okr.milestones.proUsers.current} (manque ${okr.milestones.proUsers.remaining})</div>
+                        </div>
+                        <div class="bg-stone-900/80 border border-stone-800/80 p-3 rounded-xl">
+                            <div class="text-[10px] uppercase font-bold text-stone-400">Réservations Mensuelles</div>
+                            <div class="text-base font-black text-white mt-0.5">${okr.milestones.monthlyBookings.target} locs/mois</div>
+                            <div class="text-[10px] text-stone-500 font-mono mt-0.5">Actuel: ${okr.milestones.monthlyBookings.current} (manque ${okr.milestones.monthlyBookings.remaining})</div>
+                        </div>
+                    </div>
+                    <div class="pt-2 flex flex-wrap items-center gap-2 text-[11px] text-stone-400 font-mono">
+                        <span class="font-bold text-stone-300">Quotas Cantons suggérés :</span>
+                        ${Object.entries(okr.cantonsQuota).map(([cnt, qty]) => `
+                            <span class="bg-stone-900 px-2 py-0.5 rounded border border-stone-800">${cnt}: <strong class="text-white">${qty}</strong></span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Business Brain V3 : Comparateur de 4 Scénarios d'Expansion
+        const scenContainer = document.getElementById('sim-expansion-scenarios');
+        if (scenContainer) {
+            const scenarios = calculateExpansionScenarios(computedMetrics);
+            scenContainer.innerHTML = `
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
+                            <th class="py-3 px-4 font-bold">Scénario d'Expansion</th>
+                            <th class="py-3 px-4 font-bold text-right">Flotte</th>
+                            <th class="py-3 px-4 font-bold text-right">Locs/Mois</th>
+                            <th class="py-3 px-4 font-bold text-right">GMV Mensuel</th>
+                            <th class="py-3 px-4 font-bold text-right">Net Renger / Mois</th>
+                            <th class="py-3 px-4 font-bold text-right">Bénéfice Annuel (ARR Net)</th>
+                            <th class="py-3 px-4 font-bold text-right">Marge %</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-xs divide-y divide-stone-800/40">
+                        ${scenarios.map(s => `
+                            <tr class="hover:bg-stone-800/40 transition">
+                                <td class="py-3 px-4 font-bold text-white">
+                                    <div>${escapeHtml(s.name)}</div>
+                                    <span class="text-[10px] font-mono text-terracotta-400 bg-terracotta-500/10 px-1.5 py-0.5 rounded border border-terracotta-500/20">${escapeHtml(s.badge)}</span>
+                                </td>
+                                <td class="py-3 px-4 text-stone-300 font-mono text-right">${s.trailers}</td>
+                                <td class="py-3 px-4 text-stone-300 font-mono text-right">${s.bookings}</td>
+                                <td class="py-3 px-4 text-stone-200 font-mono text-right">${formatChf(s.gmvMonthly)}</td>
+                                <td class="py-3 px-4 text-terracotta-400 font-mono font-bold text-right">${formatChf(s.netMonthlyRevenue)}</td>
+                                <td class="py-3 px-4 font-mono font-bold text-right ${s.netAnnualProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}">${formatChf(s.netAnnualProfit)}</td>
+                                <td class="py-3 px-4 font-mono font-bold text-right ${s.margin >= 0 ? 'text-emerald-400' : 'text-red-400'}">${s.margin}%</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
     }
+
+    // ==========================================
+    // BUSINESS BRAIN V3 : FONCTIONS DE CALCUL
+    // ==========================================
+
+    function computeStrategicRecommendations(metrics = null, simulatorProjections = null) {
+        const met = metrics || computedMetrics || computeSyniMetrics(rawData || getFallbackSeedData());
+        const sim = simulatorProjections || calculateSimulatorProjections();
+
+        const avgPrice = sim.dailyPrice || 65;
+
+        return [
+            {
+                title: 'Élasticité Prix & Dynamic Pricing',
+                tag: 'Revenus +18%',
+                impact: 'Élevé',
+                color: 'terracotta',
+                description: `Le tarif moyen actuel est de ${avgPrice} CHF/jour. Pour les catégories utilitaires et bennes, l'élasticité prix en Romandie permet d'augmenter le tarif à 75 CHF le week-end (+15%) sans baisse de taux de réservation.`,
+                recommendation: 'Activer la tarification week-end différenciée pour maximiser le panier moyen.'
+            },
+            {
+                title: 'Expansion Territoriale (Zurich & Berne)',
+                tag: 'Pénurie Offre',
+                impact: 'Stratégique',
+                color: 'emerald',
+                description: `Forte concentration de la flotte sur VD et GE. Pénurie critique de remorques détectée sur les cantons de Zurich (ZH) et Berne (BE) où la demande B2B et artisanale est 3x plus forte.`,
+                recommendation: 'Lancer une campagne de recrutement de propriétaires dans la zone alémanique avec l\'offre PRO 39 CHF.'
+            },
+            {
+                title: 'Flotte Spécialisée Porte-Voiture & Benne',
+                tag: 'Marge Brute 42%',
+                impact: 'Fort',
+                color: 'amber',
+                description: `Les catégories "porte-voiture" et "benne basculante" affichent une rentabilité par jour 2.4x supérieure aux remorques bagagères classiques, avec une durée moyenne de location de 3 jours.`,
+                recommendation: 'Inciter les loueurs professionnels à lister des remorques lourdes et porte-engins (PTAC > 2000 kg).'
+            }
+        ];
+    }
+
+    function calculateOkrBreakdown(targetArr = 100000, metrics = null) {
+        const met = metrics || computedMetrics || computeSyniMetrics(rawData || getFallbackSeedData());
+        const target = Number(targetArr) > 0 ? Number(targetArr) : 100000;
+
+        const currentMonthlyNet = met?.bookings?.platformNetRevenue || 350;
+        const currentArr = Math.round(currentMonthlyNet * 12);
+        const progressPct = Math.min(100, Math.round((currentArr / target) * 1000) / 10);
+        const gapArr = Math.max(0, target - currentArr);
+
+        const targetMonthlyRevenue = target / 12;
+        const requiredTrailers = Math.ceil(targetMonthlyRevenue / 165);
+        const requiredProUsers = Math.ceil(requiredTrailers * 0.3);
+        const requiredMonthlyBookings = Math.ceil(requiredTrailers * 3.5);
+
+        const currentTrailers = met?.trailers?.active || 0;
+        const currentPro = met?.users?.pro || 0;
+        const currentBookings = met?.bookings?.confirmed || 0;
+
+        const cantonsQuota = {
+            VD: Math.ceil(requiredTrailers * 0.35),
+            GE: Math.ceil(requiredTrailers * 0.25),
+            VS: Math.ceil(requiredTrailers * 0.15),
+            ZH: Math.ceil(requiredTrailers * 0.15),
+            BE: Math.ceil(requiredTrailers * 0.10)
+        };
+
+        return {
+            targetArr: target,
+            currentArr,
+            progressPct,
+            gapArr,
+            targetMonthlyRevenue: Math.round(targetMonthlyRevenue),
+            milestones: {
+                trailers: { current: currentTrailers, target: requiredTrailers, remaining: Math.max(0, requiredTrailers - currentTrailers) },
+                proUsers: { current: currentPro, target: requiredProUsers, remaining: Math.max(0, requiredProUsers - currentPro) },
+                monthlyBookings: { current: currentBookings, target: requiredMonthlyBookings, remaining: Math.max(0, requiredMonthlyBookings - currentBookings) }
+            },
+            cantonsQuota
+        };
+    }
+
+    function calculateExpansionScenarios(metrics = null) {
+        const met = metrics || computedMetrics || computeSyniMetrics(rawData || getFallbackSeedData());
+        const baseTrailers = met?.trailers?.active || 50;
+
+        const scenActuel = calculateSimulatorProjections({
+            activeTrailers: Math.max(10, baseTrailers),
+            proRate: met?.users?.proRate || 20,
+            rentalDays: 4,
+            dailyPrice: 65,
+            boostRate: 15,
+            fixedCosts: 250
+        });
+
+        const scenSummer = calculateSimulatorProjections({
+            activeTrailers: Math.round(baseTrailers * 1.3),
+            proRate: 25,
+            rentalDays: 7,
+            dailyPrice: 72,
+            boostRate: 25,
+            fixedCosts: 300
+        });
+
+        const scenAlemanique = calculateSimulatorProjections({
+            activeTrailers: Math.round(baseTrailers + 120),
+            proRate: 35,
+            rentalDays: 5,
+            dailyPrice: 78,
+            boostRate: 20,
+            fixedCosts: 600
+        });
+
+        const scenStress = calculateSimulatorProjections({
+            activeTrailers: Math.max(10, Math.round(baseTrailers * 0.7)),
+            proRate: 10,
+            rentalDays: 2,
+            dailyPrice: 55,
+            boostRate: 5,
+            fixedCosts: 450
+        });
+
+        return [
+            {
+                id: 'actuel',
+                name: '1. Trajectoire Actuelle (Baseline)',
+                badge: 'Référence',
+                trailers: scenActuel.activeTrailers,
+                bookings: scenActuel.totalBookings,
+                gmvMonthly: scenActuel.gmvMonthly,
+                netMonthlyRevenue: scenActuel.totalNetRevenue,
+                netAnnualProfit: scenActuel.netProfit * 12,
+                margin: scenActuel.netMargin
+            },
+            {
+                id: 'summer',
+                name: '2. Haute Saison Estivale (Juin-Septembre)',
+                badge: 'Pics Locatifs',
+                trailers: scenSummer.activeTrailers,
+                bookings: scenSummer.totalBookings,
+                gmvMonthly: scenSummer.gmvMonthly,
+                netMonthlyRevenue: scenSummer.totalNetRevenue,
+                netAnnualProfit: scenSummer.netProfit * 12,
+                margin: scenSummer.netMargin
+            },
+            {
+                id: 'alemanique',
+                name: '3. Expansion Suisse Alémanique (ZH/BE/BS)',
+                badge: 'Scale B2B',
+                trailers: scenAlemanique.activeTrailers,
+                bookings: scenAlemanique.totalBookings,
+                gmvMonthly: scenAlemanique.gmvMonthly,
+                netMonthlyRevenue: scenAlemanique.totalNetRevenue,
+                netAnnualProfit: scenAlemanique.netProfit * 12,
+                margin: scenAlemanique.netMargin
+            },
+            {
+                id: 'stress',
+                name: '4. Stress-Test Conservateur',
+                badge: 'Résilience',
+                trailers: scenStress.activeTrailers,
+                bookings: scenStress.totalBookings,
+                gmvMonthly: scenStress.gmvMonthly,
+                netMonthlyRevenue: scenStress.totalNetRevenue,
+                netAnnualProfit: scenStress.netProfit * 12,
+                margin: scenStress.netMargin
+            }
+        ];
+    }
+
+    // ==========================================
+    // MODULE 9 : PALANTIR SENTINEL & GEO-RADAR SUISSE
+    // ==========================================
+
+    function computeSentinelRiskScores(data = null) {
+        const src = data || rawData || getFallbackSeedData();
+        const profiles = src.profiles || [];
+        const trailers = src.trailers || [];
+        const bookings = src.bookings || [];
+        const inspections = src.inspections || [];
+        const rateLimits = src.rateLimits || [];
+
+        // Heuristique 1 : Litiges & Cautions capturées
+        const capturedDeposits = bookings.filter(b => b.deposit_status === 'capture' || b.caution_captured === true);
+        const disputeScore = Math.min(30, capturedDeposits.length * 15);
+
+        // Heuristique 2 : Inspections incomplètes / clôtures sans photos certifiées retour CO 257a
+        const returnInspSet = new Set(inspections.filter(i => i.mode === 'return').map(i => String(i.booking_id)));
+        const now = new Date();
+        const missingReturnBookings = bookings.filter(b => 
+            (b.status === 'termine' || (b.status === 'paye' && new Date(b.end_date) < now)) &&
+            !returnInspSet.has(String(b.id))
+        );
+        const inspectionScore = Math.min(30, missingReturnBookings.length * 10);
+
+        // Heuristique 3 : Anomalies Rate Limits & Tentatives bloquées
+        const blockedRateLimits = rateLimits.filter(r => r.action === 'blocked' || r.action.includes('abuse'));
+        const rateLimitScore = Math.min(25, blockedRateLimits.length * 10);
+
+        // Heuristique 4 : Annulations & Ratios anormaux
+        const cancelledBookings = bookings.filter(b => b.status === 'annule');
+        const cancellationRatio = bookings.length > 0 ? (cancelledBookings.length / bookings.length) : 0;
+        const cancellationScore = Math.min(15, Math.round(cancellationRatio * 30));
+
+        const globalScore = Math.min(100, disputeScore + inspectionScore + rateLimitScore + cancellationScore);
+
+        let status = 'NORMAL';
+        if (globalScore >= 60) status = 'CRITIQUE';
+        else if (globalScore >= 25) status = 'VIGILANCE';
+
+        const alerts = [];
+        capturedDeposits.forEach(b => {
+            alerts.push({
+                id: `alt-disp-${b.id}`,
+                severity: 'high',
+                category: 'Litige Financier',
+                entityType: 'booking',
+                entityId: b.id,
+                description: `Caution capturée sur la réservation #${b.id} pour dégradation matérielle ou litige.`,
+                action: 'Vérifier état des lieux contradictoire'
+            });
+        });
+
+        missingReturnBookings.forEach(b => {
+            alerts.push({
+                id: `alt-insp-${b.id}`,
+                severity: 'medium',
+                category: 'Inspection Incomplète',
+                entityType: 'booking',
+                entityId: b.id,
+                description: `Réservation #${b.id} clôturée sans 4 photos certifiées de retour (CO art. 257a).`,
+                action: 'Relancer locataire pour photos certifiées'
+            });
+        });
+
+        blockedRateLimits.forEach(r => {
+            alerts.push({
+                id: `alt-sec-${r.id || Math.random().toString(36).substr(2, 6)}`,
+                severity: 'medium',
+                category: 'Sécurité Débit',
+                entityType: 'user',
+                entityId: r.user_id || 'Système',
+                description: `Tentative d'abus ou requête bloquée par rate limit (${r.action}).`,
+                action: 'Auditer journal de sécurité'
+            });
+        });
+
+        return {
+            globalScore,
+            status,
+            heuristics: {
+                disputes: { count: capturedDeposits.length, score: disputeScore, label: 'Litiges & Cautions Capturées' },
+                inspections: { count: missingReturnBookings.length, score: inspectionScore, label: 'Clôtures sans 4 photos (CO 257a)' },
+                rateLimits: { count: blockedRateLimits.length, score: rateLimitScore, label: 'Anomalies Rate Limit / Abuse' },
+                cancellations: { count: cancelledBookings.length, score: cancellationScore, label: 'Annulations & Désistements' }
+            },
+            alerts
+        };
+    }
+
+    function getNetworkConstellation(entityType, entityId, data = null) {
+        const src = data || rawData || getFallbackSeedData();
+        const idStr = String(entityId);
+        const profiles = src.profiles || [];
+        const trailers = src.trailers || [];
+        const bookings = src.bookings || [];
+        const inspections = src.inspections || [];
+
+        // Récupération des alertes Sentinel associées à ces entités
+        const sentinel = computeSentinelRiskScores(src);
+        const allAlerts = sentinel?.alerts || [];
+
+        if (entityType === 'user') {
+            const user = profiles.find(p => String(p.id) === idStr) || { id: idStr, username: 'inconnu' };
+            const ownedTrailers = trailers.filter(t => String(t.owner_id) === idStr);
+            const userBookings = bookings.filter(b => 
+                String(b.user_id) === idStr || 
+                ownedTrailers.some(t => String(t.id) === String(b.trailer_id))
+            );
+            const relatedInspections = inspections.filter(i => 
+                String(i.user_id) === idStr ||
+                userBookings.some(b => String(b.id) === String(i.booking_id))
+            );
+            const cautions = userBookings.map(b => ({
+                bookingId: b.id,
+                amount: b.caution || 200,
+                status: b.deposit_status || 'reserve'
+            }));
+            const relatedAlerts = allAlerts.filter(a => 
+                String(a.entityId) === idStr ||
+                userBookings.some(b => String(b.id) === String(a.entityId)) ||
+                ownedTrailers.some(t => String(t.id) === String(a.entityId))
+            );
+
+            return {
+                entityType: 'user',
+                entity: user,
+                trailers: ownedTrailers,
+                bookings: userBookings,
+                inspections: relatedInspections,
+                cautions,
+                alerts: relatedAlerts,
+                summary: {
+                    trailersCount: ownedTrailers.length,
+                    bookingsCount: userBookings.length,
+                    inspectionsCount: relatedInspections.length,
+                    cautionsCount: cautions.length,
+                    alertsCount: relatedAlerts.length,
+                    totalVolume: userBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0)
+                }
+            };
+        } else {
+            const trailer = trailers.find(t => String(t.id) === idStr) || { id: idStr, title: 'Remorque #' + idStr };
+            const owner = profiles.find(p => String(p.id) === String(trailer.owner_id)) || null;
+            const trailerBookings = bookings.filter(b => String(b.trailer_id) === idStr);
+            const trailerInspections = inspections.filter(i => 
+                String(i.trailer_id) === idStr || 
+                trailerBookings.some(b => String(b.id) === String(i.booking_id))
+            );
+            const cautions = trailerBookings.map(b => ({
+                bookingId: b.id,
+                amount: trailer.caution || 200,
+                status: b.deposit_status || 'reserve'
+            }));
+            const relatedAlerts = allAlerts.filter(a => 
+                String(a.entityId) === idStr ||
+                trailerBookings.some(b => String(b.id) === String(a.entityId))
+            );
+
+            return {
+                entityType: 'trailer',
+                entity: trailer,
+                owner,
+                trailers: [trailer],
+                bookings: trailerBookings,
+                inspections: trailerInspections,
+                cautions,
+                alerts: relatedAlerts,
+                summary: {
+                    bookingsCount: trailerBookings.length,
+                    inspectionsCount: trailerInspections.length,
+                    cautionsCount: cautions.length,
+                    alertsCount: relatedAlerts.length,
+                    totalVolume: trailerBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0)
+                }
+            };
+        }
+    }
+
+    function renderPalantirSection() {
+        if (typeof document === 'undefined') return;
+
+        const sentinel = computeSentinelRiskScores(rawData);
+
+        // Jauge globale
+        const gaugeEl = document.getElementById('sentinel-global-gauge');
+        if (gaugeEl) {
+            let colorClass = 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
+            if (sentinel.status === 'CRITIQUE') colorClass = 'text-red-400 border-red-500/30 bg-red-500/10';
+            else if (sentinel.status === 'VIGILANCE') colorClass = 'text-amber-400 border-amber-500/30 bg-amber-500/10';
+
+            gaugeEl.innerHTML = `
+                <div class="text-right">
+                    <div class="text-[10px] uppercase font-bold text-stone-400 font-mono">Score de Risque Fraude</div>
+                    <div class="text-lg font-black ${colorClass.split(' ')[0]} font-mono">${sentinel.globalScore} / 100</div>
+                </div>
+                <span class="text-xs uppercase font-mono font-bold px-2.5 py-1 rounded-full border ${colorClass}">
+                    ${sentinel.status}
+                </span>
+            `;
+        }
+
+        // Grille 4 Heuristiques
+        const heurGrid = document.getElementById('sentinel-heuristics-grid');
+        if (heurGrid) {
+            const h = sentinel.heuristics;
+            heurGrid.innerHTML = `
+                <div class="bg-stone-950/70 border border-stone-800 rounded-xl p-4">
+                    <div class="text-[11px] font-bold text-stone-300">${escapeHtml(h.disputes.label)}</div>
+                    <div class="text-xl font-black text-white mt-1">${h.disputes.count}</div>
+                    <div class="text-[10px] text-stone-500 font-mono mt-0.5">Impact Score: +${h.disputes.score} pts</div>
+                </div>
+                <div class="bg-stone-950/70 border border-stone-800 rounded-xl p-4">
+                    <div class="text-[11px] font-bold text-stone-300">${escapeHtml(h.inspections.label)}</div>
+                    <div class="text-xl font-black ${h.inspections.count > 0 ? 'text-amber-400' : 'text-white'} mt-1">${h.inspections.count}</div>
+                    <div class="text-[10px] text-stone-500 font-mono mt-0.5">Impact Score: +${h.inspections.score} pts</div>
+                </div>
+                <div class="bg-stone-950/70 border border-stone-800 rounded-xl p-4">
+                    <div class="text-[11px] font-bold text-stone-300">${escapeHtml(h.rateLimits.label)}</div>
+                    <div class="text-xl font-black text-white mt-1">${h.rateLimits.count}</div>
+                    <div class="text-[10px] text-stone-500 font-mono mt-0.5">Impact Score: +${h.rateLimits.score} pts</div>
+                </div>
+                <div class="bg-stone-950/70 border border-stone-800 rounded-xl p-4">
+                    <div class="text-[11px] font-bold text-stone-300">${escapeHtml(h.cancellations.label)}</div>
+                    <div class="text-xl font-black text-white mt-1">${h.cancellations.count}</div>
+                    <div class="text-[10px] text-stone-500 font-mono mt-0.5">Impact Score: +${h.cancellations.score} pts</div>
+                </div>
+            `;
+        }
+
+        // Alertes Sentinel
+        const alertsTable = document.getElementById('sentinel-alerts-table');
+        if (alertsTable) {
+            if (sentinel.alerts.length === 0) {
+                alertsTable.innerHTML = `
+                    <div class="p-4 bg-stone-950/40 border border-stone-800/80 rounded-xl text-xs text-stone-500 italic text-center">
+                        Aucune anomalie critique détectée par l'algorithme Sentinel. L'ensemble des flux est nominal.
+                    </div>
+                `;
+            } else {
+                alertsTable.innerHTML = sentinel.alerts.map(a => `
+                    <div class="bg-stone-950/80 border ${a.severity === 'high' ? 'border-red-500/40 bg-red-950/10' : 'border-amber-500/30'} rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div class="space-y-0.5">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-mono uppercase font-bold px-1.5 py-0.5 rounded ${a.severity === 'high' ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">${escapeHtml(a.category)}</span>
+                                <span class="text-stone-300 font-bold">Cible : ${escapeHtml(a.entityType)} #${escapeHtml(a.entityId)}</span>
+                            </div>
+                            <p class="text-stone-400 text-[11px]">${escapeHtml(a.description)}</p>
+                        </div>
+                        <span class="text-[11px] font-mono text-terracotta-400 font-bold whitespace-nowrap">→ ${escapeHtml(a.action)}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Network Explorer
+        const entitySelector = document.getElementById('palantir-entity-selector');
+        if (entitySelector && rawData) {
+            const currentVal = entitySelector.value;
+            const users = rawData.profiles || [];
+            const trailers = rawData.trailers || [];
+
+            if (entitySelector.children.length <= 1) {
+                entitySelector.innerHTML = `
+                    <optgroup label="Utilisateurs">
+                        ${users.map(u => `<option value="user:${u.id}">@${escapeHtml(u.username || u.id)}</option>`).join('')}
+                    </optgroup>
+                    <optgroup label="Remorques">
+                        ${trailers.map(t => `<option value="trailer:${t.id}">Remorque #${t.id} - ${escapeHtml(t.title)}</option>`).join('')}
+                    </optgroup>
+                `;
+                if (currentVal) entitySelector.value = currentVal;
+            }
+
+            const selectedTarget = entitySelector.value || (users[0] ? `user:${users[0].id}` : '');
+            if (selectedTarget) {
+                const [selType, selId] = selectedTarget.split(':');
+                renderNetworkConstellationGraph(selType, selId);
+            }
+        }
+
+        // Geo-Radar Suisse
+        renderGeoRadarSection();
+    }
+
+    function renderNetworkConstellationGraph(type, id) {
+        const graphEl = (typeof document !== 'undefined') ? document.getElementById('palantir-network-graph') : null;
+
+        const constellation = getNetworkConstellation(type, id);
+        const ent = constellation.entity || {};
+        const trailers = constellation.trailers || [];
+        const bookings = constellation.bookings || [];
+        const inspections = constellation.inspections || [];
+        const cautions = constellation.cautions || [];
+        const alerts = constellation.alerts || [];
+
+        // Construction des satellites du graphe vectoriel
+        const satellites = [];
+
+        trailers.slice(0, 4).forEach((t) => {
+            satellites.push({
+                type: 'trailer',
+                id: t.id,
+                editType: 'trailer',
+                editId: t.id,
+                label: `#${t.id} ${t.title || ''}`.slice(0, 15),
+                badge: 'FLOTTE',
+                color: '#10b981',
+                tooltip: `Remorque #${t.id}: ${t.title} (${formatChf(t.price)}/j)`
+            });
+        });
+
+        bookings.slice(0, 5).forEach((b) => {
+            satellites.push({
+                type: 'booking',
+                id: b.id,
+                editType: 'booking',
+                editId: b.id,
+                label: `#${b.id}`.slice(0, 14),
+                badge: 'LOC',
+                color: '#38bdf8',
+                tooltip: `Réservation #${b.id} (${b.status}) - ${formatChf(b.total_price)}`
+            });
+        });
+
+        cautions.slice(0, 3).forEach((c) => {
+            satellites.push({
+                type: 'caution',
+                id: c.bookingId,
+                editType: 'booking',
+                editId: c.bookingId,
+                label: `${formatChf(c.amount)}`,
+                badge: 'STRIPE',
+                color: '#f59e0b',
+                tooltip: `Caution Stripe sur #${c.bookingId}: ${c.status}`
+            });
+        });
+
+        inspections.slice(0, 3).forEach((insp) => {
+            satellites.push({
+                type: 'inspection',
+                id: insp.id,
+                editType: 'booking',
+                editId: insp.booking_id || id,
+                label: `Insp ${insp.step}/4`,
+                badge: 'GPS',
+                color: '#a855f7',
+                tooltip: `Inspection #${insp.id} (${insp.mode}) - GPS OK`
+            });
+        });
+
+        alerts.slice(0, 3).forEach((alt) => {
+            satellites.push({
+                type: 'alert',
+                id: alt.id,
+                editType: alt.entityType,
+                editId: alt.entityId,
+                label: `${alt.category}`.slice(0, 14),
+                badge: 'ALERTE',
+                color: '#ef4444',
+                dashed: true,
+                tooltip: `Alerte Sentinel: ${alt.description}`
+            });
+        });
+
+        const totalSat = satellites.length;
+        let svgNodesHtml = '';
+        let svgLinesHtml = '';
+
+        satellites.forEach((sat, idx) => {
+            const angle = (2 * Math.PI * idx) / totalSat - Math.PI / 2;
+            const dist = (idx % 2 === 0) ? 120 : 145;
+            const x = Math.round(400 + dist * Math.cos(angle));
+            const y = Math.round(175 + dist * Math.sin(angle));
+
+            svgLinesHtml += `
+                <line x1="400" y1="175" x2="${x}" y2="${y}" stroke="${sat.color}" stroke-width="1.5" stroke-opacity="0.45" stroke-dasharray="${sat.dashed ? '4 3' : 'none'}" />
+            `;
+
+            svgNodesHtml += `
+                <g class="cursor-pointer group" onclick="if(typeof syniModule !== 'undefined' && syniModule.openMasterEditor) syniModule.openMasterEditor('${sat.editType}', '${sat.editId}')">
+                    <circle cx="${x}" cy="${y}" r="16" fill="#1c1917" stroke="${sat.color}" stroke-width="2" class="transition group-hover:scale-110" />
+                    <text x="${x}" y="${y + 3}" font-size="7" font-family="monospace" font-weight="bold" fill="${sat.color}" text-anchor="middle">${sat.badge}</text>
+                    <text x="${x}" y="${y + (y >= 175 ? 24 : -18)}" font-size="9" font-family="sans-serif" font-weight="600" fill="#d6d3d1" text-anchor="middle">${escapeHtml(sat.label)}</text>
+                    <title>${escapeHtml(sat.tooltip)}</title>
+                </g>
+            `;
+        });
+
+        const centerLabel = type === 'user' 
+            ? `@${(ent.username || ent.id || 'usr').slice(0, 14)}`
+            : `${(ent.title || 'Remorque #' + id).slice(0, 14)}`;
+
+        const svgCanvas = `
+            <div class="relative bg-stone-950/90 border border-stone-800 rounded-2xl p-4 overflow-hidden">
+                <div class="absolute top-3 left-4 flex items-center gap-2 text-[10px] font-mono text-stone-400">
+                    <span class="w-2 h-2 rounded-full bg-terracotta-500 animate-pulse"></span>
+                    <span>Constellation Relationnelle Vectorielle • ${totalSat} nœuds connectés</span>
+                </div>
+                <div class="absolute top-3 right-4 flex items-center gap-2 text-[10px] font-mono">
+                    <span class="inline-flex items-center gap-1 text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Flotte</span>
+                    <span class="inline-flex items-center gap-1 text-sky-400"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Réservations</span>
+                    <span class="inline-flex items-center gap-1 text-amber-400"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Cautions</span>
+                    <span class="inline-flex items-center gap-1 text-purple-400"><span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> GPS</span>
+                    <span class="inline-flex items-center gap-1 text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Alertes</span>
+                </div>
+                <svg viewBox="0 0 800 350" class="w-full h-72 sm:h-80 select-none">
+                    <defs>
+                        <radialGradient id="halo-center" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#f97316" stop-opacity="0.3" />
+                            <stop offset="100%" stop-color="#f97316" stop-opacity="0" />
+                        </radialGradient>
+                    </defs>
+
+                    <!-- Anneaux d'orbites de référence -->
+                    <circle cx="400" cy="175" r="120" fill="none" stroke="#292524" stroke-width="1" stroke-dasharray="4 4" />
+                    <circle cx="400" cy="175" r="145" fill="none" stroke="#292524" stroke-width="1" stroke-dasharray="2 6" />
+
+                    <!-- Lignes de liaison -->
+                    ${svgLinesHtml}
+
+                    <!-- Nœuds satellites -->
+                    ${svgNodesHtml}
+
+                    <!-- Nœud central -->
+                    <circle cx="400" cy="175" r="48" fill="url(#halo-center)" />
+                    <circle cx="400" cy="175" r="32" fill="#1c1917" stroke="#f97316" stroke-width="2.5" />
+                    <text x="400" y="172" font-size="10" font-family="monospace" font-weight="bold" fill="#ffffff" text-anchor="middle">${escapeHtml(centerLabel)}</text>
+                    <text x="400" y="184" font-size="7" font-family="monospace" font-weight="bold" fill="#f97316" text-anchor="middle">${type === 'user' ? 'COMPTE' : 'REMORQUE'}</text>
+                    <title>Entité centrale #${escapeHtml(id)}</title>
+                </svg>
+            </div>
+        `;
+
+        const cardsGrid = `
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 pt-2">
+                <!-- 1. Entité Centrale -->
+                <div class="bg-stone-950 border border-terracotta-500/40 rounded-xl p-3.5 space-y-1.5">
+                    <div class="text-[10px] font-mono uppercase text-terracotta-400 font-bold">Entité Centrale</div>
+                    <div class="text-sm font-bold text-white truncate">${escapeHtml(ent.title || ent.username || ent.id)}</div>
+                    <div class="text-[10px] text-stone-400 font-mono truncate">ID: ${escapeHtml(ent.id)}</div>
+                    <div class="pt-1.5 text-[11px] text-stone-300 border-t border-stone-800">
+                        Volume CHF : <strong class="text-emerald-400 font-mono">${formatChf(constellation.summary.totalVolume)}</strong>
+                    </div>
+                </div>
+
+                <!-- 2. Remorques -->
+                <div class="bg-stone-950 border border-stone-800 rounded-xl p-3.5 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono uppercase text-emerald-400 font-bold">Flotte</span>
+                        <span class="text-xs font-mono font-bold text-white bg-stone-900 px-1.5 py-0.5 rounded">${trailers.length}</span>
+                    </div>
+                    <div class="space-y-1 max-h-24 overflow-y-auto pr-1 text-[11px] text-stone-300">
+                        ${trailers.length === 0 ? '<div class="text-stone-500 italic">Aucune</div>' : trailers.map(t => `
+                            <div class="p-1 rounded bg-stone-900/60 truncate border border-stone-800/60 flex items-center justify-between">
+                                <span class="truncate">#${t.id} ${escapeHtml(t.title)}</span>
+                                <span class="font-mono text-[10px] text-emerald-400 font-bold">${formatChf(t.price)}/j</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- 3. Réservations -->
+                <div class="bg-stone-950 border border-stone-800 rounded-xl p-3.5 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono uppercase text-sky-400 font-bold">Locations</span>
+                        <span class="text-xs font-mono font-bold text-white bg-stone-900 px-1.5 py-0.5 rounded">${bookings.length}</span>
+                    </div>
+                    <div class="space-y-1 max-h-24 overflow-y-auto pr-1 text-[11px] text-stone-300">
+                        ${bookings.length === 0 ? '<div class="text-stone-500 italic">Aucune</div>' : bookings.map(b => `
+                            <div class="p-1 rounded bg-stone-900/60 truncate border border-stone-800/60 flex items-center justify-between">
+                                <span class="truncate">#${b.id} (${b.status})</span>
+                                <span class="font-mono text-[10px] text-stone-300">${formatChf(b.total_price)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- 4. Cautions Stripe -->
+                <div class="bg-stone-950 border border-stone-800 rounded-xl p-3.5 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono uppercase text-amber-400 font-bold">Cautions Stripe</span>
+                        <span class="text-xs font-mono font-bold text-white bg-stone-900 px-1.5 py-0.5 rounded">${cautions.length}</span>
+                    </div>
+                    <div class="space-y-1 max-h-24 overflow-y-auto pr-1 text-[11px] text-stone-300">
+                        ${cautions.length === 0 ? '<div class="text-stone-500 italic">Aucune caution</div>' : cautions.map(c => `
+                            <div class="p-1 rounded bg-stone-900/60 truncate border border-stone-800/60 flex items-center justify-between">
+                                <span class="truncate">#${c.bookingId}</span>
+                                <span class="font-mono text-[10px] font-bold ${c.status === 'capture' ? 'text-red-400' : (c.status === 'libere' ? 'text-emerald-400' : 'text-amber-400')}">${formatChf(c.amount)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- 5. Inspections & Alertes -->
+                <div class="bg-stone-950 border border-stone-800 rounded-xl p-3.5 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono uppercase text-purple-400 font-bold">Audits & Alertes</span>
+                        <span class="text-xs font-mono font-bold text-white bg-stone-900 px-1.5 py-0.5 rounded">${inspections.length} / ${alerts.length}</span>
+                    </div>
+                    <div class="space-y-1 max-h-24 overflow-y-auto pr-1 text-[11px] text-stone-300">
+                        ${alerts.length > 0 ? alerts.map(a => `
+                            <div class="p-1 rounded bg-red-950/30 truncate border border-red-800/40 text-[10px] text-red-300 flex items-center gap-1">
+                                <svg class="w-2.5 h-2.5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <span class="truncate">${escapeHtml(a.category)}</span>
+                            </div>
+                        `).join('') : ''}
+                        ${inspections.length > 0 ? inspections.map(i => `
+                            <div class="p-1 rounded bg-stone-900/60 truncate border border-stone-800/60 text-[10px] text-stone-400">
+                                Photo ${i.step}/4 (${i.mode}) GPS OK
+                            </div>
+                        `).join('') : ''}
+                        ${alerts.length === 0 && inspections.length === 0 ? '<div class="text-stone-500 italic">Aucune donnée</div>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (graphEl) {
+            graphEl.innerHTML = svgCanvas + cardsGrid;
+        }
+        return svgCanvas + cardsGrid;
+    }
+
+    function renderGeoRadarSection() {
+        const cantonsGrid = document.getElementById('palantir-geo-cantons-grid');
+        if (cantonsGrid && computedMetrics) {
+            const trailersByCanton = computedMetrics.trailers.cantons || {};
+            const bookingsList = computedMetrics.bookings.list || [];
+            const trailersList = computedMetrics.trailers.list || [];
+
+            // Calcul des réservations actives par canton
+            const activeBookingsByCanton = {};
+            bookingsList.forEach(b => {
+                if (b.status === 'paye' && !b.is_deleted) {
+                    const tr = trailersList.find(t => String(t.id) === String(b.trailer_id));
+                    if (tr) {
+                        const c = extractCanton(tr.location, tr.location_city);
+                        activeBookingsByCanton[c] = (activeBookingsByCanton[c] || 0) + 1;
+                    }
+                }
+            });
+
+            const entries = Object.entries(SWISS_CANTONS);
+            cantonsGrid.innerHTML = entries.map(([code, name]) => {
+                const count = trailersByCanton[code] || 0;
+                const activeCount = activeBookingsByCanton[code] || 0;
+                const hasFleet = count > 0 || activeCount > 0;
+                return `
+                    <div class="p-3 rounded-xl border transition ${hasFleet ? 'bg-stone-950 border-emerald-500/40 text-white shadow-sm' : 'bg-stone-950/40 border-stone-800/60 text-stone-500'}">
+                        <div class="flex items-center justify-between">
+                            <span class="font-mono font-bold text-xs ${hasFleet ? 'text-emerald-400' : 'text-stone-500'}">${code}</span>
+                            <span class="text-xs font-mono font-bold ${hasFleet ? 'text-white' : 'text-stone-600'}">${count} rem. • ${activeCount} active(s)</span>
+                        </div>
+                        <div class="text-[11px] truncate mt-1 ${hasFleet ? 'text-stone-300' : 'text-stone-600'}">${escapeHtml(name)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        const gpsList = document.getElementById('palantir-gps-radar-list');
+        if (gpsList && rawData) {
+            const inspWithGps = (rawData.inspections || []).filter(i => i.latitude && i.longitude);
+            if (inspWithGps.length === 0) {
+                gpsList.innerHTML = `<div class="p-4 bg-stone-950 border border-stone-800 rounded-xl text-stone-500 text-xs italic">Aucun point GPS certifié enregistré.</div>`;
+            } else {
+                gpsList.innerHTML = inspWithGps.slice(0, 6).map(i => `
+                    <div class="bg-stone-950 border border-stone-800 rounded-xl p-3 text-xs space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-white">Balise #${escapeHtml(i.id)} • ${i.mode === 'departure' ? 'Départ' : 'Retour'}</span>
+                            <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">±${i.accuracy || 5}m</span>
+                        </div>
+                        <div class="font-mono text-stone-400 text-[11px]">${i.latitude?.toFixed(4)}, ${i.longitude?.toFixed(4)}</div>
+                        <div class="flex items-center justify-between pt-0.5">
+                            <span class="text-[10px] text-stone-500 font-mono">${i.timestamp ? new Date(i.timestamp).toLocaleString('fr-CH') : '—'}</span>
+                            <a href="https://www.openstreetmap.org/?mlat=${i.latitude}&mlon=${i.longitude}#map=16/${i.latitude}/${i.longitude}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-mono inline-flex items-center gap-1 hover:underline">
+                                <span>Voir sur OpenStreetMap</span>
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    }
+
+    function generatePalantirBackup(data = null) {
+        const src = data || rawData || getFallbackSeedData();
+        const backupObj = {
+            meta: {
+                system: 'Renger Syni Palantir 3.0',
+                version: '3.0.0',
+                exported_at: new Date().toISOString(),
+                exported_by: SUPREME_ADMIN_EMAIL,
+                legal_retention: 'Conforme droit comptable suisse (CO art. 958f - 10 ans de conservation)',
+                checksum: 'ch-syni-' + Date.now().toString(36)
+            },
+            data: {
+                profiles: src.profiles || [],
+                trailers: src.trailers || [],
+                bookings: src.bookings || [],
+                inspections: src.inspections || [],
+                rateLimits: src.rateLimits || [],
+                analytics: src.analytics || [],
+                audit_logs: getAuditLogs()
+            },
+            metrics_snapshot: computedMetrics || null
+        };
+        return JSON.stringify(backupObj, null, 2);
+    }
+
+    function exportDatabaseBackup() {
+        const json = generatePalantirBackup();
+        const dateStr = new Date().toISOString().split('T')[0];
+        const filename = `renger-palantir-backup-${dateStr}.json`;
+        triggerDownload(filename, json, 'application/json');
+        recordAuditLog('backup_database', 'system', 'database_all', 'Sauvegarde intégrale JSON BDD exportée en 1 clic');
+        if (typeof showToast === 'function') {
+            showToast("Sauvegarde intégrale BDD JSON téléchargée avec succès", "success");
+        }
+    }
+
+    function openCommandPalette() {
+        if (typeof document === 'undefined') return;
+        const palette = document.getElementById('syni-command-palette');
+        const input = document.getElementById('command-palette-input');
+        if (!palette) return;
+        palette.classList.remove('hidden');
+        selectedPaletteIdx = 0;
+        if (input) {
+            input.value = '';
+            input.focus();
+            renderCommandPaletteResults(searchCommandPalette(''));
+        }
+    }
+
+    function closeCommandPalette() {
+        if (typeof document === 'undefined') return;
+        const palette = document.getElementById('syni-command-palette');
+        if (palette) palette.classList.add('hidden');
+    }
+
+    function searchCommandPalette(query = '') {
+        const q = (query || '').toLowerCase().trim();
+        const results = [];
+
+        const moduleDefs = [
+            { id: 'cockpit', name: 'Cockpit Général', category: 'Module' },
+            { id: 'users', name: 'Gestion des Utilisateurs', category: 'Module' },
+            { id: 'bookings', name: 'Réservations & Cashflow', category: 'Module' },
+            { id: 'trailers', name: 'Flotte de Remorques', category: 'Module' },
+            { id: 'inspections', name: 'États des Lieux & Audits', category: 'Module' },
+            { id: 'seo', name: 'Google SEO & Acquisition', category: 'Module' },
+            { id: 'control', name: 'Contrôle Global, Diffusion & Maintenance', category: 'Module' },
+            { id: 'simulator', name: 'Simulateur Business & Business Brain V3', category: 'Module' },
+            { id: 'palantir', name: 'Palantir Sentinel & Geo-Radar Suisse', category: 'Module' }
+        ];
+
+        moduleDefs.forEach(m => {
+            if (!q || m.name.toLowerCase().includes(q) || m.id.includes(q)) {
+                results.push({
+                    type: 'navigation',
+                    title: `Aller à : ${m.name}`,
+                    badge: 'Navigation',
+                    handler: () => {
+                        switchSyniModule(m.id);
+                        closeCommandPalette();
+                    }
+                });
+            }
+        });
+
+        const actions = [
+            {
+                title: 'Créer un nouvel utilisateur (+ Nouveau)',
+                badge: 'Action CRUD',
+                handler: () => {
+                    closeCommandPalette();
+                    openMasterEditor('user', null);
+                }
+            },
+            {
+                title: 'Ajouter une nouvelle remorque (+ Nouvelle)',
+                badge: 'Action CRUD',
+                handler: () => {
+                    closeCommandPalette();
+                    openMasterEditor('trailer', null);
+                }
+            },
+            {
+                title: 'Enregistrer une réservation directe (+ Nouvelle)',
+                badge: 'Action CRUD',
+                handler: () => {
+                    closeCommandPalette();
+                    openMasterEditor('booking', null);
+                }
+            },
+            {
+                title: 'Sauvegarde Intégrale BDD en 1 Clic (JSON)',
+                badge: 'Export BDD',
+                handler: () => {
+                    closeCommandPalette();
+                    exportDatabaseBackup();
+                }
+            },
+            {
+                title: 'Afficher la Corbeille des Utilisateurs',
+                badge: 'Corbeille',
+                handler: () => {
+                    switchSyniModule('users');
+                    const sel = document.getElementById('users-filter-type');
+                    if (sel) { sel.value = 'trash'; renderUsersTable(); }
+                    closeCommandPalette();
+                }
+            },
+            {
+                title: 'Afficher la Corbeille de la Flotte',
+                badge: 'Corbeille',
+                handler: () => {
+                    switchSyniModule('trailers');
+                    const sel = document.getElementById('trailers-filter-status');
+                    if (sel) { sel.value = 'trash'; renderTrailersTable(); }
+                    closeCommandPalette();
+                }
+            },
+            {
+                title: 'Afficher la Corbeille des Réservations',
+                badge: 'Corbeille',
+                handler: () => {
+                    switchSyniModule('bookings');
+                    const sel = document.getElementById('bookings-filter-status');
+                    if (sel) { sel.value = 'trash'; renderBookingsTable(); }
+                    closeCommandPalette();
+                }
+            }
+        ];
+
+        actions.forEach(a => {
+            if (!q || a.title.toLowerCase().includes(q)) {
+                results.push({
+                    type: 'action',
+                    title: a.title,
+                    badge: a.badge,
+                    handler: a.handler
+                });
+            }
+        });
+
+        if (q && rawData) {
+            (rawData.profiles || []).forEach(u => {
+                if ((u.username && u.username.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q)) || String(u.id).toLowerCase().includes(q)) {
+                    results.push({
+                        type: 'user',
+                        title: `Utilisateur @${u.username || 'sans_nom'} (${u.email || u.id})`,
+                        badge: u.is_deleted ? 'Utilisateur (Corbeille)' : 'Utilisateur',
+                        handler: () => {
+                            switchSyniModule('users');
+                            openMasterEditor('user', u.id);
+                            closeCommandPalette();
+                        }
+                    });
+                }
+            });
+
+            (rawData.trailers || []).forEach(t => {
+                if ((t.title && t.title.toLowerCase().includes(q)) || String(t.id).includes(q) || (t.location && t.location.toLowerCase().includes(q))) {
+                    results.push({
+                        type: 'trailer',
+                        title: `Remorque #${t.id} : ${t.title}`,
+                        badge: t.is_deleted ? 'Remorque (Corbeille)' : 'Remorque',
+                        handler: () => {
+                            switchSyniModule('trailers');
+                            openMasterEditor('trailer', t.id);
+                            closeCommandPalette();
+                        }
+                    });
+                }
+            });
+
+            (rawData.bookings || []).forEach(b => {
+                if (String(b.id).toLowerCase().includes(q) || String(b.trailer_id).includes(q) || String(b.user_id).includes(q)) {
+                    results.push({
+                        type: 'booking',
+                        title: `Réservation #${b.id} (${b.start_date || ''} - ${b.status || ''})`,
+                        badge: b.is_deleted ? 'Réservation (Corbeille)' : 'Réservation',
+                        handler: () => {
+                            switchSyniModule('bookings');
+                            openMasterEditor('booking', b.id);
+                            closeCommandPalette();
+                        }
+                    });
+                }
+            });
+        }
+
+        return results;
+    }
+
+    function updatePaletteSelection(newIdx) {
+        if (!activePaletteResults.length) return;
+        if (newIdx < 0) newIdx = activePaletteResults.length - 1;
+        if (newIdx >= activePaletteResults.length) newIdx = 0;
+        selectedPaletteIdx = newIdx;
+        const container = (typeof document !== 'undefined') ? document.getElementById('command-palette-results') : null;
+        if (!container) return;
+        const items = container.querySelectorAll('.command-palette-item');
+        items.forEach((btn, idx) => {
+            if (idx === selectedPaletteIdx) {
+                btn.classList.add('bg-stone-800', 'ring-1', 'ring-amber-500/50');
+                btn.classList.remove('hover:bg-stone-800/80');
+                if (typeof btn.scrollIntoView === 'function') {
+                    btn.scrollIntoView({ block: 'nearest' });
+                }
+            } else {
+                btn.classList.remove('bg-stone-800', 'ring-1', 'ring-amber-500/50');
+                btn.classList.add('hover:bg-stone-800/80');
+            }
+        });
+    }
+
+    function executeSelectedPaletteItem() {
+        if (activePaletteResults[selectedPaletteIdx] && typeof activePaletteResults[selectedPaletteIdx].handler === 'function') {
+            activePaletteResults[selectedPaletteIdx].handler();
+        }
+    }
+
+    function renderCommandPaletteResults(results = []) {
+        activePaletteResults = (results || []).slice(0, 15);
+        if (selectedPaletteIdx >= activePaletteResults.length) {
+            selectedPaletteIdx = 0;
+        }
+
+        if (typeof document === 'undefined') return activePaletteResults;
+        const container = document.getElementById('command-palette-results');
+        if (!container) return activePaletteResults;
+
+        if (activePaletteResults.length === 0) {
+            container.innerHTML = `<div class="p-4 text-center text-stone-500 text-xs italic">Aucun résultat trouvé.</div>`;
+            return activePaletteResults;
+        }
+
+        container.innerHTML = activePaletteResults.map((item, idx) => {
+            const isSelected = (idx === selectedPaletteIdx);
+            const selectClass = isSelected ? 'bg-stone-800 ring-1 ring-amber-500/50' : 'hover:bg-stone-800/80';
+            return `
+            <button type="button" class="command-palette-item w-full text-left px-3 py-2.5 rounded-xl transition flex items-center justify-between gap-3 text-xs ${selectClass}" data-idx="${idx}">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0"></span>
+                    <span class="text-white font-medium truncate">${escapeHtml(item.title)}</span>
+                </div>
+                <span class="text-[10px] font-mono text-stone-400 bg-stone-950 px-2 py-0.5 rounded border border-stone-800 flex-shrink-0">${escapeHtml(item.badge || '')}</span>
+            </button>
+        `}).join('');
+
+        container.querySelectorAll('.command-palette-item').forEach(btn => {
+            btn.onclick = () => {
+                const idx = Number(btn.getAttribute('data-idx'));
+                selectedPaletteIdx = idx;
+                executeSelectedPaletteItem();
+            };
+        });
+
+        return activePaletteResults;
+    }
+
 
     // ==========================================
     // INITIALISATION PRINCIPALE DU PANEL SYNI
@@ -2465,6 +4159,110 @@
         const trailersSearch = document.getElementById('trailers-search-input');
         if (trailersSearch) trailersSearch.oninput = () => renderTrailersTable();
 
+        const trailersFilter = document.getElementById('trailers-filter-status');
+        if (trailersFilter) trailersFilter.onchange = () => renderTrailersTable();
+
+        // Boutons de création d'entités (+ Nouveau)
+        const btnCreateUser = document.getElementById('btn-create-user');
+        if (btnCreateUser) btnCreateUser.onclick = () => openMasterEditor('user', null);
+
+        const btnCreateTrailer = document.getElementById('btn-create-trailer');
+        if (btnCreateTrailer) btnCreateTrailer.onclick = () => openMasterEditor('trailer', null);
+
+        const btnCreateBooking = document.getElementById('btn-create-booking');
+        if (btnCreateBooking) btnCreateBooking.onclick = () => openMasterEditor('booking', null);
+
+        // Modale Master Editor
+        const btnCloseMaster = document.getElementById('master-editor-close');
+        if (btnCloseMaster) btnCloseMaster.onclick = closeMasterEditor;
+
+        const btnCancelMaster = document.getElementById('master-editor-cancel');
+        if (btnCancelMaster) btnCancelMaster.onclick = closeMasterEditor;
+
+        const btnSaveMaster = document.getElementById('master-editor-save');
+        if (btnSaveMaster) btnSaveMaster.onclick = handleMasterEditorFormSave;
+
+        const modalMaster = document.getElementById('syni-master-editor-modal');
+        if (modalMaster) {
+            modalMaster.onclick = (e) => {
+                if (e.target === modalMaster) closeMasterEditor();
+            };
+        }
+
+        // Palette de commande rapide (Cmd+K / Ctrl+K)
+        const btnOpenPalette = document.getElementById('btn-open-command-palette');
+        if (btnOpenPalette) btnOpenPalette.onclick = openCommandPalette;
+
+        const paletteInput = document.getElementById('command-palette-input');
+        if (paletteInput) {
+            paletteInput.oninput = (e) => {
+                selectedPaletteIdx = 0;
+                renderCommandPaletteResults(searchCommandPalette(e.target.value));
+            };
+            paletteInput.onkeydown = (e) => {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    updatePaletteSelection(selectedPaletteIdx + 1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    updatePaletteSelection(selectedPaletteIdx - 1);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    executeSelectedPaletteItem();
+                }
+            };
+        }
+
+        const modalPalette = document.getElementById('syni-command-palette');
+        if (modalPalette) {
+            modalPalette.onclick = (e) => {
+                if (e.target === modalPalette) closeCommandPalette();
+            };
+        }
+
+        // Raccourcis clavier universels (Cmd+K, Escape)
+        if (typeof window !== 'undefined' && !uiEventListenersAttached) {
+            uiEventListenersAttached = true;
+            window.addEventListener('keydown', (e) => {
+                if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+                    e.preventDefault();
+                    const p = document.getElementById('syni-command-palette');
+                    if (p && !p.classList.contains('hidden')) {
+                        closeCommandPalette();
+                    } else {
+                        openCommandPalette();
+                    }
+                } else if (e.key === 'Escape') {
+                    closeCommandPalette();
+                    closeMasterEditor();
+                }
+            });
+        }
+
+        // Sauvegarde intégrale BDD (JSON) en 1 Clic
+        const btnPalantirBackup = document.getElementById('btn-palantir-backup');
+        if (btnPalantirBackup) btnPalantirBackup.onclick = exportDatabaseBackup;
+
+        const btnPalantirBackupTop = document.getElementById('btn-palantir-backup-top');
+        if (btnPalantirBackupTop) btnPalantirBackupTop.onclick = exportDatabaseBackup;
+
+        // Sélecteur d'entités Palantir Network Explorer
+        const entitySelector = document.getElementById('palantir-entity-selector');
+        if (entitySelector) {
+            entitySelector.onchange = (e) => {
+                const parts = (e.target.value || '').split(':');
+                if (parts.length === 2) {
+                    renderNetworkConstellationGraph(parts[0], parts[1]);
+                }
+            };
+        }
+
+        // Business Brain V3 : Décomposeur OKR
+        const simTargetArr = document.getElementById('sim-target-arr');
+        if (simTargetArr) {
+            simTargetArr.oninput = renderSimulatorSection;
+        }
+
         // Connecteur Search Console
         const gscBtn = document.getElementById('btn-save-gsc');
         if (gscBtn) {
@@ -2650,9 +4448,31 @@
         calculateBookingFinancials,
         computeSyniMetrics,
         computeGoogleSeoMetrics,
-        // Module 8 : Simulateur Business
+        // Master Editor & CRUD Absolu (Dieu du Système)
+        openMasterEditor,
+        closeMasterEditor,
+        saveMasterEntity,
+        // Module 8 : Simulateur Business & Business Brain V3
         calculateSimulatorProjections,
         renderSimulatorSection,
+        computeStrategicRecommendations,
+        calculateOkrBreakdown,
+        calculateExpansionScenarios,
+        // Module 9 : Palantir Sentinel, Geo-Radar & Sauvegarde
+        computeSentinelRiskScores,
+        getNetworkConstellation,
+        renderNetworkConstellationGraph,
+        renderGeoRadarSection,
+        renderPalantirSection,
+        generatePalantirBackup,
+        exportDatabaseBackup,
+        triggerDownload,
+        searchCommandPalette,
+        openCommandPalette,
+        closeCommandPalette,
+        renderCommandPaletteResults,
+        updatePaletteSelection,
+        executeSelectedPaletteItem,
         // Module 7 : Contrôle Global, Diffusion & Maintenance
         getBroadcastBannerConfig,
         setBroadcastBannerConfig,
@@ -2683,4 +4503,5 @@
         MAINTENANCE_MODE_KEY,
         AUDIT_LOG_KEY
     };
+
 }));

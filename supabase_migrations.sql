@@ -140,3 +140,22 @@ DROP TRIGGER IF EXISTS trg_protect_is_admin ON profiles;
 CREATE TRIGGER trg_protect_is_admin
 BEFORE UPDATE ON profiles
 FOR EACH ROW EXECUTE FUNCTION protect_is_admin();
+
+-- 13. Cycle de vie universel & Soft-delete CO art. 958f (Conservation légale 10 ans)
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS is_deleted boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+
+CREATE INDEX IF NOT EXISTS idx_profiles_is_deleted ON profiles(is_deleted);
+
+ALTER TABLE trailers
+ADD COLUMN IF NOT EXISTS is_deleted boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+
+CREATE INDEX IF NOT EXISTS idx_trailers_is_deleted ON trailers(is_deleted);
+
+ALTER TABLE bookings
+ADD COLUMN IF NOT EXISTS is_deleted boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+
+CREATE INDEX IF NOT EXISTS idx_bookings_is_deleted ON bookings(is_deleted);

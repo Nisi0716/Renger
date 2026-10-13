@@ -118,6 +118,65 @@
             </div>
         </div>
     </div>
+
+    <!-- MODALE UNIVERSELLE MASTER EDITOR (CRUD ABSOLU) -->
+    <div id="syni-master-editor-modal" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="max-w-2xl w-full bg-stone-900 border border-terracotta-500/40 rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between pb-3 border-b border-stone-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-terracotta-500/10 border border-terracotta-500/30 flex items-center justify-center text-terracotta-400 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="master-editor-title" class="text-base font-bold text-white">Master Editor — Édition d'Entité</h3>
+                        <p class="text-xs text-stone-400">Contrôle direct de l'intégralité des champs de la base de données</p>
+                    </div>
+                </div>
+                <button type="button" id="master-editor-close" class="text-stone-400 hover:text-white p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Formulaire avec scroll si contenu long -->
+            <form id="master-editor-form" class="space-y-4 overflow-y-auto pr-1 flex-1">
+                <div id="master-editor-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Champs injectés dynamiquement selon l'entité -->
+                </div>
+
+                <div class="pt-2">
+                    <label for="master-editor-reason" class="block text-[11px] font-bold text-stone-300 mb-1.5 uppercase tracking-wider">Motif de modification (Journal d'audit)</label>
+                    <input type="text" id="master-editor-reason" name="editorReason" placeholder="Ex: Rectification administrative, demande propriétaire, etc."
+                        class="w-full px-3.5 py-2.5 bg-stone-950 border border-stone-800 text-white rounded-xl focus:border-terracotta-500 focus:outline-none text-xs">
+                </div>
+            </form>
+
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-stone-800">
+                <button type="button" id="master-editor-cancel" class="px-4 py-2.5 rounded-xl text-xs font-bold text-stone-300 bg-stone-800 hover:bg-stone-700 transition">
+                    Annuler
+                </button>
+                <button type="button" id="master-editor-save" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-terracotta-500 hover:bg-terracotta-600 transition shadow-lg active:scale-95 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Enregistrer les modifications</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BARRE DE COMMANDE RAPIDE UNIVERSELLE (CMD+K / CTRL+K) -->
+    <div id="syni-command-palette" class="hidden fixed inset-0 z-[60] bg-stone-950/85 backdrop-blur-sm flex items-start justify-center p-4 pt-16 sm:pt-24">
+        <div class="max-w-xl w-full bg-stone-900 border border-stone-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-3 px-4 py-3 border-b border-stone-800 bg-stone-950/40">
+                <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text" id="command-palette-input" placeholder="Rechercher entités, actions, modules... (Cmd+K)" autocomplete="off"
+                    class="w-full bg-transparent text-sm text-white placeholder-stone-500 focus:outline-none">
+                <span class="text-[10px] font-mono text-stone-400 bg-stone-800 px-1.5 py-0.5 rounded">ESC pour fermer</span>
+            </div>
+            <div id="command-palette-results" class="max-h-80 overflow-y-auto divide-y divide-stone-800/60 p-2 text-xs">
+                <!-- Rempli dynamiquement -->
+            </div>
+        </div>
+    </div>
+
     <div id="syni-main-panel" class="hidden flex-1 flex flex-col md:flex-row min-h-screen">
 
         <!-- BARRE LATÉRALE DE NAVIGATION (RETRACTABLE) -->
@@ -139,7 +198,7 @@
                     </a>
                 </div>
 
-                <!-- Navigation Tabs (8 modules d'administration suprême) -->
+                <!-- Navigation Tabs (9 modules d'administration suprême) -->
                 <nav class="space-y-1.5" id="syni-nav-list">
                     <button type="button" id="tab-cockpit" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent transition text-sm bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/30 font-bold">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
@@ -172,6 +231,10 @@
                     <button type="button" id="tab-simulator" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent text-stone-400 hover:text-white hover:bg-stone-800/60 transition text-sm">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                         <span>Simulateur Business</span>
+                    </button>
+                    <button type="button" id="tab-palantir" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent text-stone-400 hover:text-white hover:bg-stone-800/60 transition text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                        <span>Palantir Sentinel</span>
                     </button>
                 </nav>
             </div>
@@ -222,6 +285,18 @@
                             <option value="all" class="bg-stone-900" selected>Historique complet</option>
                         </select>
                     </div>
+
+                    <!-- Barre de commande rapide Cmd+K -->
+                    <button type="button" id="btn-open-command-palette" class="bg-stone-900 hover:bg-stone-800 border border-stone-800 text-stone-200 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5" title="Recherche rapide & Commandes (Cmd+K)">
+                        <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <span class="hidden sm:inline font-mono text-[11px] bg-stone-800 px-1.5 py-0.5 rounded text-amber-300">⌘K</span>
+                    </button>
+
+                    <!-- Sauvegarde BDD 1-clic -->
+                    <button type="button" id="btn-palantir-backup-top" class="bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/40 text-amber-300 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5" title="Sauvegarde intégrale BDD (JSON)">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span class="hidden sm:inline">Backup BDD</span>
+                    </button>
 
                     <!-- Bouton Rafraîchir -->
                     <button type="button" id="btn-syni-refresh" class="bg-stone-900 hover:bg-stone-800 border border-stone-800 text-stone-200 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5" title="Synchroniser les données">
@@ -356,13 +431,20 @@
                             <option value="owners">Propriétaires (≥ 1 remorque)</option>
                             <option value="renters">Locataires (≥ 1 location)</option>
                             <option value="admin">Administrateurs</option>
+                            <option value="trash">Corbeille (Supprimés)</option>
                         </select>
                     </div>
 
-                    <button type="button" id="btn-export-users-csv" class="bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        <span>Exporter CSV UTF-8</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="btn-create-user" class="bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap shadow-lg">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>+ Nouveau</span>
+                        </button>
+                        <button type="button" id="btn-export-users-csv" class="bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span>Exporter CSV UTF-8</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
@@ -400,13 +482,20 @@
                             <option value="paye">Confirmées / Payées</option>
                             <option value="termine">Terminées</option>
                             <option value="annule">Annulées Zero-Loss</option>
+                            <option value="trash">Corbeille (Supprimées)</option>
                         </select>
                     </div>
 
-                    <button type="button" id="btn-export-bookings-csv" class="bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        <span>Exporter Cashflow CSV</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="btn-create-booking" class="bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap shadow-lg">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>+ Nouvelle Réservation</span>
+                        </button>
+                        <button type="button" id="btn-export-bookings-csv" class="bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span>Exporter Cashflow CSV</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
@@ -438,9 +527,22 @@
             <!-- MODULE 4 : FLOTTE DE REMORQUES -->
             <!-- ==================================================== -->
             <section id="syni-mod-trailers" class="hidden space-y-6">
-                <div class="flex items-center justify-between gap-4 max-w-md">
-                    <input type="text" id="trailers-search-input" placeholder="Filtrer par titre, canton, catégorie..."
-                        class="w-full px-4 py-2.5 bg-stone-900 border border-stone-800 text-white rounded-xl focus:border-terracotta-500 focus:outline-none text-xs">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 flex-1 max-w-md">
+                        <input type="text" id="trailers-search-input" placeholder="Filtrer par titre, canton, catégorie..."
+                            class="w-full px-4 py-2.5 bg-stone-900 border border-stone-800 text-white rounded-xl focus:border-terracotta-500 focus:outline-none text-xs">
+                        <select id="trailers-filter-status" class="bg-stone-900 border border-stone-800 text-xs text-stone-300 rounded-xl px-3 py-2.5 focus:outline-none">
+                            <option value="all">Toutes les remorques</option>
+                            <option value="active">Actives uniquement</option>
+                            <option value="inactive">Masquées uniquement</option>
+                            <option value="trash">Corbeille (Supprimées)</option>
+                        </select>
+                    </div>
+
+                    <button type="button" id="btn-create-trailer" class="bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap shadow-lg">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>+ Nouvelle Remorque</span>
+                    </button>
                 </div>
 
                 <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
@@ -980,6 +1082,161 @@
                                 <!-- Injecté dynamiquement -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- BUSINESS BRAIN V3 : MOTEUR STRATÉGIQUE DE CROISSANCE -->
+                <div class="bg-gradient-to-r from-stone-900 via-stone-900 to-terracotta-950/30 border border-stone-800 rounded-2xl p-6 space-y-6">
+                    <div class="pb-3 border-b border-stone-800 flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-terracotta-500/20 text-terracotta-400 border border-terracotta-500/30 text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full">Business Brain V3</span>
+                                <span class="text-xs text-stone-400">Croissance & Arbitrage Algorithmique</span>
+                            </div>
+                            <h3 class="text-lg font-black text-white mt-1">Recommandations Stratégiques & Expansion</h3>
+                        </div>
+                    </div>
+
+                    <!-- 1. Recommandations Stratégiques Automatiques -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="sim-strategic-recommendations">
+                        <!-- Injecté dynamiquement : Élasticité prix, Pénurie d'offre, Catégories rentables -->
+                    </div>
+
+                    <!-- 2. Décomposeur d'Objectifs OKR -->
+                    <div class="bg-stone-950/70 border border-stone-800 rounded-2xl p-5 space-y-4" id="sim-okr-container">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-stone-800/80">
+                            <div>
+                                <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+                                    <span>Décomposeur d'Objectifs OKR — Cap ARR & Jalons Opérationnels</span>
+                                </h4>
+                                <p class="text-xs text-stone-400 mt-0.5">Saisissez un objectif d'ARR pour décomposer les volumes requis de remorques, abonnés PRO et réservations par canton</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label for="sim-target-arr" class="text-xs text-stone-400 whitespace-nowrap">ARR Cible :</label>
+                                <input type="number" id="sim-target-arr" value="100000" step="5000" min="10000" max="1000000"
+                                    class="w-32 px-3 py-1.5 bg-stone-900 border border-stone-700 text-white font-mono font-bold rounded-xl text-xs focus:border-terracotta-500 focus:outline-none text-right">
+                                <span class="text-xs font-mono text-stone-400">CHF</span>
+                            </div>
+                        </div>
+
+                        <div id="sim-okr-breakdown" class="space-y-4">
+                            <!-- Jauge et métriques injectées dynamiquement -->
+                        </div>
+                    </div>
+
+                    <!-- 3. Comparateur de 4 Scénarios d'Expansion -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                <span>Comparateur de 4 Scénarios d'Expansion Renger</span>
+                            </h4>
+                            <span class="text-[11px] font-mono text-stone-400">Actuel vs Estival vs Alémanique vs Stress-Test</span>
+                        </div>
+                        <div id="sim-expansion-scenarios" class="overflow-x-auto">
+                            <!-- Tableau des 4 scénarios injecté dynamiquement -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================================================== -->
+            <!-- MODULE 9 : PALANTIR SENTINEL & GEO-RADAR SUISSE -->
+            <!-- ==================================================== -->
+            <section id="syni-mod-palantir" class="hidden space-y-8">
+                <!-- En-tête Palantir Sentinel -->
+                <div class="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950/40 border border-stone-800 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full">Module 9 Omniscience</span>
+                            <span class="text-xs text-stone-400">Palantir Sentinel v3.0</span>
+                        </div>
+                        <h2 class="text-xl font-black text-white mt-1">Palantir Sentinel & Geo-Radar Tactique Suisse</h2>
+                        <p class="text-xs text-stone-400 mt-0.5">Constellation relationnelle des entités, cartographie des flux par canton, détection des fraudes et sauvegarde intégrale en 1 clic.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" id="btn-palantir-backup" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 transition active:scale-95 shadow-lg">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            <span>Sauvegarde Intégrale BDD (JSON)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1. Palantir Sentinel : Détecteur d'Anomalies & Fraudes -->
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-800">
+                        <div>
+                            <h3 class="font-bold text-white text-base flex items-center gap-2">
+                                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <span>Palantir Sentinel — Détecteur d'Anomalies & Fraudes</span>
+                            </h3>
+                            <p class="text-xs text-stone-400 mt-0.5">Surveillance continue des litiges, clôtures sans photos certifiées (CO 257a) et anomalies de rate limits</p>
+                        </div>
+                        <div id="sentinel-global-gauge" class="flex items-center gap-3 bg-stone-950 px-4 py-2 rounded-xl border border-stone-800">
+                            <!-- Score global de risque 0-100 -->
+                        </div>
+                    </div>
+
+                    <!-- Grille des 4 heuristiques de détection Sentinel -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="sentinel-heuristics-grid">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+
+                    <!-- Flux des alertes et entités surveillées -->
+                    <div class="space-y-3">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-stone-300">Entités Signalées par l'Heuristique Sentinel</h4>
+                        <div id="sentinel-alerts-table" class="space-y-2">
+                            <!-- Alertes injectées dynamiquement -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Graphe Relationnel d'Entités (Network Explorer) -->
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-800">
+                        <div>
+                            <h3 class="font-bold text-white text-base flex items-center gap-2">
+                                <svg class="w-5 h-5 text-terracotta-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <span>Graphe Relationnel d'Entités (Network Explorer)</span>
+                            </h3>
+                            <p class="text-xs text-stone-400 mt-0.5">Sélectionnez un compte ou une remorque pour inspecter sa constellation complète</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label for="palantir-entity-selector" class="text-xs text-stone-400">Entité cible :</label>
+                            <select id="palantir-entity-selector" class="bg-stone-950 border border-stone-800 text-xs text-stone-200 rounded-xl px-3 py-2 focus:outline-none focus:border-terracotta-500">
+                                <!-- Options injectées dynamiquement -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Visualiseur de constellation -->
+                    <div id="palantir-network-graph" class="space-y-4">
+                        <!-- Constellation injectée dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- 3. Geo-Radar & Carte Tactique Suisse -->
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6 space-y-6">
+                    <div class="pb-4 border-b border-stone-800">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <span>Geo-Radar & Carte Tactique Suisse</span>
+                        </h3>
+                        <p class="text-xs text-stone-400 mt-0.5">Densité par canton, réservations actives en circulation et coordonnées GPS certifiées d'états des lieux</p>
+                    </div>
+
+                    <!-- Cartographie des Cantons -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5" id="palantir-geo-cantons-grid">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+
+                    <!-- Flux des points GPS certifiés des inspections récentes -->
+                    <div class="space-y-3 pt-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-stone-300">Balises GPS & Inspections Contradictoires Récentes</h4>
+                        <div id="palantir-gps-radar-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <!-- Injecté dynamiquement -->
+                        </div>
                     </div>
                 </div>
             </section>
