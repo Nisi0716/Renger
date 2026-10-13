@@ -55,7 +55,8 @@ const RengerIcons = {
     map: '<svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="18" stroke-width="2"/><line x1="16" y1="6" x2="16" y2="22" stroke-width="2"/></svg>',
     key: '<svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>',
     refresh: '<svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>',
-    flag: '<svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>'
+    flag: '<svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>',
+    eye: '<svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>'
 };
 
 function getRengerIcon(name, customClass = '') {
@@ -333,6 +334,17 @@ function updateUserMenu(user) {
                             user.user_metadata?.name || 
                             (user.email ? user.email.split('@')[0] : 'Utilisateur');
 
+        const isSupremeAdmin = (user.email === 'enism2007@hotmail.com') || 
+                               (user.is_admin === true) || 
+                               (user.user_metadata?.is_admin === true) || 
+                               (typeof window !== 'undefined' && window.__rengerIsAdmin === true);
+
+        const syniLinkHtml = isSupremeAdmin ? `
+                <a href="syni.html" id="nav-syni-link" class="text-stone-400 hover:text-terracotta-500 transition flex items-center gap-1.5 text-xs font-mono font-semibold px-2 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80" title="Syni Admin Panel">
+                    ${getRengerIcon('eye', 'w-3.5 h-3.5 inline-block')} <span>Syni</span>
+                </a>
+        ` : '';
+
         container.innerHTML = `
             <div class="flex items-center gap-3 sm:gap-4">
                 <a href="profil.html" class="flex items-center gap-2 text-stone-700 dark:text-stone-200 hover:text-terracotta-500 font-semibold text-sm transition group" title="Accéder à Mon Espace">
@@ -341,6 +353,7 @@ function updateUserMenu(user) {
                     </span>
                     <span class="hidden md:inline" id="user-display-name"></span>
                 </a>
+                ${syniLinkHtml}
                 <a href="profil.html?p=settings-page" class="text-stone-500 dark:text-stone-400 font-medium text-sm hover:text-terracotta-500 transition hidden lg:block">Paramètres</a>
                 <button onclick="handleLogout()" class="text-stone-400 hover:text-red-500 text-sm font-medium transition hover:underline">Déconnexion</button>
             </div>

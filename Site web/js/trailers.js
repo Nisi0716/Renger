@@ -1654,6 +1654,21 @@ async function loadProfileSettings() {
         if (proActiveCard) proActiveCard.classList.add('hidden');
         if (proUpsellCard) proUpsellCard.classList.remove('hidden');
     }
+
+    // Statut Syni Administrateur Suprême (visible UNIQUEMENT pour enism2007@hotmail.com ou is_admin = true)
+    const syniCard = document.getElementById('settings-syni-card');
+    const isSupremeAdmin = (currentUser && currentUser.email === 'enism2007@hotmail.com') ||
+                           (profile && profile.is_admin === true) ||
+                           (currentUser && (currentUser.is_admin === true || currentUser.user_metadata?.is_admin === true));
+    if (syniCard) {
+        if (isSupremeAdmin) {
+            syniCard.classList.remove('hidden');
+            if (typeof window !== 'undefined') window.__rengerIsAdmin = true;
+            if (typeof updateUserMenu === 'function') updateUserMenu(currentUser);
+        } else {
+            syniCard.classList.add('hidden');
+        }
+    }
 }
 
 // Sauvegarde les modifications de profil (username)

@@ -710,6 +710,16 @@ async function checkUser() {
     currentUser = session?.user || null;
     
     if (currentUser) {
+        if (currentUser.email === 'enism2007@hotmail.com' || currentUser.is_admin === true || currentUser.user_metadata?.is_admin === true) {
+            window.__rengerIsAdmin = true;
+        } else {
+            supabaseClient.from('profiles').select('is_admin').eq('id', currentUser.id).maybeSingle().then(({ data }) => {
+                if (data?.is_admin) {
+                    window.__rengerIsAdmin = true;
+                    if (typeof updateUserMenu === 'function') updateUserMenu(currentUser);
+                }
+            }).catch(() => null);
+        }
         if (typeof ensureProfileExists === 'function') {
             ensureProfileExists(currentUser);
         }

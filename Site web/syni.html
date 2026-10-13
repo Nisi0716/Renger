@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syni — Cockpit d'Administration Suprême Renger</title>
+    <meta name="description" content="Panel d'administration suprême Syni pour Renger Suisse : centralisation de l'ensemble des données utilisateurs, remorques, réservations, inspections et Google SEO.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="https://renger.ch/syni.html">
+    <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg?v=2">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://npmcdn.com https://js.stripe.com https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://unpkg.com; img-src 'self' data: blob: https://cwifrzajxrcpnqceyxnj.supabase.co https://images.unsplash.com https://placehold.co https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://cwifrzajxrcpnqceyxnj.supabase.co wss://cwifrzajxrcpnqceyxnj.supabase.co https://api.stripe.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; font-src 'self' data:; frame-src https://js.stripe.com https://hooks.stripe.com;">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        terracotta: {
+                            50: '#fff4f0',
+                            100: '#ffe8e0',
+                            200: '#ffd1c2',
+                            300: '#ffa78e',
+                            400: '#f8714b',
+                            500: '#d85110',
+                            600: '#bc450b',
+                            700: '#993508',
+                            800: '#7b2b0c',
+                            900: '#64260f'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-stone-950 text-stone-100 font-sans antialiased min-h-screen flex flex-col selection:bg-terracotta-500 selection:text-white">
+
+    <!-- ECRAN DE GARDE ACCES REFUSE / NON CONNECTE -->
+    <div id="syni-auth-guard" class="hidden fixed inset-0 z-50 bg-stone-950 flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-8 text-center shadow-2xl">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-500">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            </div>
+            <h1 class="text-2xl font-bold text-white mb-2">Syni — Espace Restreint</h1>
+            <p class="text-stone-400 text-sm mb-6">Ce cockpit d'administration suprême est strictement réservé au compte officiel de gestion Renger. Veuillez vous connecter avec le compte autorisé.</p>
+            <div class="space-y-3">
+                <a href="index.html" class="block w-full bg-stone-800 hover:bg-stone-700 text-white font-bold py-3 px-4 rounded-xl transition text-sm">
+                    Retour à l'accueil
+                </a>
+                <a href="profil.html" class="block w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 px-4 rounded-xl transition text-sm">
+                    Se connecter à Mon Espace
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DOUBLE FACTEUR (PASSPHRASE MAITRESSE) -->
+    <div id="syni-passphrase-modal" class="hidden fixed inset-0 z-50 bg-stone-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-stone-900 border border-amber-500/30 rounded-3xl p-8 shadow-2xl relative">
+            <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
+            <h2 class="text-xl font-bold text-white text-center mb-1">Authentification Renforcée</h2>
+            <p class="text-xs text-stone-400 text-center mb-6">Saisissez la clé maîtresse SYNI_MASTER_KEY pour déverrouiller la console.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-stone-300 mb-1.5 uppercase tracking-wider">Passphrase Maîtresse</label>
+                    <input type="password" id="syni-passphrase-input" placeholder="••••••••••••••••" autocomplete="current-password"
+                        class="w-full px-4 py-3 bg-stone-950 border border-stone-800 text-white rounded-xl focus:border-amber-500 focus:outline-none font-mono text-sm">
+                    <p id="syni-passphrase-error" class="hidden text-xs text-red-400 mt-2 font-medium"></p>
+                </div>
+                <button type="button" id="syni-passphrase-submit"
+                    class="w-full bg-gradient-to-r from-amber-600 to-terracotta-600 hover:from-amber-500 hover:to-terracotta-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition active:scale-95 text-sm flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <span>Déverrouiller Syni</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL PRINCIPAL SYNI -->
+    <div id="syni-main-panel" class="hidden flex-1 flex flex-col md:flex-row min-h-screen">
+
+        <!-- BARRE LATÉRALE DE NAVIGATION (RETRACTABLE) -->
+        <aside id="syni-sidebar" class="w-full md:w-64 bg-stone-900 border-r border-stone-800 p-5 flex flex-col justify-between flex-shrink-0">
+            <div>
+                <!-- Brand & Logo -->
+                <div class="flex items-center justify-between gap-3 mb-8 pb-4 border-b border-stone-800">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        </div>
+                        <div>
+                            <span class="text-lg font-black tracking-wider text-white">SYNI</span>
+                            <span class="block text-[10px] font-mono text-amber-400">ADMIN SUPRÊME</span>
+                        </div>
+                    </div>
+                    <a href="index.html" class="text-stone-400 hover:text-white transition p-1.5 rounded-lg hover:bg-stone-800" title="Retour au site">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    </a>
+                </div>
+
+                <!-- Navigation Tabs (6 modules ultra-structurés) -->
+                <nav class="space-y-1.5" id="syni-nav-list">
+                    <button type="button" id="tab-cockpit" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent transition text-sm bg-terracotta-500/10 text-terracotta-500 border-terracotta-500/30 font-bold">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                        <span>Cockpit Général</span>
+                    </button>
+                    <button type="button" id="tab-users" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent text-stone-400 hover:text-white hover:bg-stone-800/60 transition text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        <span>Utilisateurs</span>
+                    </button>
+                    <button type="button" id="tab-bookings" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent text-stone-400 hover:text-white hover:bg-stone-800/60 transition text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Réservations & Cashflow</span>
+                    </button>
+                    <button type="button" id="tab-trailers" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent text-stone-400 hover:text-white hover:bg-stone-800/60 transition text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8.5h13v5.5H3V8.5zM7.5 8.5v5.5M12 8.5v5.5M16 13.5h3.5l2 1.5M18.5 13.5v3.5"/><circle cx="12" cy="17" r="3" stroke-width="2"/><circle cx="21.5" cy="15" r="0.75" fill="currentColor"/></svg>
+                        <span>Flotte de Remorques</span>
+                    </button>
+                    <button type="button" id="tab-inspections" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent text-stone-400 hover:text-white hover:bg-stone-800/60 transition text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        <span>États des Lieux & Audits</span>
+                    </button>
+                    <button type="button" id="tab-seo" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent text-stone-400 hover:text-white hover:bg-stone-800/60 transition text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <span>Google SEO & Trafic</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Footer Sidebar : Statut Session -->
+            <div class="pt-6 border-t border-stone-800">
+                <div class="flex items-center justify-between text-xs mb-3">
+                    <span class="text-stone-400">Session Suprême</span>
+                    <span class="text-emerald-400 font-mono font-bold flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Active
+                    </span>
+                </div>
+                <button type="button" id="btn-syni-lock" class="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold py-2.5 px-3 rounded-xl transition text-xs flex items-center justify-center gap-2">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    <span>Verrouiller la console</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- CONTENU DU DASHBOARD -->
+        <main class="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+
+            <!-- En-tête Top Bar -->
+            <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-8 border-b border-stone-800">
+                <div class="flex items-center gap-3">
+                    <button type="button" id="btn-toggle-sidebar" class="md:hidden text-stone-400 hover:text-white p-2 rounded-xl bg-stone-900 border border-stone-800" title="Menu Syni">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h1 class="text-2xl md:text-3xl font-black text-white tracking-tight">Syni Cockpit</h1>
+                            <span id="syni-data-source-badge" class="bg-stone-700 text-stone-300 text-xs px-2.5 py-1 rounded-full font-mono">Chargement...</span>
+                        </div>
+                        <p class="text-xs text-stone-400 mt-1">Supervision globale de la plateforme de location de remorques en Suisse</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 flex-wrap">
+                    <!-- Sélecteur d'intervalle temporel -->
+                    <div class="flex items-center gap-2 bg-stone-900 border border-stone-800 rounded-xl px-3 py-1.5">
+                        <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <select id="syni-time-range-select" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
+                            <option value="today" class="bg-stone-900">Aujourd'hui</option>
+                            <option value="7d" class="bg-stone-900">7 derniers jours</option>
+                            <option value="30d" class="bg-stone-900">30 derniers jours</option>
+                            <option value="year" class="bg-stone-900">Cette année</option>
+                            <option value="all" class="bg-stone-900" selected>Historique complet</option>
+                        </select>
+                    </div>
+
+                    <!-- Bouton Rafraîchir -->
+                    <button type="button" id="btn-syni-refresh" class="bg-stone-900 hover:bg-stone-800 border border-stone-800 text-stone-200 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5" title="Synchroniser les données">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Actualiser</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ==================================================== -->
+            <!-- MODULE 1 : COCKPIT GÉNÉRAL -->
+            <!-- ==================================================== -->
+            <section id="syni-mod-cockpit" class="space-y-8">
+                <!-- Grille des 6 KPIs clés majeurs -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Utilisateurs -->
+                    <div class="bg-stone-900/80 border border-stone-800/80 rounded-2xl p-5">
+                        <div class="flex items-center justify-between text-stone-400 text-xs mb-2">
+                            <span>UTILISATEURS</span>
+                            <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        </div>
+                        <div class="text-2xl font-black text-white" id="kpi-total-users">—</div>
+                        <div class="text-xs text-stone-400 mt-1 font-mono" id="kpi-pro-users">— PRO</div>
+                    </div>
+
+                    <!-- Flotte Active -->
+                    <div class="bg-stone-900/80 border border-stone-800/80 rounded-2xl p-5">
+                        <div class="flex items-center justify-between text-stone-400 text-xs mb-2">
+                            <span>REMORQUES ACTIVES</span>
+                            <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8.5h13v5.5H3V8.5zM7.5 8.5v5.5M12 8.5v5.5M16 13.5h3.5l2 1.5M18.5 13.5v3.5"/></svg>
+                        </div>
+                        <div class="text-2xl font-black text-white" id="kpi-active-trailers">—</div>
+                        <div class="text-xs text-amber-400 mt-1 font-mono" id="kpi-boosted-trailers">— boostées</div>
+                    </div>
+
+                    <!-- Volume Brut GMV -->
+                    <div class="bg-stone-900/80 border border-stone-800/80 rounded-2xl p-5">
+                        <div class="flex items-center justify-between text-stone-400 text-xs mb-2">
+                            <span>VOLUME BRUT PAYÉ</span>
+                            <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div class="text-2xl font-black text-white" id="kpi-gross-volume">— CHF</div>
+                        <div class="text-xs text-stone-400 mt-1 font-mono"><span id="kpi-confirmed-bookings">—</span> réservations</div>
+                    </div>
+
+                    <!-- Revenus Nets Plateforme Renger -->
+                    <div class="bg-stone-900/80 border border-terracotta-500/30 rounded-2xl p-5">
+                        <div class="flex items-center justify-between text-stone-400 text-xs mb-2">
+                            <span class="text-terracotta-400 font-bold">REVENUS NETS RENGER</span>
+                            <svg class="w-4 h-4 text-terracotta-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                        </div>
+                        <div class="text-2xl font-black text-emerald-400" id="kpi-net-platform-revenue">— CHF</div>
+                        <div class="text-xs text-stone-400 mt-1 font-mono">Commissions & frais</div>
+                    </div>
+                </div>
+
+                <!-- Cautions sous séquestre & Conversion -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-stone-400 uppercase tracking-wider">Cautions sous séquestre (Off-Session)</span>
+                            <div class="text-2xl font-black text-amber-400 mt-1" id="kpi-caution-escrow">— CHF</div>
+                            <span class="text-[11px] text-stone-500">Empreintes bancaires non débitées Stripe</span>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-stone-400 uppercase tracking-wider">Taux de conversion global</span>
+                            <div class="text-2xl font-black text-sky-400 mt-1" id="kpi-conversion-rate">— %</div>
+                            <span class="text-[11px] text-stone-500">Réservations confirmées / sessions uniques</span>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphiques Chart.js -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-stone-900 border border-stone-800 rounded-2xl p-6">
+                        <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-terracotta-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                            <span>Flux financier & volume brut (CHF)</span>
+                        </h3>
+                        <div class="h-64">
+                            <canvas id="syni-chart-revenue-trends"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6">
+                        <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-terracotta-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                            <span>Répartition par Canton Suisse</span>
+                        </h3>
+                        <div class="h-64">
+                            <canvas id="syni-chart-cantons"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6">
+                        <h3 class="text-sm font-bold text-white mb-4">Catégories de remorques</h3>
+                        <div class="h-56">
+                            <canvas id="syni-chart-categories"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6">
+                        <h3 class="text-sm font-bold text-white mb-4">Canaux d'Acquisition (Referrers)</h3>
+                        <div class="h-56">
+                            <canvas id="syni-chart-referrers"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================================================== -->
+            <!-- MODULE 2 : UTILISATEURS -->
+            <!-- ==================================================== -->
+            <section id="syni-mod-users" class="hidden space-y-6">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 flex-1 max-w-md">
+                        <input type="text" id="users-search-input" placeholder="Rechercher nom, email ou ID..."
+                            class="w-full px-4 py-2.5 bg-stone-900 border border-stone-800 text-white rounded-xl focus:border-terracotta-500 focus:outline-none text-xs">
+                        <select id="users-filter-type" class="bg-stone-900 border border-stone-800 text-xs text-stone-300 rounded-xl px-3 py-2.5 focus:outline-none">
+                            <option value="all">Tous les comptes</option>
+                            <option value="pro">Membres PRO uniquement</option>
+                            <option value="owners">Propriétaires (≥ 1 remorque)</option>
+                            <option value="renters">Locataires (≥ 1 location)</option>
+                            <option value="admin">Administrateurs</option>
+                        </select>
+                    </div>
+
+                    <button type="button" id="btn-export-users-csv" class="bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Exporter CSV UTF-8</span>
+                    </button>
+                </div>
+
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
+                                    <th class="py-3 px-4 font-bold">Utilisateur</th>
+                                    <th class="py-3 px-4 font-bold">Inscription</th>
+                                    <th class="py-3 px-4 font-bold">Statut</th>
+                                    <th class="py-3 px-4 font-bold">Activité (Flotte / Locations)</th>
+                                    <th class="py-3 px-4 font-bold">Stripe Customer</th>
+                                    <th class="py-3 px-4 font-bold">UUID</th>
+                                </tr>
+                            </thead>
+                            <tbody id="syni-users-tbody" class="text-xs divide-y divide-stone-800/40">
+                                <!-- Injecté dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================================================== -->
+            <!-- MODULE 3 : RÉSERVATIONS & CASHFLOW -->
+            <!-- ==================================================== -->
+            <section id="syni-mod-bookings" class="hidden space-y-6">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 flex-1 max-w-md">
+                        <input type="text" id="bookings-search-input" placeholder="Rechercher réservation, remorque, locataire..."
+                            class="w-full px-4 py-2.5 bg-stone-900 border border-stone-800 text-white rounded-xl focus:border-terracotta-500 focus:outline-none text-xs">
+                        <select id="bookings-filter-status" class="bg-stone-900 border border-stone-800 text-xs text-stone-300 rounded-xl px-3 py-2.5 focus:outline-none">
+                            <option value="all">Tous statuts</option>
+                            <option value="paye">Confirmées / Payées</option>
+                            <option value="termine">Terminées</option>
+                            <option value="annule">Annulées Zero-Loss</option>
+                        </select>
+                    </div>
+
+                    <button type="button" id="btn-export-bookings-csv" class="bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Exporter Cashflow CSV</span>
+                    </button>
+                </div>
+
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
+                                    <th class="py-3 px-4 font-bold">ID</th>
+                                    <th class="py-3 px-4 font-bold">Période</th>
+                                    <th class="py-3 px-4 font-bold">Remorque & Proprio</th>
+                                    <th class="py-3 px-4 font-bold">Locataire</th>
+                                    <th class="py-3 px-4 font-bold">Statut</th>
+                                    <th class="py-3 px-4 font-bold text-right">Total CHF</th>
+                                    <th class="py-3 px-4 font-bold text-right">Renger Net</th>
+                                    <th class="py-3 px-4 font-bold text-right">Proprio Net</th>
+                                    <th class="py-3 px-4 font-bold text-right">Caution</th>
+                                </tr>
+                            </thead>
+                            <tbody id="syni-bookings-tbody" class="text-xs divide-y divide-stone-800/40">
+                                <!-- Injecté dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================================================== -->
+            <!-- MODULE 4 : FLOTTE DE REMORQUES -->
+            <!-- ==================================================== -->
+            <section id="syni-mod-trailers" class="hidden space-y-6">
+                <div class="flex items-center justify-between gap-4 max-w-md">
+                    <input type="text" id="trailers-search-input" placeholder="Filtrer par titre, canton, catégorie..."
+                        class="w-full px-4 py-2.5 bg-stone-900 border border-stone-800 text-white rounded-xl focus:border-terracotta-500 focus:outline-none text-xs">
+                </div>
+
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
+                                    <th class="py-3 px-4 font-bold">Remorque</th>
+                                    <th class="py-3 px-4 font-bold">Canton & Ville</th>
+                                    <th class="py-3 px-4 font-bold">PTAC / Charge utile</th>
+                                    <th class="py-3 px-4 font-bold">Prix / Jour</th>
+                                    <th class="py-3 px-4 font-bold">Caution</th>
+                                    <th class="py-3 px-4 font-bold">Statut Boost</th>
+                                    <th class="py-3 px-4 font-bold">Vues / Clics (CTR)</th>
+                                    <th class="py-3 px-4 font-bold">État</th>
+                                </tr>
+                            </thead>
+                            <tbody id="syni-trailers-tbody" class="text-xs divide-y divide-stone-800/40">
+                                <!-- Injecté dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================================================== -->
+            <!-- MODULE 5 : ÉTATS DES LIEUX & AUDITS -->
+            <!-- ==================================================== -->
+            <section id="syni-mod-inspections" class="hidden space-y-6">
+                <!-- Zone d'alerte des clôtures sans photos de retour -->
+                <div id="syni-inspection-alerts" class="hidden"></div>
+
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="p-5 border-b border-stone-800 flex items-center justify-between">
+                        <h3 class="font-bold text-white text-sm">Inspections Photo 4/4 Géolocalisées (CO art. 257a)</h3>
+                        <span class="text-xs text-stone-400">Horodatage suisse et coordonnées GPS certifiées</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
+                                    <th class="py-3 px-4 font-bold">Réservation / Remorque</th>
+                                    <th class="py-3 px-4 font-bold">Étape</th>
+                                    <th class="py-3 px-4 font-bold">Complétude</th>
+                                    <th class="py-3 px-4 font-bold">GPS & Précision</th>
+                                    <th class="py-3 px-4 font-bold">Horodatage</th>
+                                    <th class="py-3 px-4 font-bold">Preuve</th>
+                                </tr>
+                            </thead>
+                            <tbody id="syni-inspections-tbody" class="text-xs divide-y divide-stone-800/40">
+                                <!-- Injecté dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Journal des Rate Limits & Audit de Sécurité -->
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="p-5 border-b border-stone-800 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                <span>Journal d'Audit & Sécurité (Rate Limits)</span>
+                            </h3>
+                            <p class="text-xs text-stone-400 mt-0.5">Surveillance anti-brute force et protection de l'infrastructure Renger</p>
+                        </div>
+                        <span id="rate-limits-count-badge" class="bg-stone-800 text-stone-300 font-mono text-xs px-2.5 py-1 rounded-full border border-stone-700">0 logs</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse" id="syni-ratelimits-table">
+                            <thead>
+                                <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
+                                    <th class="py-3 px-4 font-bold">Horodatage</th>
+                                    <th class="py-3 px-4 font-bold">Action / Événement</th>
+                                    <th class="py-3 px-4 font-bold">Utilisateur / Cible</th>
+                                    <th class="py-3 px-4 font-bold">Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="syni-ratelimits-tbody" class="text-xs divide-y divide-stone-800/40">
+                                <!-- Injecté dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================================================== -->
+            <!-- MODULE 6 : GOOGLE SEO & ACQUISITION -->
+            <!-- ==================================================== -->
+            <section id="syni-mod-seo" class="hidden space-y-6">
+                <!-- KPIs Search Console -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5">
+                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Clics Organiques Google</div>
+                        <div class="text-2xl font-black text-white" id="seo-kpi-clicks">—</div>
+                        <div class="text-[11px] text-stone-500 mt-1">Trafic naturel google.ch</div>
+                    </div>
+                    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5">
+                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Impressions Recherche</div>
+                        <div class="text-2xl font-black text-white" id="seo-kpi-impressions">—</div>
+                        <div class="text-[11px] text-stone-500 mt-1">Affichages dans les SERPs</div>
+                    </div>
+                    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5">
+                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">CTR Moyen %</div>
+                        <div class="text-2xl font-black text-emerald-400" id="seo-kpi-ctr">—</div>
+                        <div class="text-[11px] text-stone-500 mt-1">Taux de clic organique</div>
+                    </div>
+                    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5">
+                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Position Moyenne google.ch</div>
+                        <div class="text-2xl font-black text-sky-400" id="seo-kpi-position">—</div>
+                        <div class="text-[11px] text-stone-500 mt-1">Classement moyen suisse</div>
+                    </div>
+                </div>
+
+                <!-- Connecteur Google Search Console -->
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                        <div>
+                            <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+                                <span>Connecteur Google Search Console API</span>
+                            </h3>
+                            <p class="text-xs text-stone-400 mt-0.5">Statut : <span id="seo-connector-status" class="font-mono text-emerald-400">Chargement...</span></p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-center gap-3">
+                        <input type="text" id="gsc-token-input" placeholder="Clé API ou Jeton OAuth Search Console..."
+                            class="w-full px-4 py-2.5 bg-stone-950 border border-stone-800 text-white rounded-xl focus:border-amber-500 focus:outline-none text-xs font-mono">
+                        <button type="button" id="btn-save-gsc" class="w-full sm:w-auto bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition whitespace-nowrap active:scale-95">
+                            Enregistrer & Synchroniser
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table des Mots-Clés Suisses Stratégiques -->
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="p-5 border-b border-stone-800">
+                        <h3 class="font-bold text-white text-sm">Suivi des Mots-Clés Prioritaires (Romandie & Suisse)</h3>
+                        <p class="text-xs text-stone-400 mt-0.5">Données de positionnement organique mesurées sur google.ch</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
+                                    <th class="py-3 px-4 font-bold">Mot-clé cible</th>
+                                    <th class="py-3 px-4 font-bold text-center">Position google.ch</th>
+                                    <th class="py-3 px-4 font-bold text-right">Volume suisse</th>
+                                    <th class="py-3 px-4 font-bold text-right">Impressions</th>
+                                    <th class="py-3 px-4 font-bold text-right">Clics</th>
+                                    <th class="py-3 px-4 font-bold text-right">CTR</th>
+                                    <th class="py-3 px-4 font-bold text-center">Évolution</th>
+                                </tr>
+                            </thead>
+                            <tbody id="syni-seo-keywords-tbody" class="text-xs divide-y divide-stone-800/40">
+                                <!-- Injecté dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Analyse des Referrers Organiques en Temps Réel -->
+                <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="p-5 border-b border-stone-800">
+                        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                            <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            <span>Canaux d'Acquisition & Referrers Organiques en Direct</span>
+                        </h3>
+                        <p class="text-xs text-stone-400 mt-0.5">Ventilation des sources de trafic réelles issues des événements analytics</p>
+                    </div>
+                    <div class="p-5 grid grid-cols-2 sm:grid-cols-5 gap-4" id="seo-referrers-grid">
+                        <!-- Injecté dynamiquement -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- PIED DE PAGE UNIVERSEL HARMONISÉ À 3 LIENS LÉGAUX -->
+    <footer class="mt-auto py-8 border-t border-stone-900 bg-stone-950 text-stone-500 text-xs text-center">
+        <div class="flex flex-wrap justify-center gap-6 mb-2">
+            <a href="mentions-legales.html" class="hover:text-terracotta-400 transition">Mentions Légales</a>
+            <a href="cgu.html" class="hover:text-terracotta-400 transition">CGU</a>
+            <a href="politique-confidentialite.html" class="hover:text-terracotta-400 transition">Politique de Confidentialité</a>
+        </div>
+        <p>© 2026 Renger Suisse — Syni Cockpit d'Administration Suprême</p>
+    </footer>
+
+    <!-- CDN & MODULES RENGER -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="https://js.stripe.com/v3/" defer></script>
+    <script src="js/core.js?v=6" defer></script>
+    <script src="js/components.js?v=6" defer></script>
+    <script src="js/syni.js?v=1" defer></script>
+</body>
+</html>
