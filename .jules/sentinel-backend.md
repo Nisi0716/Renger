@@ -1,5 +1,16 @@
 # Sentinel-Backend Journal
 
+## 2026-04-02 - Overly Permissive Row-Level Security Insert Policies on Impressions and Clicks Tables
+
+**Vulnerability:**
+The `impressions` and `clicks` tables used `CREATE POLICY "Allow public insert to impressions" ON impressions FOR INSERT TO public WITH CHECK (true);` and `CREATE POLICY "Allow public insert to clicks" ON clicks FOR INSERT TO public WITH CHECK (true);`. This permitted any unauthenticated or authenticated user to insert arbitrary records into `impressions` and `clicks` while spoofing any `user_id` value (e.g. associating clicks/impressions with victim user IDs), corrupting user analytics and telemetry data.
+
+**Learning:**
+Public INSERT policies for analytics or telemetry tables were created with unconstrained `WITH CHECK (true)` checks to allow unauthenticated visitor tracking without enforcing that provided `user_id` fields match `auth.uid()` when authenticated, or remain `NULL` when anonymous.
+
+**Prevention:**
+When allowing public inserts on tracking/telemetry tables with optional `user_id` foreign keys, always enforce `WITH CHECK (user_id IS NULL OR user_id = auth.uid())` so anonymous requests cannot supply arbitrary `user_id` values and authenticated requests can only insert records attributed to themselves.
+
 ## 2026-04-01 - Missing Row-Level Security Policies on Profiles Table for Mutations
 
 **Vulnerability:**
