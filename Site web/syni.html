@@ -236,6 +236,10 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
                         <span>Palantir Sentinel</span>
                     </button>
+                    <button type="button" id="tab-copilot" class="w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border border-transparent text-stone-400 hover:text-white hover:bg-stone-800/60 transition text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                        <span>Syni Copilot & Colab</span>
+                    </button>
                 </nav>
             </div>
 
@@ -1241,7 +1245,177 @@
                 </div>
             </section>
 
+            <!-- MODULE 10 : SYNI COPILOT & STUDIO COLAB (ASSISTANT IA & CANEVAS MODULAIRE) -->
+            <section id="syni-mod-copilot" class="hidden space-y-8 animate-fade-in">
+                <!-- En-tête du Module 10 -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-800">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-terracotta-500/20 text-terracotta-400 border border-terracotta-500/30 text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full">Module 10 Intelligence</span>
+                            <span class="text-xs text-stone-400">Syni Copilot & Google Colab Bridge v1.0</span>
+                        </div>
+                        <h2 class="text-xl font-black text-white mt-1">Syni Copilot & Studio Modulaire Colab</h2>
+                        <p class="text-xs text-stone-400 mt-0.5">Assistant IA conversationnel, croisement multidimensionnel de données et génération dynamique de graphiques en direct.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <span id="colab-status-pill" class="text-xs font-mono font-bold px-3 py-1.5 rounded-xl border bg-stone-900 border-stone-800 text-stone-300 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <span>Moteur Local (JS Data Science)</span>
+                        </span>
+                        <button type="button" id="btn-colab-export-dataset" class="bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 font-bold py-2 px-3 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 shadow">
+                            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            <span>Export Dataset (JSON)</span>
+                        </button>
+                        <button type="button" id="btn-colab-open-modal" class="bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-2 px-3.5 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 shadow-lg">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <span>Connexion Colab</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interface Split-Screen Studio Dédiée -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[720px]">
+                    <!-- Colonne Gauche (5 cols) : Chat IA Copilot -->
+                    <div class="lg:col-span-5 bg-stone-900 border border-stone-800 rounded-2xl flex flex-col h-[720px] overflow-hidden shadow-xl">
+                        <!-- En-tête du Chat -->
+                        <div class="p-3.5 border-b border-stone-800 flex items-center justify-between bg-stone-950/60">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-terracotta-500/10 border border-terracotta-500/30 flex items-center justify-center text-terracotta-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-bold text-white">Syni Copilot Chat</h3>
+                                    <p class="text-[10px] text-stone-400">Posez vos questions analytiques ou lancez un calcul</p>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-copilot-clear-chat" class="text-stone-400 hover:text-white p-1.5 rounded-lg hover:bg-stone-800 transition" title="Réinitialiser la conversation">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Suggestions d'analyses en 1 clic -->
+                        <div class="p-2.5 border-b border-stone-800/80 bg-stone-950/30 overflow-x-auto">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">Suggestions d'analyses en 1 clic :</div>
+                            <div class="flex items-center gap-1.5 flex-nowrap" id="copilot-shortcuts-bar">
+                                <button type="button" class="btn-copilot-shortcut text-[11px] px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 whitespace-nowrap transition active:scale-95" data-prompt="Croise les filtres de recherche les plus utilisés avec le prix des remorques correspondantes et leur évolution">
+                                    Filtres x Prix des remorques
+                                </button>
+                                <button type="button" class="btn-copilot-shortcut text-[11px] px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 whitespace-nowrap transition active:scale-95" data-prompt="Analyse l'équilibre offre vs demande par canton suisse">
+                                    Offre vs Demande Cantons
+                                </button>
+                                <button type="button" class="btn-copilot-shortcut text-[11px] px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 whitespace-nowrap transition active:scale-95" data-prompt="Quelles sont les opportunités de nouvelles remorques basées sur les recherches sans résultat ?">
+                                    Recherches sans résultat
+                                </button>
+                                <button type="button" class="btn-copilot-shortcut text-[11px] px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 whitespace-nowrap transition active:scale-95" data-prompt="Analyse l'élasticité prix et l'impact sur le taux de réservation">
+                                    Élasticité & Tarifs
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Fil des messages du Chat -->
+                        <div id="copilot-chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
+                            <!-- Messages injectés dynamiquement -->
+                        </div>
+
+                        <!-- Formulaire de saisie du prompt -->
+                        <form id="copilot-chat-form" class="p-3 border-t border-stone-800 bg-stone-950/70 flex items-center gap-2">
+                            <input type="text" id="copilot-input" placeholder="Ex: Croise les filtres de recherche avec le prix des remorques..." autocomplete="off"
+                                class="flex-1 bg-stone-950 border border-stone-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-terracotta-500">
+                            <button type="submit" id="copilot-submit" class="bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition active:scale-95 flex items-center gap-1.5 shadow-md flex-shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                <span>Générer</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Colonne Droite (7 cols) : Canevas Dynamique Modulaire -->
+                    <div class="lg:col-span-7 bg-stone-900 border border-stone-800 rounded-2xl flex flex-col h-[720px] overflow-hidden shadow-xl">
+                        <!-- En-tête du Canevas -->
+                        <div class="p-3.5 border-b border-stone-800 flex items-center justify-between bg-stone-950/60">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-bold text-white">Canevas Dynamique Modulaire</h3>
+                                    <p class="text-[10px] text-stone-400">Visualisations, Graphiques Chart.js et Tableaux Générés en Temps Réel</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" id="btn-clear-canvas" class="text-xs text-stone-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-stone-800 border border-stone-800 transition text-[11px]" title="Effacer tous les widgets générés">
+                                    Vider le canevas
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Espace d'empilement des widgets dynamiques -->
+                        <div id="copilot-dynamic-canvas" class="flex-1 p-5 overflow-y-auto space-y-6">
+                            <!-- Widgets injectés dynamiquement -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
+    </div>
+
+    <!-- MODALE DE CONFIGURATION GOOGLE COLAB -->
+    <div id="syni-colab-modal" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="max-w-xl w-full bg-stone-900 border border-terracotta-500/40 rounded-3xl p-6 shadow-2xl relative space-y-5" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between pb-3 border-b border-stone-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-terracotta-500/10 border border-terracotta-500/30 flex items-center justify-center text-terracotta-400 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">Configuration du Pont Google Colab</h3>
+                        <p class="text-xs text-stone-400">Connexion Python / Data Science pour Syni</p>
+                    </div>
+                </div>
+                <button type="button" id="colab-modal-close" class="text-stone-400 hover:text-white p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-xs text-stone-300">
+                <div class="bg-stone-950/70 p-4 rounded-xl border border-stone-800 space-y-2">
+                    <div class="font-bold text-white flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                        <span>1. Notebook Google Colab Officiel</span>
+                    </div>
+                    <p class="text-stone-400">Téléchargez le notebook prêt à l'emploi avec pandas, scikit-learn et l'API bridge FastAPI :</p>
+                    <a href="renger_analytics_colab.ipynb" download="renger_analytics_colab.ipynb" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700 font-mono text-[11px]">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Télécharger renger_analytics_colab.ipynb</span>
+                    </a>
+                </div>
+
+                <div class="bg-stone-950/70 p-4 rounded-xl border border-stone-800 space-y-2.5">
+                    <div class="font-bold text-white flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span>2. URL Webhook Colab / ngrok (Optionnel)</span>
+                    </div>
+                    <p class="text-stone-400">Si vous lancez un serveur FastAPI dans Colab via ngrok, collez l'URL publique ici pour envoyer les requêtes complexes en direct à Python :</p>
+                    <input type="url" id="colab-endpoint-url" placeholder="https://xxxx-xx-xx.ngrok-free.app/analyze"
+                        class="w-full px-3.5 py-2.5 bg-stone-950 border border-stone-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-terracotta-500">
+                    <p class="text-[10px] text-stone-500 italic">Si ce champ est vide ou déconnecté, Syni utilise automatiquement son moteur analytique JavaScript local pour tous les calculs.</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-stone-800">
+                <button type="button" id="btn-colab-test-connection" class="px-3.5 py-2 rounded-xl text-xs font-bold text-stone-300 bg-stone-800 hover:bg-stone-700 transition">
+                    Tester la connexion
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="colab-modal-cancel" class="px-4 py-2 rounded-xl text-xs font-bold text-stone-400 hover:text-white transition">
+                        Fermer
+                    </button>
+                    <button type="button" id="btn-colab-save-config" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-terracotta-500 hover:bg-terracotta-600 transition shadow-lg">
+                        Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- PIED DE PAGE UNIVERSEL HARMONISÉ À 3 LIENS LÉGAUX -->

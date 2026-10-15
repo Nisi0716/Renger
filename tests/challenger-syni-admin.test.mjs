@@ -787,14 +787,16 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.equal(projNegative.fixedCosts, 0);
         });
 
-        it('syniModule expose toutes les constantes et fonctions opérationnelles Syni Palantir 3.0', () => {
-            assert.equal(syniModule.MODULES.length, 9, '9 modules officiels dans Syni Palantir');
+        it('syniModule expose toutes les constantes et fonctions opérationnelles Syni Palantir 3.0 & Copilot', () => {
+            assert.equal(syniModule.MODULES.length, 10, '10 modules officiels dans Syni Copilot & Palantir');
             assert.ok(syniModule.MODULES.includes('control'), 'Module control exposé');
             assert.ok(syniModule.MODULES.includes('simulator'), 'Module simulator exposé');
             assert.ok(syniModule.MODULES.includes('palantir'), 'Module palantir exposé');
+            assert.ok(syniModule.MODULES.includes('copilot'), 'Module copilot exposé');
             assert.equal(syniModule.BROADCAST_BANNER_KEY, 'renger_broadcast_banner');
             assert.equal(syniModule.MAINTENANCE_MODE_KEY, 'renger_maintenance_mode');
             assert.equal(syniModule.AUDIT_LOG_KEY, 'syni_audit_log');
+            assert.equal(syniModule.COLAB_CONFIG_KEY, 'renger_colab_config');
             assert.equal(typeof syniModule.executeSupremeAction, 'function');
             assert.equal(typeof syniModule.calculateSimulatorProjections, 'function');
             assert.equal(typeof syniModule.openActionModal, 'function');
@@ -1120,6 +1122,181 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.ok(alemanique.trailers > actuel.trailers, 'Expansion alémanique recrute plus de remorques');
             assert.ok(alemanique.netMonthlyRevenue > actuel.netMonthlyRevenue);
             assert.ok(stress.trailers <= actuel.trailers, 'Stress test plus conservateur');
+        });
+    });
+
+    describe('18. Module 10 : Syni Copilot & Studio Modulaire Colab (UI & Structure)', () => {
+        const syniHtml = fs.readFileSync(path.join(siteWebDir, 'syni.html'), 'utf8');
+
+        it('syni.html contient la navigation Module 10 (#tab-copilot) et la section #syni-mod-copilot', () => {
+            assert.ok(syniHtml.includes('id="tab-copilot"'), '#tab-copilot requis dans la barre latérale');
+            assert.ok(syniHtml.includes('id="syni-mod-copilot"'), 'Section #syni-mod-copilot requise');
+        });
+
+        it('syni.html contient l\'interface split-screen studio (chat gauche, canevas droit)', () => {
+            assert.ok(syniHtml.includes('id="copilot-chat-messages"'), 'Conteneur des messages chat requis');
+            assert.ok(syniHtml.includes('id="copilot-chat-form"'), 'Formulaire de saisie prompt requis');
+            assert.ok(syniHtml.includes('id="copilot-input"'), 'Input de chat copilot requis');
+            assert.ok(syniHtml.includes('id="copilot-dynamic-canvas"'), 'Canevas dynamique modulaire droit requis');
+            assert.ok(syniHtml.includes('id="btn-clear-canvas"'), 'Bouton vider canevas requis');
+            assert.ok(syniHtml.includes('id="btn-copilot-clear-chat"'), 'Bouton vider chat requis');
+            assert.ok(syniHtml.includes('btn-copilot-shortcut'), 'Boutons de suggestions rapides en 1 clic requis');
+        });
+
+        it('syni.html contient la modale de configuration Google Colab (#syni-colab-modal)', () => {
+            assert.ok(syniHtml.includes('id="syni-colab-modal"'), '#syni-colab-modal requis');
+            assert.ok(syniHtml.includes('renger_analytics_colab.ipynb'), 'Lien de téléchargement du notebook officiel requis');
+            assert.ok(syniHtml.includes('id="colab-endpoint-url"'), 'Input URL webhook Colab requis');
+            assert.ok(syniHtml.includes('id="btn-colab-save-config"'), 'Bouton enregistrer config Colab requis');
+            assert.ok(syniHtml.includes('id="btn-colab-test-connection"'), 'Bouton test connexion Colab requis');
+        });
+
+        it('Le fichier notebook Jupyter renger_analytics_colab.ipynb existe et est valide', () => {
+            const notebookPath = path.join(process.cwd(), 'renger_analytics_colab.ipynb');
+            assert.ok(fs.existsSync(notebookPath), 'renger_analytics_colab.ipynb doit être présent');
+            const content = fs.readFileSync(notebookPath, 'utf8');
+            const parsed = JSON.parse(content);
+            assert.ok(Array.isArray(parsed.cells), 'Doit contenir des cellules de code/markdown');
+            assert.ok(content.includes('pandas'), 'Doit importer pandas');
+            assert.ok(content.includes('analyze_search_vs_prices'), 'Doit définir l analyse des filtres vs prix');
+            assert.ok(content.includes('FastAPI'), 'Doit contenir le serveur bridge FastAPI');
+        });
+    });
+
+    describe('19. Moteur Analytique : Croisement Filtres x Prix des remorques & Évolution', () => {
+        it('analyzeSearchFiltersVsTrailerPrices croise rigoureusement filtres, budgets et tarifs catalogues', () => {
+            const mockData = {
+                trailers: [
+                    { id: 't1', category: 'Plateau porte-voiture', price: 90, is_active: true },
+                    { id: 't2', category: 'Plateau porte-voiture', price: 80, is_active: true },
+                    { id: 't3', category: 'Fermée / Bagagère', price: 50, is_active: true },
+                    { id: 't4', category: 'Porte-moto', price: 40, is_active: true }
+                ],
+                analytics: [
+                    { event_name: 'search', category: 'Plateau porte-voiture', max_budget: 70 },
+                    { event_name: 'search', category: 'Plateau porte-voiture', max_budget: 75 },
+                    { event_name: 'search', category: 'Plateau porte-voiture', max_budget: 80 },
+                    { event_name: 'search', category: 'Fermée / Bagagère', max_budget: 45 }
+                ]
+            };
+
+            const result = syniModule.analyzeSearchFiltersVsTrailerPrices(mockData);
+            assert.ok(Array.isArray(result.filters), 'filters doit être un tableau');
+            assert.ok(result.filters.length >= 2);
+
+            const plateau = result.filters.find(f => f.category === 'Plateau porte-voiture');
+            assert.ok(plateau, 'Plateau porte-voiture doit être analysé');
+            assert.equal(plateau.catalogCount, 2);
+            assert.equal(plateau.avgCatalogPrice, 85); // (90 + 80) / 2
+            assert.ok(plateau.avgSearchBudget > 0);
+            assert.equal(plateau.priceGap, Math.round((plateau.avgCatalogPrice - plateau.avgSearchBudget) * 10) / 10);
+            assert.ok(plateau.trend, 'Doit comporter une tendance d évolution');
+
+            assert.ok(result.globalStats);
+            assert.ok(result.globalStats.totalSearches > 0);
+            assert.ok(result.globalStats.avgCatalogPrice > 0);
+            assert.ok(Array.isArray(result.recommendations) && result.recommendations.length > 0);
+        });
+
+        it('computeSupplyDemandBalance calcule la saturation territoriale suisse', () => {
+            const balance = syniModule.computeSupplyDemandBalance();
+            assert.ok(Array.isArray(balance.cantons));
+            assert.ok(balance.cantons.length >= 6);
+            const vd = balance.cantons.find(c => c.canton === 'VD');
+            assert.ok(vd, 'Canton de Vaud doit être présent');
+            assert.ok(vd.saturationRatio >= 0);
+            assert.ok(vd.status);
+            assert.ok(balance.summary);
+        });
+
+        it('computePriceElasticity ventile les tranches tarifaires et taux de conversion', () => {
+            const elasticity = syniModule.computePriceElasticity();
+            assert.ok(Array.isArray(elasticity.tiers));
+            assert.equal(elasticity.tiers.length, 4);
+            elasticity.tiers.forEach(t => {
+                assert.ok(t.label);
+                assert.ok(t.conversionRate > 0);
+                assert.ok(t.fleetCount >= 0);
+            });
+            assert.ok(elasticity.insight);
+        });
+    });
+
+    describe('20. Syni Copilot : Traitement du Langage Naturel & Génération Modulaire', () => {
+        it('processCopilotPrompt gère la demande de croisement filtres x prix', () => {
+            const res = syniModule.processCopilotPrompt("Peux-tu croiser les données des filtres de recherche avec le prix des remorques pour voir l'évolution ?");
+            assert.ok(res.responseText.includes('filtres de recherche'));
+            assert.ok(res.widget, 'Un widget dynamique doit être retourné');
+            assert.equal(res.widget.type, 'chart_and_table');
+            assert.equal(res.widget.chartType, 'bar');
+            assert.ok(Array.isArray(res.widget.chartData.labels));
+            assert.ok(Array.isArray(res.widget.chartData.datasets));
+            assert.equal(res.widget.chartData.datasets.length, 2, 'Doit comparer Budget recherché vs Prix catalogue');
+            assert.ok(Array.isArray(res.widget.tableData));
+            assert.ok(res.widget.summaryText);
+        });
+
+        it('processCopilotPrompt gère la demande d\'offre vs demande cantonale', () => {
+            const res = syniModule.processCopilotPrompt("Analyse l'équilibre offre vs demande par canton suisse");
+            assert.ok(res.responseText.includes('Offre vs Demande'));
+            assert.ok(res.widget);
+            assert.equal(res.widget.badge, 'Radar Géographique');
+            assert.ok(res.widget.chartData.labels.includes('VD'));
+        });
+
+        it('processCopilotPrompt gère la recherche d\'opportunités et requêtes sans résultat', () => {
+            const res = syniModule.processCopilotPrompt("Quelles sont les opportunités de nouvelles remorques basées sur les recherches sans résultat ?");
+            assert.ok(res.responseText.includes('opportunités'));
+            assert.ok(res.widget);
+            assert.equal(res.widget.badge, 'Potentiel Business');
+            assert.ok(res.widget.tableData.length >= 3);
+        });
+
+        it('processCopilotPrompt gère l\'élasticité prix', () => {
+            const res = syniModule.processCopilotPrompt("Quelle est l'élasticité prix ?");
+            assert.ok(res.responseText.includes('élasticité'));
+            assert.ok(res.widget);
+            assert.equal(res.widget.chartType, 'line');
+        });
+
+        it('processCopilotPrompt renvoie une synthèse de bienvenue intelligente pour tout autre prompt', () => {
+            const res = syniModule.processCopilotPrompt("Bonjour, que sais-tu faire ?");
+            assert.ok(res.responseText.includes('Syni Copilot'));
+            assert.ok(res.widget);
+        });
+    });
+
+    describe('21. Google Colab Bridge : Configuration, Export Dataset & Fallback', () => {
+        it('getColabConfig et setColabConfig gèrent la persistance locale de la configuration', () => {
+            syniModule.setColabConfig({ endpointUrl: 'https://test-colab.ngrok-free.app/analyze', enabled: true });
+            const cfg = syniModule.getColabConfig();
+            assert.equal(cfg.endpointUrl, 'https://test-colab.ngrok-free.app/analyze');
+            assert.equal(cfg.enabled, true);
+
+            syniModule.setColabConfig({ endpointUrl: '', enabled: false });
+            const cfgReset = syniModule.getColabConfig();
+            assert.equal(cfgReset.endpointUrl, '');
+            assert.equal(cfgReset.enabled, false);
+        });
+
+        it('exportColabDataset formate et exporte fidèlement les données plateforme pour Python', () => {
+            const exported = syniModule.exportColabDataset();
+            assert.ok(exported, 'Doit retourner un objet exporté');
+            assert.equal(exported.meta.source, 'Renger Syni Studio');
+            assert.ok(exported.meta.exported_at);
+            assert.ok(Array.isArray(exported.trailers));
+            assert.ok(Array.isArray(exported.bookings));
+            assert.ok(Array.isArray(exported.search_events));
+            assert.ok(Array.isArray(exported.profiles));
+            assert.ok(exported.kpis);
+        });
+
+        it('queryColabApi bascule de manière transparente sur le moteur JS local en mode hors ligne', async () => {
+            syniModule.setColabConfig({ endpointUrl: '', enabled: false });
+            const res = await syniModule.queryColabApi("filtres et prix");
+            assert.ok(res.responseText);
+            assert.ok(res.widget);
+            assert.equal(res.engine, 'Syni Data Science Local');
         });
     });
 
