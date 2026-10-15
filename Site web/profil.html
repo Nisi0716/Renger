@@ -437,42 +437,6 @@
             </div>
         </div>
 
-        <!-- SECTION COORDONNÉES DE VERSEMENT BANCAIRE (VIREMENT SOUS 48H) -->
-        <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-xl bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                </div>
-                <div>
-                    <h3 class="text-2xl font-bold text-stone-800 dark:text-white">Coordonnées de versement bancaire</h3>
-                    <p class="text-xs text-stone-400">Virement automatique sur votre compte suisse sous 48h après restitution</p>
-                </div>
-            </div>
-            <p class="text-stone-500 dark:text-stone-400 text-sm mb-6">
-                Renseignez votre compte bancaire suisse pour percevoir les revenus de vos locations. Les fonds sont débloqués dès validation de l'état des lieux de retour.
-            </p>
-
-            <form onsubmit="handleSaveBankDetails(event)" class="space-y-4 max-w-lg">
-                <div>
-                    <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Titulaire du compte (Nom et prénom ou Raison sociale)</label>
-                    <input type="text" id="settings-fullname" placeholder="Ex: Marc Dubois ou Menuiserie Dubois Sàrl"
-                        class="w-full px-4 py-3 border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white rounded-xl focus:border-terracotta-500 focus:outline-none transition" required>
-                </div>
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">IBAN suisse</label>
-                        <span class="text-[11px] text-stone-400 font-mono">CH.. .... .... .... .</span>
-                    </div>
-                    <input type="text" id="settings-iban" placeholder="CH93 0076 2011 6238 5295 7" maxlength="26"
-                        class="w-full px-4 py-3 border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 dark:text-white font-mono rounded-xl focus:border-terracotta-500 focus:outline-none transition uppercase" required>
-                    <p id="settings-iban-feedback" class="text-xs mt-1 text-stone-400">Virement sous 48h ouvrées après retour de remorque.</p>
-                </div>
-                <button type="submit" id="settings-save-bank-btn" class="bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 text-white font-bold py-3 px-6 rounded-xl transition active:scale-95 flex items-center gap-2">
-                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    <span>Enregistrer mes coordonnées bancaires</span>
-                </button>
-            </form>
-        </div>
 
         <!-- SECTION SÉCURITÉ & MOT DE PASSE -->
         <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
@@ -560,8 +524,8 @@
                 </div>
             </div>
 
-            <p class="text-stone-600 dark:text-stone-400 mb-8 max-w-xl">
-                C'est l'étape finale ! Pour recevoir automatiquement l'argent de vos locations (80% du montant net), notre partenaire financier Stripe doit vérifier votre profil.
+            <p id="settings-stripe-explainer" class="text-stone-600 dark:text-stone-400 mb-8 max-w-xl">
+                C'est l'étape finale ! Pour recevoir automatiquement l'argent de vos locations (80% du montant net, ou 100% pour les membres PRO), notre partenaire financier Stripe doit vérifier votre profil.
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

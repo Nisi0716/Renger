@@ -120,18 +120,19 @@ describe('Challenger Suite: Trailer Owner Experience & Swiss Business Rigor (Mar
         });
     });
 
-    describe('Item 6: Bank Details UI & Validation (Swiss IBAN)', () => {
+    describe('Item 6: Bank Details UI & Stripe Connect Integration', () => {
         let trailers;
         beforeEach(async () => {
             const trailersModule = await import('../Site web/js/trailers.js');
             trailers = trailersModule.default || trailersModule;
         });
 
-        it('profil.html must contain #settings-fullname and #settings-iban fields', () => {
+        it('profil.html must contain Stripe Connect onboarding button and status badge, without manual IBAN box', () => {
             const html = fs.readFileSync(path.join(siteWebDir, 'profil.html'), 'utf8');
-            assert.ok(html.includes('id="settings-fullname"'), 'profil.html doit inclure #settings-fullname');
-            assert.ok(html.includes('id="settings-iban"'), 'profil.html doit inclure #settings-iban');
-            assert.ok(html.includes('handleSaveBankDetails(event)'), 'profil.html doit soumettre via handleSaveBankDetails');
+            assert.ok(html.includes('id="settings-stripe-btn"'), 'profil.html doit inclure #settings-stripe-btn');
+            assert.ok(html.includes('id="settings-stripe-status-badge"'), 'profil.html doit inclure #settings-stripe-status-badge');
+            assert.ok(html.includes('setupStripePayouts()'), 'profil.html doit déclencher setupStripePayouts()');
+            assert.ok(!html.includes('id="settings-iban"'), 'profil.html ne doit plus contenir la saisie manuelle d IBAN (#settings-iban supprimé)');
         });
 
         it('trailers.js isValidSwissIBAN must accurately validate Swiss ISO 7064 mod 97 check', () => {

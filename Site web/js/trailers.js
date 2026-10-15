@@ -1652,6 +1652,16 @@ async function loadProfileSettings() {
         if (alertEl) alertEl.classList.add('hidden');
     }
 
+    // Texte explicatif Stripe Connect selon statut PRO
+    const explainer = document.getElementById('settings-stripe-explainer');
+    if (explainer) {
+        if (profile.is_pro) {
+            explainer.innerHTML = `C'est l'étape finale ! Pour recevoir automatiquement <strong class="text-terracotta-500 font-bold">100% de vos revenus locatifs</strong> (0% de commission avec Renger PRO), notre partenaire financier Stripe doit vérifier votre compte.`;
+        } else {
+            explainer.innerHTML = `C'est l'étape finale ! Pour recevoir automatiquement l'argent de vos locations (<strong class="text-stone-800 dark:text-stone-200 font-bold">80% du montant net</strong>), notre partenaire financier Stripe doit vérifier votre compte.`;
+        }
+    }
+
     // Statut Abonnement PRO dans Paramètres
     const proActiveCard = document.getElementById('pro-active-card');
     const proUpsellCard = document.getElementById('settings-pro-upsell-card');

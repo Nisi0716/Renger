@@ -1335,6 +1335,15 @@ async function setupStripePayouts() {
     if (!currentUser || isSettingUpStripe) return;
     isSettingUpStripe = true;
     showToast("Génération du lien sécurisé Stripe...", "info");
+
+    const btn = document.getElementById('settings-stripe-btn');
+    const btnText = document.getElementById('settings-stripe-btn-text');
+    const originalText = btnText ? btnText.textContent : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+    }
+    if (btnText) btnText.textContent = "Connexion sécurisée à Stripe...";
     
     try {
         // Récupérer le stripe_account_id actuel si déjà enregistré
@@ -1359,9 +1368,19 @@ async function setupStripePayouts() {
             window.location.href = data.url; 
         } else {
             showToast("Erreur Stripe : " + (data.error || "Lien de configuration introuvable"), "error");
+            if (btn) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+            if (btnText) btnText.textContent = originalText;
         }
     } catch (err) {
         showToast("Erreur Stripe : " + err.message, "error");
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+        if (btnText) btnText.textContent = originalText;
     } finally {
         isSettingUpStripe = false;
     }
