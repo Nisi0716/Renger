@@ -1059,14 +1059,40 @@ function initMaintenanceMode() {
                     </div>
                     <h1 class="text-2xl font-black text-white">Maintenance en Cours</h1>
                     <p class="text-xs text-stone-300 leading-relaxed">${msg}</p>
-                    <div class="pt-4 border-t border-stone-800">
-                        <a href="syni.html" class="text-[11px] text-stone-500 hover:text-stone-300 transition">Administration Syni</a>
+                    <div class="pt-4 border-t border-stone-800 text-stone-500 text-[10px]">
+                        <span>Renger Infrastructure v2.4</span>
                     </div>
                 </div>
             `;
             document.body.appendChild(overlayEl);
         }
     } catch (_) {}
+}
+
+// Déclencheurs furtifs d'accès secret à Syni (Raccourci clavier Cmd+Shift+S / Ctrl+Shift+S et 5 clics footer)
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function' && typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    window.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+            e.preventDefault();
+            window.location.href = 'syni.html';
+        }
+    });
+
+    let secretFooterClicks = 0;
+    let secretFooterTimer = null;
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target && typeof target.textContent === 'string' && target.textContent.includes('Renger Suisse')) {
+            secretFooterClicks++;
+            clearTimeout(secretFooterTimer);
+            if (secretFooterClicks >= 5) {
+                secretFooterClicks = 0;
+                window.location.href = 'syni.html';
+            } else {
+                secretFooterTimer = setTimeout(() => { secretFooterClicks = 0; }, 2500);
+            }
+        }
+    });
 }
 
 if (typeof document !== 'undefined') {

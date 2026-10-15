@@ -4852,8 +4852,11 @@
             return;
         }
 
-        // L'utilisateur est autorisé : on masque le guard
+        // L'utilisateur est autorisé : on masque le guard 404 et active le titre officiel Syni
         if (authGuard) authGuard.classList.add('hidden');
+        if (typeof document !== 'undefined') {
+            document.title = "Syni — Cockpit d'Administration Suprême Renger";
+        }
 
         // 3. Contrôle du 2ème facteur (Passphrase Maîtresse SYNI_MASTER_KEY)
         if (!isSessionUnlocked()) {

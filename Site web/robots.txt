@@ -1,0 +1,18 @@
+# Renger.ch — Directives d'indexation pour robots d'exploration
+User-agent: *
+Disallow: /syni.html
+Disallow: /syni
+Disallow: /supabase/
+Disallow: /tests/
+
+User-agent: Googlebot
+Disallow: /syni.html
+Disallow: /syni
+
+User-agent: Bingbot
+Disallow: /syni.html
+Disallow: /syni
+
+User-agent: Applebot
+Disallow: /syni.html
+Disallow: /syni

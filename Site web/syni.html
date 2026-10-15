@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Syni — Cockpit d'Administration Suprême Renger</title>
-    <meta name="description" content="Panel d'administration suprême Syni pour Renger Suisse : centralisation de l'ensemble des données utilisateurs, remorques, réservations, inspections et Google SEO.">
-    <meta name="robots" content="noindex, nofollow">
-    <link rel="canonical" href="https://renger.ch/syni.html">
+    <title>Page introuvable — Renger</title>
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet">
     <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg?v=2">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     
@@ -41,20 +41,15 @@
 </head>
 <body class="bg-stone-950 text-stone-100 font-sans antialiased min-h-screen flex flex-col selection:bg-terracotta-500 selection:text-white">
 
-    <!-- ECRAN DE GARDE ACCES REFUSE / NON CONNECTE -->
+    <!-- ECRAN DE GARDE ACCES REFUSE / NON CONNECTE (STEALTH 404) -->
     <div id="syni-auth-guard" class="hidden fixed inset-0 z-50 bg-stone-950 flex items-center justify-center p-4">
-        <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-8 text-center shadow-2xl">
-            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-500">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            </div>
-            <h1 class="text-2xl font-bold text-white mb-2">Syni — Espace Restreint</h1>
-            <p class="text-stone-400 text-sm mb-6">Ce cockpit d'administration suprême est strictement réservé au compte officiel de gestion Renger. Veuillez vous connecter avec le compte autorisé.</p>
-            <div class="space-y-3">
-                <a href="index.html" class="block w-full bg-stone-800 hover:bg-stone-700 text-white font-bold py-3 px-4 rounded-xl transition text-sm">
+        <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-8 text-center shadow-2xl space-y-4">
+            <div class="text-6xl font-black font-mono text-stone-700 select-none">404</div>
+            <h1 class="text-xl font-bold text-white mb-2">Page introuvable</h1>
+            <p class="text-stone-400 text-xs leading-relaxed mb-6">La ressource demandée n'existe pas, a été déplacée ou est temporairement indisponible.</p>
+            <div>
+                <a href="index.html" class="inline-block bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-6 rounded-xl transition text-xs">
                     Retour à l'accueil
-                </a>
-                <a href="profil.html" class="block w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 px-4 rounded-xl transition text-sm">
-                    Se connecter à Mon Espace
                 </a>
             </div>
         </div>
