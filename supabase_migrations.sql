@@ -220,3 +220,18 @@ CREATE POLICY "Allow admin to read clicks" ON public.clicks
 DROP POLICY IF EXISTS "Allow admin to read analytics_events" ON public.analytics_events;
 CREATE POLICY "Allow admin to read analytics_events" ON public.analytics_events
     FOR SELECT TO authenticated USING (public.is_syni_admin());
+
+-- ==========================================
+-- 15. EXPÉRIENCE PROPRIÉTAIRE RENGER (VIREMENT 48H & SPÉCIFICITÉS SUISSES)
+-- ==========================================
+-- Profils : Titulaire du compte et IBAN suisse pour virement bancaire sous 48h
+ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS full_name text,
+ADD COLUMN IF NOT EXISTS iban text;
+
+-- Remorques : Système de freinage, plaque cantonale suisse, caution personnalisable et antivol
+ALTER TABLE trailers 
+ADD COLUMN IF NOT EXISTS is_braked boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS license_plate text,
+ADD COLUMN IF NOT EXISTS deposit_amount integer DEFAULT 200,
+ADD COLUMN IF NOT EXISTS has_hitch_lock boolean DEFAULT false;

@@ -237,6 +237,9 @@ async function updateGPSStatusBadge() {
 async function startCamera(facing = 'environment') {
     stopCamera();
     try {
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+            throw new Error("getUserMedia non supporté");
+        }
         videoStream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: facing,
@@ -246,9 +249,13 @@ async function startCamera(facing = 'environment') {
         });
         const feed = document.getElementById('camera-feed');
         if (feed) feed.srcObject = videoStream;
+        const fallbackBtn = document.getElementById('inspection-fallback-btn');
+        if (fallbackBtn) fallbackBtn.classList.add('hidden');
     } catch (err) {
         console.warn("Erreur caméra :", err.message);
-        showToast("Impossible d'accéder à la caméra.", "error");
+        const fallbackBtn = document.getElementById('inspection-fallback-btn');
+        if (fallbackBtn) fallbackBtn.classList.remove('hidden');
+        showToast("Impossible d'accéder à la caméra directe. Mode secours smartphone activé.", "info");
     }
 }
 
@@ -311,6 +318,12 @@ async function takeGuidedInspectionPhoto() {
     if (inspectionContext.isCapturing) return;
     const feed = document.getElementById('camera-feed');
     if (!feed || !videoStream) {
+        const fallbackInput = document.getElementById('inspection-fallback-file');
+        if (fallbackInput) {
+            showToast("Ouverture de l'appareil photo smartphone...", "info");
+            fallbackInput.click();
+            return;
+        }
         return showToast("La caméra n'est pas active.", "error");
     }
 
@@ -556,5 +569,239 @@ if (typeof window !== 'undefined') {
 // Alias pour compatibilité
 async function takePhoto() {
     return takeGuidedInspectionPhoto();
+}
+
+/**
+ * Déclenche le sélecteur photo natif du smartphone
+ */
+function triggerFallbackCamera() {
+    const input = document.getElementById('inspection-fallback-file');
+    if (input) {
+        input.click();
+    }
+}
+
+/**
+ * Traite la photo prise via l'appareil photo natif du smartphone (mode secours)
+ */
+async function handleFallbackInspectionPhoto(event) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+
+    const currentStep = INSPECTION_STEPS[inspectionContext.currentStepIndex];
+    if (!currentStep) return;
+
+    // Validation stricte du fichier (MIME type, extension, taille et magic bytes)
+    const ext = (file.name || '').split('.').pop().toLowerCase();
+    if (['svg', 'html', 'htm', 'php', 'js', 'exe'].includes(ext) || (file.type && file.type === 'image/svg+xml')) {
+        showToast(`Format de fichier non autorisé (${ext}).`, "error");
+        if (event?.target) event.target.value = '';
+        return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+        showToast("La photo dépasse 25 Mo. Veuillez sélectionner une photo plus légère.", "error");
+        if (event?.target) event.target.value = '';
+        return;
+    }
+
+    if (typeof validateImageMagicBytes === 'function') {
+        const isMagicValid = await validateImageMagicBytes(file);
+        if (!isMagicValid) {
+            showToast("Le fichier sélectionné n'est pas une image valide.", "error");
+            if (event?.target) event.target.value = '';
+            return;
+        }
+    }
+
+    inspectionContext.isCapturing = true;
+    showToast(`Traitement de la photo étape ${currentStep.step}/4...`, "info");
+
+    let objectUrl = null;
+    try {
+        const img = new Image();
+        objectUrl = URL.createObjectURL(file);
+        
+        await new Promise((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error("Impossible de lire l'image"));
+            img.src = objectUrl;
+        });
+
+        const canvas = document.createElement('canvas');
+        const maxDimension = 1280;
+        let cWidth = img.naturalWidth || img.width || 1280;
+        let cHeight = img.naturalHeight || img.height || 720;
+        if (cWidth > maxDimension || cHeight > maxDimension) {
+            if (cWidth >= cHeight) {
+                cHeight = Math.round((cHeight * maxDimension) / cWidth);
+                cWidth = maxDimension;
+            } else {
+                cWidth = Math.round((cWidth * maxDimension) / cHeight);
+                cHeight = maxDimension;
+            }
+        }
+        canvas.width = cWidth;
+        canvas.height = cHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        if (objectUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+        }
+
+        // Obtenir géolocalisation et horodatage
+        const now = new Date();
+        const coords = await getCurrentCoordinates();
+
+        // Incruster le filigrane légal certifié inaltérable
+        applyInspectionWatermark(ctx, canvas.width, canvas.height, currentStep, coords, now);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        const photoRecord = {
+            step: currentStep.step,
+            title: currentStep.title,
+            desc: currentStep.instruction,
+            dataUrl: dataUrl,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: coords.accuracy,
+            timestamp: now.toISOString(),
+            image_url: null
+        };
+
+        if (!inspectionContext.capturedPhotos) {
+            inspectionContext.capturedPhotos = [];
+        }
+        inspectionContext.capturedPhotos.push(photoRecord);
+
+        const isFinalStep = inspectionContext.currentStepIndex >= 3;
+        const stepNum = currentStep.step;
+
+        if (!isFinalStep) {
+            inspectionContext.currentStepIndex++;
+            updateInspectionHUD();
+            showToast(`Étape ${stepNum}/4 validée ! Passez à l'étape ${inspectionContext.currentStepIndex + 1}.`, "success");
+            inspectionContext.isCapturing = false;
+        }
+
+        // Tâche de fond pour l'enregistrement BDD & Storage
+        const uploadTask = (async () => {
+            try {
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+                if (!blob) return;
+
+                const timestamp = Date.now();
+                const mode = inspectionContext.mode;
+                const trailerId = inspectionContext.trailerId || 'generale';
+                const filePath = `${currentUser?.id || 'public'}/${trailerId}/${mode}_step${stepNum}_${timestamp}.jpg`;
+                photoRecord.image_url = filePath;
+
+                if (supabaseClient && currentUser) {
+                    const { error: uploadError } = await supabaseClient.storage
+                        .from('inspections')
+                        .upload(filePath, blob, {
+                            contentType: 'image/jpeg',
+                            upsert: false
+                        });
+
+                    if (uploadError) {
+                        console.warn(`[Inspection] Erreur upload repli étape ${stepNum}:`, uploadError.message);
+                    }
+
+                    const dateStr = now.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const timeStr = now.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const modeLabel = mode === 'departure' ? 'départ' : 'retour';
+                    const content = `[État des lieux de ${modeLabel}] Étape ${stepNum}/4 : ${currentStep.title} — Enregistré le ${dateStr} à ${timeStr} (${coords.text})`;
+                    const receiverId = inspectionContext.receiverId || activeChatPartnerId || (currentUser.id === currentTrailer?.owner_id ? null : currentTrailer?.owner_id);
+
+                    await Promise.allSettled([
+                        supabaseClient.from('messages').insert([{
+                            sender_id: currentUser.id,
+                            receiver_id: receiverId,
+                            trailer_id: trailerId,
+                            content: content,
+                            image_url: filePath
+                        }]),
+                        supabaseClient.from('inspections').insert([{
+                            trailer_id: trailerId,
+                            user_id: currentUser.id,
+                            mode: mode,
+                            step: stepNum,
+                            image_url: filePath,
+                            latitude: coords.latitude,
+                            longitude: coords.longitude,
+                            accuracy: coords.accuracy,
+                            timestamp: now.toISOString()
+                        }])
+                    ]);
+                }
+            } catch (bgErr) {
+                console.warn(`[Inspection] Tâche de fond repli étape ${stepNum} warning:`, bgErr);
+            }
+        })();
+
+        if (!inspectionContext.pendingUploads) {
+            inspectionContext.pendingUploads = [];
+        }
+        inspectionContext.pendingUploads.push(uploadTask);
+
+        if (isFinalStep) {
+            stopCamera();
+            stopInspectionClock();
+            stopGPSTracking();
+
+            showToast("Finalisation de l'enregistrement...", "info");
+            try {
+                await Promise.allSettled(inspectionContext.pendingUploads);
+            } catch (waitErr) {
+                console.warn("[Inspection] Erreur attente uploads:", waitErr);
+            }
+
+            showToast("État des lieux complet enregistré (4/4 photos) !", "success");
+
+            const completedSession = {
+                id: inspectionContext.bookingId || inspectionContext.trailerId || 'EDL' + Date.now().toString(36),
+                booking_id: inspectionContext.bookingId,
+                trailer_id: inspectionContext.trailerId,
+                mode: inspectionContext.mode,
+                receiver_id: inspectionContext.receiverId,
+                completedAt: now.toISOString(),
+                photos: inspectionContext.capturedPhotos ? [...inspectionContext.capturedPhotos] : []
+            };
+
+            if (typeof window !== 'undefined') {
+                window.lastInspectionSession = completedSession;
+            }
+
+            showInspectionSuccessModal(completedSession);
+            inspectionContext.isCapturing = false;
+        }
+
+    } catch (err) {
+        showToast("Erreur lors du traitement de la photo : " + err.message, "error");
+        inspectionContext.isCapturing = false;
+    } finally {
+        if (objectUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+            URL.revokeObjectURL(objectUrl);
+        }
+        if (event?.target) event.target.value = '';
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.triggerFallbackCamera = triggerFallbackCamera;
+    window.handleFallbackInspectionPhoto = handleFallbackInspectionPhoto;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        triggerFallbackCamera,
+        handleFallbackInspectionPhoto,
+        startCamera,
+        stopCamera,
+        takeGuidedInspectionPhoto,
+        INSPECTION_STEPS
+    };
 }
 

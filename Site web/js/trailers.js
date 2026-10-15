@@ -204,127 +204,11 @@ function updateLegalPermitBadge() {
 }
 
 /**
- * Générateur de description automatique et pédagogie légale intégrée
+ * Descriptions automatiques désactivées (le propriétaire rédige librement sa propre description).
+ * Fonction conservée en no-op pour compatibilité ascendante.
  */
-function generateAutoDescription(force = false) {
-    const descTextarea = document.getElementById('ad-desc');
-    if (!descTextarea) return;
-
-    if (!force && hasUserEditedDescription && descTextarea.value.trim() !== '') {
-        return;
-    }
-
-    const title = (document.getElementById('ad-title')?.value || '').trim();
-    const category = document.querySelector('input[name="category"]:checked')?.value || 'utilitaire';
-    const payload = parseInt(document.getElementById('ad-payload')?.value, 10);
-    const ptac = parseInt(document.getElementById('ad-ptac')?.value, 10);
-    const lengthCm = parseInt(document.getElementById('ad-length')?.value, 10);
-    const widthCm = parseInt(document.getElementById('ad-width')?.value, 10);
-    const heightCm = parseInt(document.getElementById('ad-height')?.value, 10);
-    const prise = document.querySelector('input[name="prise"]:checked')?.value || '7 broches';
-    
-    const equipmentCheckboxes = document.querySelectorAll('input[name="equipments"]:checked');
-    const equipments = Array.from(equipmentCheckboxes).map(cb => cb.value);
-
-    const upsellCheckboxes = document.querySelectorAll('input[name="upsell"]:checked');
-    const upsells = Array.from(upsellCheckboxes).map(cb => cb.value);
-
-    // 1. Phrasing catégorie & introduction
-    const categoryNames = {
-        'utilitaire': 'remorque utilitaire polyvalente',
-        'cheval': 'van à chevaux spacieux et sécurisé',
-        'voiture': 'remorque porte-voiture robuste',
-        'moto': 'remorque porte-moto équipée',
-        'refrigere': 'remorque frigorifique sous température dirigée',
-        'porte-velo': 'remorque bagagère / porte-vélo pratique'
-    };
-    const catLabel = categoryNames[category] || 'remorque';
-
-    let intro = title ? `${title}.` : `À louer : superbe ${catLabel}, propre et parfaitement entretenue.`;
-
-    // 2. Charge utile
-    let payloadSentence = '';
-    if (payload && !isNaN(payload) && payload > 0) {
-        payloadSentence = `Cette remorque offre une charge utile de ${payload} kg, idéale pour vos transports et déménagements.`;
-    } else {
-        payloadSentence = `Idéale pour vos transports, déménagements et trajets en toute sérénité.`;
-    }
-
-    // 3. Prise électrique
-    let socketSentence = prise === '13 broches'
-        ? "Équipée d'une prise électrique 13 broches (feux de recul et alimentation permanente inclus)."
-        : "Équipée d'une prise électrique standard 7 broches compatible avec tous les véhicules légers.";
-
-    // 4. Équipements inclus
-    const equipLabels = {
-        'sangles': "sangles d'arrimage professionnelles",
-        'bache': "bâche de protection étanche",
-        'treuil': "treuil mécanique renforcé",
-        'rames': "rampes de chargement aluminium"
-    };
-    let equipSentence = '';
-    if (equipments.length > 0) {
-        const readableEquips = equipments.map(e => equipLabels[e] || e);
-        if (readableEquips.length === 1) {
-            equipSentence = `Équipement inclus sans supplément : ${readableEquips[0]}.`;
-        } else {
-            const last = readableEquips.pop();
-            equipSentence = `Équipements inclus sans supplément : ${readableEquips.join(', ')} et ${last}.`;
-        }
-    } else {
-        equipSentence = "Matériel révisé régulièrement et prêt à prendre la route immédiatement.";
-    }
-
-    // 5. Options facultatives (upsells)
-    const upsellLabels = {
-        'diable': 'diable de manutention',
-        'sangles-pro': 'kit sangles à cliquet pro',
-        'antivol': 'antivol de timon haute sécurité',
-        'adaptateur': 'adaptateur 7/13 broches'
-    };
-    let upsellSentence = '';
-    if (upsells.length > 0) {
-        const readableUpsells = upsells.map(u => upsellLabels[u] || u);
-        upsellSentence = `Options disponibles sur demande : ${readableUpsells.join(', ')}.`;
-    }
-
-    let specsSentence = '';
-    const specsParts = [];
-    if (ptac && !isNaN(ptac) && ptac > 0) {
-        specsParts.push(`PTAC : ${ptac} kg`);
-    }
-    if (lengthCm && !isNaN(lengthCm) && lengthCm > 0 && widthCm && !isNaN(widthCm) && widthCm > 0) {
-        if (heightCm && !isNaN(heightCm) && heightCm > 0) {
-            specsParts.push(`Dimensions utiles : ${lengthCm} x ${widthCm} x ${heightCm} cm`);
-        } else {
-            specsParts.push(`Dimensions utiles : ${lengthCm} x ${widthCm} cm`);
-        }
-    }
-    if (specsParts.length > 0) {
-        specsSentence = `Caractéristiques : ${specsParts.join(', ')}.`;
-    }
-
-    // 6. Mention Légale Suisse (LCR / OAC)
-    const isHeavy = (payload && payload > 750) || category === 'cheval' || category === 'voiture';
-    const legalNotice = isHeavy
-        ? "Réglementation suisse : **Permis BE requis** pour tracter cette remorque (charge utile > 750 kg ou véhicule spécialisé)."
-        : "Réglementation suisse : **Permis B suffisant** pour tracter cette remorque avec tout véhicule de tourisme (charge utile ≤ 750 kg).";
-
-    // Assemblage final fluide
-    const paragraphs = [
-        intro,
-        [payloadSentence, specsSentence, socketSentence, equipSentence, upsellSentence].filter(Boolean).join(' '),
-        legalNotice
-    ];
-
-    descTextarea.value = paragraphs.join('\n\n');
-
-    if (force) {
-        hasUserEditedDescription = false;
-        if (typeof showToast === 'function') {
-            showToast("Description automatique générée !", "info");
-        }
-    }
+function generateAutoDescription() {
+    // Les descriptions automatiques sont désactivées. Le propriétaire rédige sa description.
 }
 
 /**
@@ -333,19 +217,12 @@ function generateAutoDescription(force = false) {
 function initSellerPageDynamicTools() {
     const priceInput = document.getElementById('ad-price');
     const payloadInput = document.getElementById('ad-payload');
-    const titleInput = document.getElementById('ad-title');
-    const descInput = document.getElementById('ad-desc');
 
     if (!priceInput || !payloadInput) return;
 
     // Mise à jour immédiate de la jauge et du permis
     updateSmartPricingFeedback();
     updateLegalPermitBadge();
-
-    // Si la description est vide, pré-remplir automatiquement
-    if (descInput && (!descInput.value || descInput.value.trim() === '')) {
-        generateAutoDescription(false);
-    }
 
     if (sellerDynamicToolsInitialized) return;
     sellerDynamicToolsInitialized = true;
@@ -359,69 +236,99 @@ function initSellerPageDynamicTools() {
     payloadInput.addEventListener('input', () => {
         updateSmartPricingFeedback();
         updateLegalPermitBadge();
-        generateAutoDescription(false);
     });
-
-    // Écouteurs sur le titre
-    if (titleInput) {
-        titleInput.addEventListener('input', () => {
-            generateAutoDescription(false);
-        });
-    }
-
-    // Détection de modification manuelle de la description
-    if (descInput) {
-        descInput.addEventListener('input', () => {
-            hasUserEditedDescription = true;
-        });
-    }
 
     // Écouteurs sur les catégories (radio)
     document.querySelectorAll('input[name="category"]').forEach(radio => {
         radio.addEventListener('change', () => {
             updateSmartPricingFeedback();
             updateLegalPermitBadge();
-            generateAutoDescription(false);
         });
     });
+}
 
-    // Écouteurs sur la prise électrique (radio)
-    document.querySelectorAll('input[name="prise"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            generateAutoDescription(false);
-        });
-    });
+/**
+ * Extrait les données du formulaire d'annonce pour sauvegarde de brouillon
+ */
+function getTrailerFormDraft() {
+    const form = document.getElementById('add-trailer-form');
+    if (!form) return null;
+    const equipments = Array.from(document.querySelectorAll('input[name="equipments"]:checked')).map(cb => cb.value);
+    const upsells = Array.from(document.querySelectorAll('input[name="upsell"]:checked')).map(cb => cb.value);
+    const category = document.querySelector('input[name="category"]:checked')?.value || 'utilitaire';
+    const socket = document.querySelector('input[name="prise"]:checked')?.value || '7 broches';
+    const is_braked = document.querySelector('input[name="is_braked"]:checked')?.value === 'true';
+    const deposit_amount = parseInt(document.querySelector('input[name="deposit_amount"]:checked')?.value, 10) || 200;
+    const has_hitch_lock = Boolean(document.getElementById('ad-hitch-lock')?.checked);
+    const monetization_mode = document.querySelector('input[name="monetization_mode"]:checked')?.value || 'standard';
 
-    // Écouteurs sur les équipements (checkbox)
-    document.querySelectorAll('input[name="equipments"]').forEach(cb => {
-        cb.addEventListener('change', () => {
-            generateAutoDescription(false);
-        });
-    });
+    return {
+        title: document.getElementById('ad-title')?.value || '',
+        location: document.getElementById('ad-location')?.value || '',
+        license_plate: document.getElementById('ad-license-plate')?.value || '',
+        price: document.getElementById('ad-price')?.value || '',
+        payload: document.getElementById('ad-payload')?.value || '',
+        ptac: document.getElementById('ad-ptac')?.value || '',
+        length: document.getElementById('ad-length')?.value || '',
+        width: document.getElementById('ad-width')?.value || '',
+        height: document.getElementById('ad-height')?.value || '',
+        description: document.getElementById('ad-desc')?.value || '',
+        category,
+        socket,
+        is_braked,
+        deposit_amount,
+        has_hitch_lock,
+        monetization_mode,
+        equipments,
+        upsells,
+        saved_at: Date.now()
+    };
+}
 
-    // Écouteurs sur les upsells (checkbox)
-    document.querySelectorAll('input[name="upsell"]').forEach(cb => {
-        cb.addEventListener('change', () => {
-            generateAutoDescription(false);
-        });
-    });
-
-    // Écouteurs sur les caractéristiques (PTAC et dimensions)
-    ['ad-ptac', 'ad-length', 'ad-width', 'ad-height'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('input', () => {
-                generateAutoDescription(false);
-            });
-        }
+function fileToDataURL(file) {
+    if (!file || typeof FileReader === 'undefined') return Promise.resolve(null);
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
     });
 }
 
 async function handlePublish(event) {
     event.preventDefault();
     if (!currentUser) {
-        showToast("Vous devez être connecté pour publier.", "error");
-        openAuthModal();
+        const draft = getTrailerFormDraft();
+        if (draft && typeof localStorage !== 'undefined') {
+            try {
+                localStorage.setItem('renger_pending_trailer', JSON.stringify(draft));
+            } catch (e) {
+                console.warn("Échec sauvegarde brouillon localStorage:", e);
+            }
+        }
+        // Sauvegarde des photos en attente dans sessionStorage (sérialisation base64 Data URL)
+        if (typeof pendingPhotos !== 'undefined' && Array.isArray(pendingPhotos) && pendingPhotos.length > 0 && typeof sessionStorage !== 'undefined') {
+            try {
+                const photosData = await Promise.all(pendingPhotos.map(async (p, idx) => {
+                    const dataUrl = await fileToDataURL(p.file);
+                    return {
+                        name: p.file?.name || `photo_${idx}.jpg`,
+                        type: p.file?.type || 'image/jpeg',
+                        dataUrl: dataUrl
+                    };
+                }));
+                const validPhotos = photosData.filter(p => p.dataUrl);
+                if (validPhotos.length > 0) {
+                    sessionStorage.setItem('renger_pending_trailer_photos', JSON.stringify(validPhotos));
+                }
+            } catch (pErr) {
+                console.warn("Échec sauvegarde photos brouillon:", pErr);
+            }
+        }
+        showToast("Annonce sauvegardée ! Connectez-vous ou créez un compte pour finaliser la publication.", "info");
+        if (typeof openAuthModal === 'function') {
+            openAuthModal('signup');
+        }
         return;
     }
 
@@ -494,7 +401,17 @@ async function handlePublish(event) {
             finalDesc += `\n\nRéglementation suisse : ${permitMention}`;
         }
 
-        
+        const isBrakedInput = document.querySelector('input[name="is_braked"]:checked');
+        const isBraked = isBrakedInput ? isBrakedInput.value === 'true' : false;
+
+        const licensePlateInput = (document.getElementById('ad-license-plate')?.value || '').trim();
+
+        const depositInput = document.querySelector('input[name="deposit_amount"]:checked');
+        const depositAmount = depositInput ? (parseInt(depositInput.value, 10) || 200) : 200;
+
+        const hitchLockInput = document.getElementById('ad-hitch-lock');
+        const hasHitchLock = hitchLockInput ? Boolean(hitchLockInput.checked) : false;
+
         const locationInput = (document.getElementById('ad-location')?.value || '').trim();
         const geoData = await geocodeCity(locationInput);
 
@@ -511,7 +428,11 @@ async function handlePublish(event) {
             owner_id: currentUser.id,
             equipments: equipments,
             upsells: upsells,
-            category: category
+            category: category,
+            is_braked: isBraked,
+            license_plate: licensePlateInput,
+            deposit_amount: depositAmount,
+            has_hitch_lock: hasHitchLock
         };
 
         if (imageUrls.length > 0) {
@@ -534,17 +455,57 @@ async function handlePublish(event) {
         };
 
         let res = await saveTrailer(payload);
-        // Repli gracieux et transparent si le schéma Supabase n'a pas la colonne 'location' (seule 'location_city' existe)
-        if (res.error && res.error.message && res.error.message.toLowerCase().includes('location')) {
-            console.warn("Colonne 'location' absente du schéma Supabase, repli sur 'location_city'");
-            delete payload.location;
-            res = await saveTrailer(payload);
+        // Repli gracieux et transparent si le schéma Supabase n'a pas certaines colonnes (gestion multi-colonnes)
+        let maxRetries = 5;
+        while (res.error && res.error.message && maxRetries > 0) {
+            const errMsg = res.error.message.toLowerCase();
+            let retry = false;
+            if (errMsg.includes('location') && payload.location) {
+                console.warn("Colonne 'location' absente du schéma Supabase, repli sur 'location_city'");
+                delete payload.location;
+                retry = true;
+            }
+            if (errMsg.includes('is_braked') && 'is_braked' in payload) {
+                delete payload.is_braked;
+                retry = true;
+            }
+            if (errMsg.includes('license_plate') && 'license_plate' in payload) {
+                delete payload.license_plate;
+                retry = true;
+            }
+            if (errMsg.includes('deposit_amount') && 'deposit_amount' in payload) {
+                delete payload.deposit_amount;
+                retry = true;
+            }
+            if (errMsg.includes('has_hitch_lock') && 'has_hitch_lock' in payload) {
+                delete payload.has_hitch_lock;
+                retry = true;
+            }
+            if (retry) {
+                res = await saveTrailer(payload);
+                maxRetries--;
+            } else {
+                break;
+            }
         }
         error = res.error;
 
         if (error) {
             showToast("Erreur BDD : " + error.message, "error");
         } else {
+            if (typeof localStorage !== 'undefined') {
+                try {
+                    localStorage.removeItem('renger_pending_trailer');
+                } catch (e) {
+                    console.warn("Erreur suppression brouillon:", e);
+                }
+            }
+            if (typeof sessionStorage !== 'undefined') {
+                try {
+                    sessionStorage.removeItem('renger_pending_trailer_photos');
+                } catch (e) {}
+            }
+
             if (!editId) {
                 const modeElement = document.querySelector('input[name="monetization_mode"]:checked');
                 if (modeElement && modeElement.value === 'pro') {
@@ -571,6 +532,13 @@ async function handlePublish(event) {
             });
             pendingPhotos = [];
             renderPhotoGrid();
+
+            // Redirection vers profil propriétaire si sur la page dédiée
+            if (typeof window !== 'undefined' && window.location && window.location.pathname && window.location.pathname.includes('louer-ma-remorque')) {
+                window.location.href = 'profil.html?p=seller-page';
+                return;
+            }
+
             showPage('buyer-page');
             loadTrailers();
         }
@@ -835,6 +803,21 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
         actionsRow.appendChild(cancelBtn);
     }
 
+    // Affichage de l'adresse exacte de retrait pour le locataire ayant une réservation confirmée/payée
+    if (isPaidRenter && booking.trailers) {
+        const addressText = booking.trailers.location || booking.trailers.location_city;
+        if (addressText) {
+            const addressEl = document.createElement('div');
+            addressEl.className = 'text-xs text-stone-600 dark:text-stone-300 mt-1.5 flex items-center gap-1.5 bg-stone-50 dark:bg-stone-900/60 px-2.5 py-1.5 rounded-xl border border-stone-200/60 dark:border-stone-700/60';
+            addressEl.innerHTML = '<svg class="w-3.5 h-3.5 text-terracotta-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span class="font-medium">Adresse de retrait : </span>';
+            const addrSpan = document.createElement('span');
+            addrSpan.className = 'font-semibold text-stone-800 dark:text-stone-200';
+            addrSpan.textContent = addressText;
+            addressEl.appendChild(addrSpan);
+            infoDiv.appendChild(addressEl);
+        }
+    }
+
     if (booking.trailers) {
         if (reviewsByBooking.has(booking.id)) {
             const rev = reviewsByBooking.get(booking.id);
@@ -851,6 +834,16 @@ function createRenterBookingCard(booking, reviewsByBooking, todayStr) {
             reviewBtn.onclick = () => openReviewModal(booking.id, booking.trailers.id, booking.trailers.title);
             actionsRow.appendChild(reviewBtn);
         }
+    }
+
+    // Bouton litige / dommage sur location terminée
+    if (todayStr > endStr && statusNorm !== 'annule') {
+        const disputeBtn = document.createElement('button');
+        disputeBtn.type = 'button';
+        disputeBtn.className = 'text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
+        disputeBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><span>Signaler un dommage / litige</span>';
+        disputeBtn.onclick = () => openDisputeModal(booking);
+        actionsRow.appendChild(disputeBtn);
     }
     infoDiv.appendChild(actionsRow);
 
@@ -970,6 +963,16 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro =
         cancelBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span>Annuler la réservation</span>';
         cancelBtn.onclick = () => openCancelBookingModal(booking, true);
         actionsRow.appendChild(cancelBtn);
+    }
+
+    // Bouton litige / dommage sur location terminée pour le propriétaire
+    if (todayStr > endStr && statusNormOwner !== 'annule' && statusNormOwner !== 'indisponible') {
+        const disputeBtn = document.createElement('button');
+        disputeBtn.type = 'button';
+        disputeBtn.className = 'text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 active:scale-95';
+        disputeBtn.innerHTML = '<svg class="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><span>Signaler un dommage / litige</span>';
+        disputeBtn.onclick = () => openDisputeModal(booking);
+        actionsRow.appendChild(disputeBtn);
     }
 
     const infoDiv = document.createElement('div');
@@ -1593,6 +1596,13 @@ async function loadProfileSettings() {
     // Username
     const usernameInput = document.getElementById('settings-username');
     if (usernameInput) usernameInput.value = profile.username || '';
+
+    // Coordonnées bancaires pour virement sous 48h
+    const fullNameInput = document.getElementById('settings-fullname');
+    if (fullNameInput) fullNameInput.value = profile.full_name || '';
+
+    const ibanInput = document.getElementById('settings-iban');
+    if (ibanInput) ibanInput.value = formatSwissIBAN(profile.iban || '');
 
     // Info cooldown changement username
     const info = document.getElementById('settings-username-info');
@@ -2226,5 +2236,202 @@ if (typeof window !== 'undefined') {
     window.closeCancelBookingModal = closeCancelBookingModal;
     window.handleCancelModalBackdrop = handleCancelModalBackdrop;
     window.executeCancelBooking = executeCancelBooking;
+}
+
+/**
+ * Valide le format et la clé de contrôle modulo 97 d'un IBAN suisse (21 caractères)
+ */
+function isValidSwissIBAN(iban) {
+    if (!iban || typeof iban !== 'string') return false;
+    const clean = iban.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (!/^CH[0-9]{2}[0-9A-Z]{17}$/.test(clean)) return false;
+    const rearranged = clean.slice(4) + clean.slice(0, 4);
+    let numericStr = '';
+    for (let i = 0; i < rearranged.length; i++) {
+        const code = rearranged.charCodeAt(i);
+        if (code >= 65 && code <= 90) {
+            numericStr += (code - 55).toString();
+        } else {
+            numericStr += rearranged[i];
+        }
+    }
+    try {
+        return (BigInt(numericStr) % 97n) === 1n;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Formate un IBAN suisse en blocs de 4 caractères
+ */
+function formatSwissIBAN(iban) {
+    if (!iban || typeof iban !== 'string') return '';
+    const clean = iban.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    return clean.replace(/(.{4})/g, '$1 ').trim();
+}
+
+/**
+ * Enregistre les coordonnées bancaires du propriétaire (virement 48h)
+ */
+async function handleSaveBankDetails(event) {
+    if (event) event.preventDefault();
+    if (!supabaseClient || !currentUser) {
+        showToast("Vous devez être connecté.", "error");
+        return;
+    }
+
+    const fullNameInput = document.getElementById('settings-fullname');
+    const ibanInput = document.getElementById('settings-iban');
+    const fullName = fullNameInput ? fullNameInput.value.trim() : '';
+    const rawIban = ibanInput ? ibanInput.value.trim() : '';
+
+    if (!fullName) {
+        showToast("Veuillez renseigner le titulaire du compte.", "error");
+        return;
+    }
+
+    if (!isValidSwissIBAN(rawIban)) {
+        showToast("IBAN suisse invalide. Format attendu : CHxx xxxx xxxx xxxx x (21 caractères).", "error");
+        return;
+    }
+
+    const formattedIban = formatSwissIBAN(rawIban);
+
+    const btn = document.getElementById('settings-save-bank-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({
+                full_name: fullName,
+                iban: formattedIban
+            })
+            .eq('id', currentUser.id);
+
+        if (error) {
+            showToast("Erreur lors de l'enregistrement : " + error.message, "error");
+        } else {
+            showToast("Coordonnées bancaires enregistrées avec succès !", "success");
+            if (ibanInput) ibanInput.value = formattedIban;
+        }
+    } catch (err) {
+        console.error("Erreur handleSaveBankDetails:", err);
+        showToast("Erreur technique lors de la sauvegarde.", "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    }
+}
+
+// --- Gestion des litiges et dégradations ---
+let currentDisputeBooking = null;
+
+function openDisputeModal(booking) {
+    currentDisputeBooking = booking;
+    const modal = document.getElementById('modal-dispute');
+    if (!modal) {
+        const bId = booking ? (booking.id || '') : '';
+        const tTitle = booking?.trailers?.title || 'Remorque';
+        const subject = encodeURIComponent(`[Signalement Litige] Réservation #${bId} - ${tTitle}`);
+        const body = encodeURIComponent(`Bonjour l'équipe Renger Arbitrage,\n\nJe souhaite déclarer un incident / dommage concernant la réservation #${bId} (${tTitle}).\n\nDescription :\n`);
+        if (typeof window !== 'undefined') {
+            window.location.href = `mailto:info@renger.ch?subject=${subject}&body=${body}`;
+        }
+        return;
+    }
+
+    const bookingIdEl = document.getElementById('dispute-booking-id');
+    const titleEl = document.getElementById('dispute-trailer-title');
+    const datesEl = document.getElementById('dispute-dates');
+    const descEl = document.getElementById('dispute-description');
+
+    if (bookingIdEl) bookingIdEl.textContent = booking?.id || 'N/A';
+    if (titleEl) titleEl.textContent = booking?.trailers?.title || 'Remorque';
+    if (datesEl) {
+        const start = booking?.start_date ? new Date(booking.start_date).toLocaleDateString('fr-CH') : '';
+        const end = booking?.end_date ? new Date(booking.end_date).toLocaleDateString('fr-CH') : '';
+        datesEl.textContent = `Du ${start} au ${end}`;
+    }
+    if (descEl) descEl.value = '';
+
+    modal.classList.remove('hidden');
+}
+
+function closeDisputeModal(event) {
+    if (event && event.target && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('modal-dispute');
+    if (modal) modal.classList.add('hidden');
+    currentDisputeBooking = null;
+}
+
+function handleSendDispute(event) {
+    if (event) event.preventDefault();
+    const descEl = document.getElementById('dispute-description');
+    const desc = descEl ? descEl.value.trim() : '';
+
+    if (!desc) {
+        if (typeof showToast === 'function') showToast("Veuillez décrire le motif du litige ou les dégâts constatés.", "error");
+        return;
+    }
+
+    const b = currentDisputeBooking || {};
+    const bookingId = b.id || document.getElementById('dispute-booking-id')?.textContent || '';
+    const trailerTitle = b.trailers?.title || document.getElementById('dispute-trailer-title')?.textContent || '';
+    const dates = document.getElementById('dispute-dates')?.textContent || '';
+    const userEmail = (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : '';
+
+    const subject = encodeURIComponent(`[Signalement Litige] Réservation #${bookingId} - ${trailerTitle}`);
+    const body = encodeURIComponent(
+        `Bonjour l'équipe Renger Arbitrage,\n\n` +
+        `Je vous signale un incident / dommage concernant la location suivante :\n` +
+        `- ID Réservation : ${bookingId}\n` +
+        `- Remorque : ${trailerTitle}\n` +
+        `- Dates : ${dates}\n` +
+        `- Déclarant : ${userEmail}\n\n` +
+        `Description des faits constatés :\n` +
+        `${desc}\n\n` +
+        `Merci de prendre contact pour la suite du dossier et le traitement de la caution.`
+    );
+
+    if (typeof window !== 'undefined') {
+        window.location.href = `mailto:info@renger.ch?subject=${subject}&body=${body}`;
+    }
+    if (typeof showToast === 'function') {
+        showToast("Votre signalement a été initié. Vérifiez votre client e-mail.", "info");
+    }
+    closeDisputeModal();
+}
+
+// Enregistrement des fonctions dans le scope global window
+if (typeof window !== 'undefined') {
+    window.isValidSwissIBAN = isValidSwissIBAN;
+    window.formatSwissIBAN = formatSwissIBAN;
+    window.handleSaveBankDetails = handleSaveBankDetails;
+    window.openDisputeModal = openDisputeModal;
+    window.closeDisputeModal = closeDisputeModal;
+    window.handleSendDispute = handleSendDispute;
+    window.getTrailerFormDraft = getTrailerFormDraft;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        isValidSwissIBAN,
+        formatSwissIBAN,
+        handleSaveBankDetails,
+        openDisputeModal,
+        closeDisputeModal,
+        handleSendDispute,
+        getTrailerFormDraft,
+        createRenterBookingCard,
+        createSellerRentalHistoryCard,
+        handlePublish
+    };
 }
 

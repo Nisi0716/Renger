@@ -392,10 +392,11 @@ describe('Challenger Suite: Rental Planning Manager Logic & Algorithmic Rigor', 
             await planningModule.submitBlockDates();
             assert.ok(toastMessage && toastMessage.includes('exclusive'), 'submitBlockDates doit rejeter pour un non-PRO');
 
-            // Tentative de déblocage direct d'une indisponibilité
+            // Déblocage direct d'une indisponibilité personnelle ouvert à tout propriétaire standard
             toastMessage = null;
+            global.confirm = () => true;
             await planningModule.unblockDates('block-1');
-            assert.ok(toastMessage && toastMessage.includes('exclusive'), 'unblockDates doit rejeter le déblocage pour un non-PRO');
+            assert.ok(toastMessage && toastMessage.includes('débloquées'), 'unblockDates doit permettre le déblocage pour un propriétaire standard');
 
             // Tentative d'ouverture de messagerie depuis planning
             toastMessage = null;

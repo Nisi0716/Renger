@@ -88,6 +88,27 @@
         </div>
         <p class="text-stone-500 dark:text-stone-400 mb-8" data-i18n="publish_subtitle">Gagnez de l'argent en toute sécurité avec votre équipement.</p>
         
+        <!-- BANNIÈRE DE RESTAURATION DU BROUILLON D'ANNONCE -->
+        <div id="trailer-draft-banner" class="hidden mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-stone-850 dark:to-stone-800 border-2 border-amber-300 dark:border-amber-700/60 p-5 rounded-3xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl shrink-0">
+                    💾
+                </div>
+                <div>
+                    <h4 class="font-bold text-stone-900 dark:text-white text-sm">Brouillon d'annonce sauvegardé</h4>
+                    <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5">Vous avez commencé la saisie d'une remorque. Souhaitez-vous la reprendre ?</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button type="button" onclick="restoreTrailerDraft()" class="flex-1 sm:flex-initial bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-sm transition active:scale-95">
+                    Reprendre mon annonce
+                </button>
+                <button type="button" onclick="dismissTrailerDraft()" class="text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-semibold px-3 py-2 transition">
+                    Effacer
+                </button>
+            </div>
+        </div>
+
         <!-- CORRECTION : Ajout de l'ID et modification du onsubmit -->
         <form id="add-trailer-form" onsubmit="handlePublish(event)" class="space-y-6">
             
@@ -127,6 +148,14 @@
                     <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Emplacement (Ville ou Code Postal)</label>
                     <input type="text" id="ad-location" placeholder="Ex: 1000 Lausanne" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition" required>
                     <p class="text-[11px] text-stone-400 mt-1">Nécessaire pour le tri par proximité (Géolocalisation).</p>
+                </div>
+
+                <div class="mb-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">Plaque d'immatriculation suisse</label>
+                        <span class="text-[11px] text-stone-400 font-medium">Cantonale (ex: VD 123 456)</span>
+                    </div>
+                    <input type="text" id="ad-license-plate" placeholder="Ex: VD 123 456" maxlength="15" class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3 bg-stone-50 dark:bg-stone-900 dark:text-white font-mono uppercase focus:border-terracotta-500 focus:outline-none transition">
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
@@ -214,27 +243,10 @@
                     </div>
                 </div>
 
-                <!-- GÉNÉRATEUR AUTOMATIQUE DE DESCRIPTION -->
+                <!-- DESCRIPTION DE L'ANNONCE -->
                 <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-2">
-                            <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">Description de l'annonce</label>
-                            <span class="text-[11px] text-stone-400 dark:text-stone-500 hidden sm:inline">• Automatique & personnalisable</span>
-                        </div>
-                        <button type="button" onclick="generateAutoDescription(true)" class="text-xs font-bold text-terracotta-600 dark:text-terracotta-400 hover:text-terracotta-700 flex items-center gap-1.5 py-1 px-3 rounded-lg bg-terracotta-50 dark:bg-stone-700 hover:bg-terracotta-100 dark:hover:bg-stone-600 transition shadow-xs active:scale-95 cursor-pointer">
-                            <svg class="w-3.5 h-3.5 text-terracotta-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.286L13 21l-2.286-6.857L5 12l5.714-2.286L13 3z"/></svg><span>Générer la description</span>
-                        </button>
-                    </div>
-                    <textarea id="ad-desc" placeholder="Décrivez votre remorque ou cliquez sur 'Générer la description' pour assembler automatiquement un texte complet..." class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3.5 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition h-36 resize-y text-sm leading-relaxed" required></textarea>
-                    
-                    <!-- Pédagogie Légale sous la description -->
-                    <div id="desc-legal-footer" class="mt-2 flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1">
-                        <span class="flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5 text-stone-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
-                            <span id="desc-legal-mention">Mention légale incluse : <strong class="text-emerald-600 dark:text-emerald-400 font-bold">Permis B suffisant</strong></span>
-                        </span>
-                        <span class="text-[11px] text-stone-400">Réglementation suisse LCR / OAC</span>
-                    </div>
+                    <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Description de l'annonce</label>
+                    <textarea id="ad-desc" placeholder="Décrivez votre remorque, ses dimensions, son usage recommandé, ses équipements inclus..." class="w-full border border-stone-200 dark:border-stone-700 rounded-xl p-3.5 bg-stone-50 dark:bg-stone-900 dark:text-white focus:border-terracotta-500 focus:outline-none transition h-36 resize-y text-sm leading-relaxed" required></textarea>
                 </div>
             </div>
 
@@ -331,6 +343,68 @@
                     <label class="flex items-center justify-between p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl cursor-pointer">
                         <div class="flex items-center gap-3"><input type="checkbox" name="upsell" value="diable" class="w-5 h-5 text-terracotta-500 rounded"><span class="font-semibold text-sm dark:text-white flex items-center gap-1.5"><svg class="w-4 h-4 text-stone-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1"/><circle cx="20" cy="20" r="1"/><path stroke-linecap="round" stroke-linejoin="round" d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg> Prêt d'un diable</span></div>
                         <span class="text-terracotta-600 font-bold text-sm">+10 CHF/j</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- SPÉCIFICITÉS TECHNIQUES SUISSES : SYSTÈME DE FREINAGE & SÉCURITÉ -->
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <label class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">Système de freinage & Sécurité</label>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="is_braked" value="false" class="peer sr-only" checked>
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3.5 text-center transition hover:bg-stone-50 dark:hover:bg-stone-700">
+                            <span class="block font-bold text-sm">Non freinée</span>
+                            <span class="text-[11px] text-stone-400 mt-0.5 block">Sans frein à inertie (≤ 750 kg)</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="is_braked" value="true" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3.5 text-center transition hover:bg-stone-50 dark:hover:bg-stone-700">
+                            <span class="block font-bold text-sm">Freinée</span>
+                            <span class="text-[11px] text-stone-400 mt-0.5 block">Avec frein à inertie intégré</span>
+                        </div>
+                    </label>
+                </div>
+                <label class="flex items-center gap-3 p-3 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl cursor-pointer">
+                    <input type="checkbox" id="ad-hitch-lock" class="w-5 h-5 text-terracotta-500 rounded">
+                    <div>
+                        <span class="font-bold text-sm text-stone-800 dark:text-white flex items-center gap-1.5">
+                            🔒 Antivol de timon / Sabot fourni
+                        </span>
+                        <span class="text-xs text-stone-500 dark:text-stone-400 block">Protège le matériel lors des stationnements du locataire</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- SÉLECTEUR DE CAUTION PERSONNALISABLE -->
+            <div class="bg-white dark:bg-stone-800 p-6 rounded-3xl shadow-sm border border-stone-200 dark:border-stone-700">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block text-sm font-bold text-stone-700 dark:text-stone-300">Caution exigée (Dépôt de garantie)</label>
+                    <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">Empreinte non débitée</span>
+                </div>
+                <p class="text-xs text-stone-500 dark:text-stone-400 mb-3">Sécurise votre remorque via une empreinte bancaire Stripe bloquée chez le locataire.</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="deposit_amount" value="200" class="peer sr-only" checked>
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center transition hover:bg-stone-50 dark:hover:bg-stone-700">
+                            <span class="block font-bold text-base">200 CHF</span>
+                            <span class="text-[10px] text-stone-400">Standard</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="deposit_amount" value="400" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center transition hover:bg-stone-50 dark:hover:bg-stone-700">
+                            <span class="block font-bold text-base">400 CHF</span>
+                            <span class="text-[10px] text-stone-400">Recommandé</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="deposit_amount" value="800" class="peer sr-only">
+                        <div class="peer-checked:border-terracotta-500 peer-checked:bg-terracotta-50 dark:peer-checked:bg-stone-700 peer-checked:text-terracotta-600 rounded-xl border-2 border-stone-200 dark:border-stone-700 p-3 text-center transition hover:bg-stone-50 dark:hover:bg-stone-700">
+                            <span class="block font-bold text-base">800 CHF</span>
+                            <span class="text-[10px] text-stone-400">Haute valeur</span>
+                        </div>
                     </label>
                 </div>
             </div>
@@ -651,6 +725,26 @@
                     cb.checked = upsells.includes(cb.value);
                 });
 
+                if (trailer.license_plate) {
+                    const plateEl = document.getElementById('ad-license-plate');
+                    if (plateEl) plateEl.value = trailer.license_plate;
+                }
+
+                if (trailer.is_braked !== undefined && trailer.is_braked !== null) {
+                    const brakedRadio = document.querySelector(`input[name="is_braked"][value="${String(trailer.is_braked)}"]`);
+                    if (brakedRadio) brakedRadio.checked = true;
+                }
+
+                if (trailer.deposit_amount) {
+                    const depRadio = document.querySelector(`input[name="deposit_amount"][value="${trailer.deposit_amount}"]`);
+                    if (depRadio) depRadio.checked = true;
+                }
+
+                if (trailer.has_hitch_lock !== undefined && trailer.has_hitch_lock !== null) {
+                    const lockEl = document.getElementById('ad-hitch-lock');
+                    if (lockEl) lockEl.checked = Boolean(trailer.has_hitch_lock);
+                }
+
                 // Titre de la page et en-tête
                 document.title = "Mettre à jour l'annonce - Renger";
                 const pageHeading = document.querySelector('h2[data-i18n="publish_title"]') || document.querySelector('#seller-page h2');
@@ -678,10 +772,185 @@
             }
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initTrailerEditMode);
-        } else {
+        // --- GESTION DU BROUILLON D'ANNONCE (LOCALSTORAGE & SESSIONSTORAGE) ---
+        function dataURLtoFile(dataurl, filename) {
+            try {
+                const arr = dataurl.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                return new File([u8arr], filename, { type: mime, lastModified: Date.now() });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function initTrailerDraft() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('edit')) return;
+            try {
+                const raw = localStorage.getItem('renger_pending_trailer');
+                if (!raw) return;
+                const draft = JSON.parse(raw);
+                if (draft && (draft.title || draft.location || draft.price || draft.license_plate)) {
+                    // Pré-remplir les champs immédiatement conformément aux spécifications
+                    restoreTrailerDraft(false);
+                    const banner = document.getElementById('trailer-draft-banner');
+                    if (banner) banner.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.warn("Erreur lecture brouillon:", e);
+            }
+        }
+
+        function restoreTrailerDraft(showNotification = true) {
+            try {
+                const raw = localStorage.getItem('renger_pending_trailer');
+                if (!raw) return;
+                const draft = JSON.parse(raw);
+                if (!draft) return;
+
+                if (draft.title && document.getElementById('ad-title')) document.getElementById('ad-title').value = draft.title;
+                if (draft.location && document.getElementById('ad-location')) document.getElementById('ad-location').value = draft.location;
+                if (draft.license_plate && document.getElementById('ad-license-plate')) document.getElementById('ad-license-plate').value = draft.license_plate;
+                if (draft.price !== undefined && document.getElementById('ad-price')) document.getElementById('ad-price').value = draft.price;
+                if (draft.payload !== undefined && document.getElementById('ad-payload')) document.getElementById('ad-payload').value = draft.payload;
+                if (draft.ptac !== undefined && document.getElementById('ad-ptac')) document.getElementById('ad-ptac').value = draft.ptac;
+                if (draft.length !== undefined && document.getElementById('ad-length')) document.getElementById('ad-length').value = draft.length;
+                if (draft.width !== undefined && document.getElementById('ad-width')) document.getElementById('ad-width').value = draft.width;
+                if (draft.height !== undefined && document.getElementById('ad-height')) document.getElementById('ad-height').value = draft.height;
+                if (draft.description && document.getElementById('ad-desc')) document.getElementById('ad-desc').value = draft.description;
+
+                if (draft.category) {
+                    const catRadio = document.querySelector(`input[name="category"][value="${draft.category}"]`);
+                    if (catRadio) catRadio.checked = true;
+                }
+                if (draft.socket) {
+                    const socketRadio = document.querySelector(`input[name="prise"][value="${draft.socket}"]`);
+                    if (socketRadio) socketRadio.checked = true;
+                }
+                if (draft.is_braked !== undefined) {
+                    const brakedRadio = document.querySelector(`input[name="is_braked"][value="${String(draft.is_braked)}"]`);
+                    if (brakedRadio) brakedRadio.checked = true;
+                }
+                if (draft.deposit_amount) {
+                    const depRadio = document.querySelector(`input[name="deposit_amount"][value="${draft.deposit_amount}"]`);
+                    if (depRadio) depRadio.checked = true;
+                }
+                if (draft.has_hitch_lock !== undefined && document.getElementById('ad-hitch-lock')) {
+                    document.getElementById('ad-hitch-lock').checked = Boolean(draft.has_hitch_lock);
+                }
+                if (draft.monetization_mode) {
+                    const modeRadio = document.querySelector(`input[name="monetization_mode"][value="${draft.monetization_mode}"]`);
+                    if (modeRadio) modeRadio.checked = true;
+                }
+                if (Array.isArray(draft.equipments)) {
+                    document.querySelectorAll('input[name="equipments"]').forEach(cb => {
+                        cb.checked = draft.equipments.includes(cb.value);
+                    });
+                }
+                if (Array.isArray(draft.upsells)) {
+                    document.querySelectorAll('input[name="upsell"]').forEach(cb => {
+                        cb.checked = draft.upsells.includes(cb.value);
+                    });
+                }
+
+                // Restauration des photos en attente si présentes dans sessionStorage
+                try {
+                    const rawPhotos = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('renger_pending_trailer_photos') : null;
+                    if (rawPhotos && typeof pendingPhotos !== 'undefined' && Array.isArray(pendingPhotos) && pendingPhotos.length === 0) {
+                        const parsedPhotos = JSON.parse(rawPhotos);
+                        if (Array.isArray(parsedPhotos)) {
+                            parsedPhotos.forEach((item, idx) => {
+                                if (item && item.dataUrl) {
+                                    const restoredFile = dataURLtoFile(item.dataUrl, item.name || `photo_${idx}.jpg`);
+                                    if (restoredFile && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+                                        const objectUrl = URL.createObjectURL(restoredFile);
+                                        pendingPhotos.push({ file: restoredFile, objectUrl });
+                                    }
+                                }
+                            });
+                            if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
+                        }
+                    }
+                } catch (photoRestoreErr) {
+                    console.warn("Erreur restauration photos brouillon:", photoRestoreErr);
+                }
+
+                if (showNotification) {
+                    const banner = document.getElementById('trailer-draft-banner');
+                    if (banner) banner.classList.add('hidden');
+                }
+
+                if (typeof updateSmartPricingFeedback === 'function') updateSmartPricingFeedback();
+                if (typeof updateLegalPermitBadge === 'function') updateLegalPermitBadge();
+                if (showNotification && typeof showToast === 'function') showToast("Brouillon d'annonce restauré !", "success");
+            } catch (e) {
+                console.warn("Erreur restauration brouillon:", e);
+            }
+        }
+
+        function dismissTrailerDraft() {
+            try {
+                localStorage.removeItem('renger_pending_trailer');
+            } catch (e) {
+                console.warn("Erreur suppression brouillon:", e);
+            }
+            try {
+                sessionStorage.removeItem('renger_pending_trailer_photos');
+            } catch (e) {}
+
+            const form = document.getElementById('add-trailer-form');
+            if (form) form.reset();
+
+            if (typeof pendingPhotos !== 'undefined' && Array.isArray(pendingPhotos)) {
+                pendingPhotos.forEach(p => {
+                    if (p.objectUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+                        URL.revokeObjectURL(p.objectUrl);
+                    }
+                });
+                pendingPhotos = [];
+                if (typeof renderPhotoGrid === 'function') renderPhotoGrid();
+            }
+
+            const banner = document.getElementById('trailer-draft-banner');
+            if (banner) banner.classList.add('hidden');
+            if (typeof showToast === 'function') showToast("Brouillon effacé.", "info");
+        }
+
+        function setupDraftAutoSave() {
+            const form = document.getElementById('add-trailer-form');
+            if (!form) return;
+            const save = () => {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('edit')) return;
+                if (typeof getTrailerFormDraft === 'function') {
+                    const draft = getTrailerFormDraft();
+                    if (draft && (draft.title || draft.location || draft.price || draft.license_plate)) {
+                        try {
+                            localStorage.setItem('renger_pending_trailer', JSON.stringify(draft));
+                        } catch (e) {}
+                    }
+                }
+            };
+            form.addEventListener('input', save);
+            form.addEventListener('change', save);
+        }
+
+        function initTrailerPage() {
             initTrailerEditMode();
+            initTrailerDraft();
+            setupDraftAutoSave();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTrailerPage);
+        } else {
+            initTrailerPage();
         }
     </script>
 <div id="chat-modal" class="hidden fixed inset-0 bg-stone-900 bg-opacity-60 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" onclick="handleChatModalBackdrop(event)">

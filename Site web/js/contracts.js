@@ -145,6 +145,9 @@
      */
     function resolveCautionAmount(trailer) {
         if (!trailer) return 200;
+        if (trailer.deposit_amount && !isNaN(parseInt(trailer.deposit_amount, 10)) && parseInt(trailer.deposit_amount, 10) > 0) {
+            return parseInt(trailer.deposit_amount, 10);
+        }
         if (trailer.caution && !isNaN(parseInt(trailer.caution, 10)) && parseInt(trailer.caution, 10) > 0) {
             return parseInt(trailer.caution, 10);
         }
@@ -1030,6 +1033,7 @@
         downloadRentalContract,
         generateInspectionReportPdf,
         downloadInspectionReport,
-        sanitizePdfText
+        sanitizePdfText,
+        resolveCautionAmount
     };
 }));

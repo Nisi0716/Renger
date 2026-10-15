@@ -402,28 +402,37 @@ async function checkUsernameAvailability(value) {
     }, 400);
 }
 
-// --- Domaines d'emails autorisés (anti-comptes temporaires / spam) ---
-const ALLOWED_EMAIL_DOMAINS = [
-    // Google
-    'gmail.com', 'googlemail.com',
-    // Microsoft
-    'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'hotmail.fr', 'outlook.fr',
-    // Apple
-    'icloud.com', 'me.com', 'mac.com',
-    // Yahoo
-    'yahoo.com', 'yahoo.fr', 'ymail.com',
-    // Suisse
-    'bluewin.ch', 'swissonline.ch',
-    // Proton
-    'proton.me', 'protonmail.com', 'pm.me'
+// --- Validation e-mail ouverte pour particuliers & artisans suisses ---
+// Blacklist des fournisseurs de courriels temporaires / jetables / frauduleux
+const DISPOSABLE_EMAIL_DOMAINS = [
+    '10minutemail.com', '10minutemail.net', 'tempmail.com', 'temp-mail.org',
+    'guerrillamail.com', 'mailinator.com', 'throwawaymail.com', 'sharklasers.com',
+    'yopmail.com', 'trashmail.com', 'dispostable.com', 'fakeinbox.com',
+    'getairmail.com', 'mohmal.com', 'crazymailing.com', 'maildrop.cc',
+    'trashmail.net', 'mytemp.email', 'tempail.com', 'fakemailgenerator.com'
 ];
 
-function isAllowedEmailDomain(email) {
+/**
+ * Valide le format d'un e-mail (regex standard RFC) et vérifie qu'il ne provient pas
+ * d'un service d'e-mail jetable ou frauduleux. Accepte tous les artisans suisses, PME et FAI.
+ */
+function isValidEmail(email) {
     if (!email || typeof email !== 'string') return false;
-    const parts = email.trim().toLowerCase().split('@');
+    const clean = email.trim().toLowerCase();
+    const standardRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!standardRegex.test(clean)) return false;
+    const parts = clean.split('@');
     if (parts.length !== 2) return false;
     const domain = parts[1];
-    return ALLOWED_EMAIL_DOMAINS.includes(domain);
+    if (!domain || domain.length < 3 || !domain.includes('.')) return false;
+    if (DISPOSABLE_EMAIL_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
+        return false;
+    }
+    return true;
+}
+
+function isAllowedEmailDomain(email) {
+    return isValidEmail(email);
 }
 
 function evaluatePasswordConditions(password) {
@@ -442,24 +451,24 @@ function validateSignupEmailLive(value) {
     if (!feedback) return;
     const email = (value || '').trim().toLowerCase();
     if (!email) {
-        feedback.textContent = "Domaines acceptés : Gmail, Outlook, Hotmail, iCloud, Yahoo, Bluewin, Proton";
+        feedback.textContent = "Format accepté : nom@domaine.ch / com (artisans et particuliers bienvenus)";
         feedback.className = "text-[11px] mt-1 text-stone-400";
         return;
     }
     if (email.includes('@')) {
         const parts = email.split('@');
-        if (parts[1]) {
+        if (parts[1] && parts[1].includes('.')) {
             if (isAllowedEmailDomain(email)) {
-                feedback.innerHTML = '<span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Domaine d\'e-mail accepté</span></span>';
+                feedback.innerHTML = '<span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Adresse e-mail valide</span></span>';
                 feedback.className = "text-[11px] mt-1 text-green-600 dark:text-green-400 font-medium";
             } else {
-                feedback.textContent = "Fournisseur non autorisé. Utilisez Gmail, Outlook, iCloud, Yahoo, Bluewin ou Proton.";
+                feedback.textContent = "Adresse e-mail temporaire ou domaine non autorisé.";
                 feedback.className = "text-[11px] mt-1 text-amber-600 dark:text-amber-400 font-medium";
             }
             return;
         }
     }
-    feedback.textContent = "Domaines acceptés : Gmail, Outlook, Hotmail, iCloud, Yahoo, Bluewin, Proton";
+    feedback.textContent = "Format accepté : nom@domaine.ch / com";
     feedback.className = "text-[11px] mt-1 text-stone-400";
 }
 
@@ -531,7 +540,7 @@ async function handleSignup() {
 
     if (!email) return showToast("Veuillez renseigner votre adresse email.", "error");
     if (!isAllowedEmailDomain(email)) {
-        return showToast("Adresse email non autorisée. Utilisez un fournisseur fiable (Gmail, Outlook, iCloud, Yahoo, Bluewin, Proton).", "error");
+        return showToast("Adresse email invalide ou domaine temporaire non autorisé.", "error");
     }
 
     const cond = evaluatePasswordConditions(password);
@@ -1132,6 +1141,62 @@ async function validateImageMagicBytes(file) {
     return isJpeg || isPng || isWebp;
 }
 
+/**
+ * Compresse et redimensionne une image côté client via un élément Canvas
+ * (qualité 0.85, max 2048px) pour éviter le rejet des photos haute résolution (ex: iPhone récents).
+ */
+async function compressImageFile(file, maxWidth = 2048, maxHeight = 2048, quality = 0.85) {
+    if (!file || !(file instanceof Blob) || (file.type && !file.type.startsWith('image/'))) {
+        return file;
+    }
+    // Repli propre si exécuté hors navigateur DOM
+    if (typeof window === 'undefined' || typeof document === 'undefined' || typeof Image === 'undefined') {
+        return file;
+    }
+    return new Promise((resolve) => {
+        try {
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                let { width, height } = img;
+                // Si l'image est déjà sous les limites, conserver telle quelle
+                if (width <= maxWidth && height <= maxHeight && file.size <= 2 * 1024 * 1024) {
+                    return resolve(file);
+                }
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return resolve(file);
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (!blob) return resolve(file);
+                    const newName = file.name ? file.name.replace(/\.[^.]+$/, '.jpg') : 'photo.jpg';
+                    const compressedFile = new File([blob], newName, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    resolve(compressedFile);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                resolve(file);
+            };
+            img.src = objectUrl;
+        } catch (_) {
+            resolve(file);
+        }
+    });
+}
+
 async function handleMultiPhotoSelect(event) {
     const files = Array.from(event.target.files);
     const remaining = 10 - pendingPhotos.length;
@@ -1142,16 +1207,23 @@ async function handleMultiPhotoSelect(event) {
 
     const toAdd = files.slice(0, remaining);
 
-    for (const file of toAdd) {
+    for (let file of toAdd) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (['svg', 'html', 'htm', 'php', 'js', 'exe'].includes(ext) || (file.type && file.type === 'image/svg+xml')) {
+            showToast(`L'extension de "${file.name}" n'est pas autorisée.`, 'error');
+            continue;
+        }
+
+        // Compression automatique côté client (canvas) avant contrôle des 5 Mo
+        try {
+            file = await compressImageFile(file, 2048, 2048, 0.85);
+        } catch (compErr) {
+            console.warn("Échec compression image :", compErr);
+        }
+
         // Vérification taille (max 5 Mo par photo)
         if (file.size > 5 * 1024 * 1024) {
             showToast(`"${file.name}" dépasse 5 Mo et a été ignorée.`, 'error');
-            continue;
-        }
-        
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (['svg', 'html', 'htm'].includes(ext)) {
-            showToast(`L'extension de "${file.name}" n'est pas autorisée.`, 'error');
             continue;
         }
         
@@ -1585,4 +1657,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 });
+
+if (typeof window !== 'undefined') {
+    window.isValidEmail = isValidEmail;
+    window.isAllowedEmailDomain = isAllowedEmailDomain;
+    window.compressImageFile = compressImageFile;
+    window.DISPOSABLE_EMAIL_DOMAINS = DISPOSABLE_EMAIL_DOMAINS;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        ...(module.exports || {}),
+        isValidEmail,
+        isAllowedEmailDomain,
+        compressImageFile,
+        DISPOSABLE_EMAIL_DOMAINS
+    };
+}
+
 

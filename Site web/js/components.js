@@ -346,7 +346,10 @@ function updateUserMenu(user) {
         ` : '';
 
         container.innerHTML = `
-            <div class="flex items-center gap-3 sm:gap-4">
+            <div class="flex items-center gap-2 sm:gap-4">
+                <a href="louer-ma-remorque.html" id="nav-rent-my-trailer-link" class="text-xs sm:text-sm font-bold bg-terracotta-500 hover:bg-terracotta-600 text-white py-1.5 px-3 rounded-xl shadow-sm transition inline-flex items-center gap-1 active:scale-95" title="Louer ma remorque">
+                    <span>+</span> <span>Louer ma remorque</span>
+                </a>
                 <a href="profil.html" class="flex items-center gap-2 text-stone-700 dark:text-stone-200 hover:text-terracotta-500 font-semibold text-sm transition group" title="Accéder à Mon Espace">
                     <span class="w-8 h-8 rounded-full bg-terracotta-50 dark:bg-stone-800 text-terracotta-600 flex items-center justify-center font-bold text-xs border border-terracotta-200 dark:border-stone-700 group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>

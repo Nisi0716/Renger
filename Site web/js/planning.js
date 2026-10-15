@@ -896,13 +896,6 @@
             return;
         }
 
-        if (!isProUser) {
-            if (typeof showToast === 'function') {
-                showToast('Le déblocage de dates est une fonctionnalité exclusive de l\'abonnement Renger PRO.', 'error');
-            }
-            return;
-        }
-
         if (typeof confirm === 'function' && !confirm('Voulez-vous vraiment débloquer ces dates et rouvrir la disponibilité ?')) {
             return;
         }

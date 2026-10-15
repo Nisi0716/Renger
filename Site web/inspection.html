@@ -251,6 +251,11 @@
                     </div>
                 </button>
             </div>
+            <!-- Repli appareil photo natif smartphone en cas de problème WebRTC -->
+            <input type="file" accept="image/*" capture="environment" id="inspection-fallback-file" class="hidden" onchange="handleFallbackInspectionPhoto(event)">
+            <button type="button" id="inspection-fallback-btn" onclick="triggerFallbackCamera()" class="hidden text-xs text-stone-400 hover:text-white underline mt-1 transition">
+                📷 Appareil photo natif smartphone (mode secours)
+            </button>
             <p class="text-[11px] text-stone-400 font-medium">Capture horodatée et géolocalisée certifiée</p>
         </div>
     </div>
