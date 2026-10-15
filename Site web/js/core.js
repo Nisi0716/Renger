@@ -1614,10 +1614,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.location.pathname.includes('remorques.html') && typeof loadTrailers === 'function') {
         initCatalogDateFilter();
         const cat = urlParams.get('category');
+        const cantonOrSearch = urlParams.get('canton') || urlParams.get('search') || urlParams.get('q');
+        if (cantonOrSearch) {
+            currentSearch = cantonOrSearch;
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.value = cantonOrSearch;
+        }
         if (cat && typeof setFilter === 'function') {
             setFilter(cat);
+            if (cantonOrSearch) {
+                currentSearch = cantonOrSearch;
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) searchInput.value = cantonOrSearch;
+                loadTrailers(cat, cantonOrSearch);
+            }
         } else {
-            loadTrailers();
+            loadTrailers(currentFilter, currentSearch);
         }
     } else if (typeof loadTrailers === 'function' && !window.location.pathname.includes('remorque.html') && document.getElementById('trailers-grid')) {
         loadTrailers();

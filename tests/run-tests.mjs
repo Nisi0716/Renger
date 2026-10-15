@@ -58,6 +58,12 @@ const TIERS = [
         id: 'tier7',
         name: 'Tier 7: Cockpit Syni Administrateur Suprême & Google SEO',
         file: 'challenger-syni-admin.test.mjs'
+    },
+    {
+        tier: 8,
+        id: 'tier8',
+        name: 'Tier 8: Audit SEO, Sitemaps & Données Structurées',
+        file: 'tier8-seo-audit.test.mjs'
     }
 ];
 
@@ -68,7 +74,7 @@ function parseArguments() {
     for (const arg of args) {
         if (arg.startsWith('--tier=')) {
             selectedTier = parseInt(arg.split('=')[1], 10);
-        } else if (/^tier[1-7]$/i.test(arg)) {
+        } else if (/^tier[1-8]$/i.test(arg)) {
             selectedTier = parseInt(arg.replace(/tier/i, ''), 10);
         } else if (arg === '-h' || arg === '--help') {
             console.log(`
@@ -78,14 +84,14 @@ Usage:
   node tests/run-tests.mjs [options]
 
 Options:
-  --tier=N         Exécuter uniquement le palier N (1 à 7)
-  tier1..tier7     Raccourci pour exécuter un palier spécifique
+  --tier=N         Exécuter uniquement le palier N (1 à 8)
+  tier1..tier8     Raccourci pour exécuter un palier spécifique
   --help, -h       Afficher cette aide
 
 Exemples:
-  node tests/run-tests.mjs            # Exécute l'ensemble des 7 paliers
-  node tests/run-tests.mjs --tier=7   # Exécute uniquement le Tier 7
-  node tests/run-tests.mjs tier7      # Exécute uniquement le Tier 7
+  node tests/run-tests.mjs            # Exécute l'ensemble des 8 paliers
+  node tests/run-tests.mjs --tier=8   # Exécute uniquement le Tier 8
+  node tests/run-tests.mjs tier8      # Exécute uniquement le Tier 8
 `);
             process.exit(0);
         }

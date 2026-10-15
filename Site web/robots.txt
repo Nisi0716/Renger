@@ -1,18 +1,16 @@
 # Renger.ch — Directives d'indexation pour robots d'exploration
 User-agent: *
+Allow: /
+Disallow: /profil.html
+Disallow: /profil
+Disallow: /inspection.html
+Disallow: /inspection
+Disallow: /stats.html
+Disallow: /stats
 Disallow: /syni.html
 Disallow: /syni
 Disallow: /supabase/
 Disallow: /tests/
 
-User-agent: Googlebot
-Disallow: /syni.html
-Disallow: /syni
-
-User-agent: Bingbot
-Disallow: /syni.html
-Disallow: /syni
-
-User-agent: Applebot
-Disallow: /syni.html
-Disallow: /syni
+# Sitemap XML officiel
+Sitemap: https://renger.ch/sitemap.xml

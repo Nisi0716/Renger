@@ -3,17 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Renger - Accueil</title>
-    <meta name="description" content="Location de remorques entre particuliers">
+    <title>Location Remorque Suisse | Louez dès 30 CHF - Renger</title>
+    <meta name="description" content="Location de remorques pas chères en Suisse romande (Vaud, Genève, Valais) dès 30 CHF/jour. Particuliers &amp; pros, caution non débitée et contrat CO 253 inclus.">
     <meta name="robots" content="index, follow">
+    <meta name="google-site-verification" content="xddlqQE_QJRL1igpuZwxMgmY3rgfSmtJcNBs6lvp8iE">
     <link rel="canonical" href="https://renger.ch/index.html">
     
-    <meta property="og:title" content="Renger - Accueil">
-    <meta property="og:description" content="Location de remorques entre particuliers">
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:site_name" content="Renger Suisse">
+    <meta property="og:locale" content="fr_CH">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://renger.ch/index.html">
-    <meta property="og:image" content="https://renger.ch/Renger_Logo_SVG.svg">
+    <meta property="og:title" content="Location Remorque Suisse | Louez dès 30 CHF - Renger">
+    <meta property="og:description" content="Location de remorques pas chères en Suisse romande (Vaud, Genève, Valais) dès 30 CHF/jour. Caution non débitée et contrat CO 253 inclus.">
+    <meta property="og:image" content="https://renger.ch/Logo_Renger.jpg">
+    <meta property="og:image:secure_url" content="https://renger.ch/Logo_Renger.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="2048">
+    <meta property="og:image:height" content="2048">
+    <meta property="og:image:alt" content="Renger - Plateforme suisse de location de remorques">
+
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Location Remorque Suisse | Louez dès 30 CHF - Renger">
+    <meta name="twitter:description" content="Location de remorques pas chères en Suisse romande dès 30 CHF/jour. Caution non débitée et contrat CO 253 inclus.">
+    <meta name="twitter:image" content="https://renger.ch/Logo_Renger.jpg">
     
     <link rel="icon" type="image/svg+xml" href="Renger_Logo_SVG.svg?v=2">
     <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -36,13 +50,85 @@
     </style>
     <link rel="stylesheet" href="style.css">
 
+    <!-- Données Structurées Schema.org JSON-LD (AutoRental + FAQPage) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "AutoRental",
-      "name": "Renger",
-      "description": "Location de remorques entre particuliers",
-      "url": "https://renger.ch"
+      "@graph": [
+        {
+          "@type": ["AutoRental", "LocalBusiness"],
+          "@id": "https://renger.ch/#organization",
+          "name": "Renger",
+          "alternateName": "Renger Suisse",
+          "url": "https://renger.ch",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://renger.ch/logo.png"
+          },
+          "image": "https://renger.ch/logo.png",
+          "description": "Plateforme collaborative suisse de location de remorques entre particuliers et professionnels.",
+          "priceRange": "CHF 30 - CHF 150",
+          "currenciesAccepted": "CHF",
+          "paymentAccepted": "Credit Card, Debit Card, Twint, Apple Pay",
+          "areaServed": [
+            { "@type": "Country", "name": "Switzerland" },
+            { "@type": "AdministrativeArea", "name": "Vaud" },
+            { "@type": "AdministrativeArea", "name": "Genève" },
+            { "@type": "AdministrativeArea", "name": "Valais" },
+            { "@type": "AdministrativeArea", "name": "Fribourg" },
+            { "@type": "AdministrativeArea", "name": "Neuchâtel" }
+          ],
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "CH",
+            "addressRegion": "VD"
+          },
+          "openingHoursSpecification": {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            "opens": "00:00",
+            "closes": "23:59"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://renger.ch/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Comment fonctionne la caution bancaire (0 CHF débité) ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Renger ne prélève aucun centime de caution sur votre compte bancaire. Nous utilisons une empreinte bancaire Stripe sécurisée (« off-session »). L'empreinte n'est actionnée qu'en cas de litige avéré ou de dommage non réglé à la restitution, prouvé par l'état des lieux contradictoire."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "De quel permis de conduire ai-je besoin (Permis B ou BE) ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "En Suisse (OAC art. 3), le permis voiture catégorie B standard suffit pour toute remorque dont le PTAC est inférieur ou égal à 750 kg, ou si le poids total roulant autorisé de l'ensemble (voiture + remorque) ne dépasse pas 3'500 kg. Au-delà (notamment pour les vans 2 places ou grands plateaux), le permis remorque (BE) est légalement requis. Chaque annonce Renger indique clairement la mention légale requise."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Comment se déroule l'état des lieux photographique ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "L'état des lieux s'effectue directement sur votre smartphone via notre module dédié inspection.html. Vous prenez 4 photos guidées avec silhouettes en surbrillance (tête d'attelage, avant, côtés, arrière). Vos photos sont horodatées et géolocalisées avec un filigrane indélébile pour garantir la protection mutuelle des deux parties (CO art. 257a)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Quelle est la différence entre le mode Standard et Renger PRO ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "En mode Standard (gratuit), le propriétaire perçoit 80% du montant du loyer (Renger retient 20% de commission de mise en relation). En mode Renger PRO (39 CHF/mois ou 390 CHF/an), la commission passe à 0% (vous gardez 100% de vos gains), vous bénéficiez du badge Loueur PRO, d'une visibilité prioritaire et de l'accès illimité au cockpit financier Renger Analytics PRO."
+              }
+            }
+          ]
+        }
+      ]
     }
     </script>
 </head>
@@ -613,16 +699,27 @@
             </div>
         </div>
     </div>
-<footer class="w-full py-8 mt-16 border-t border-stone-200 dark:border-stone-800 text-center text-sm text-stone-400 flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
-        <div class="flex items-center gap-2">
-            <div class="w-6 h-6 rounded-lg bg-white dark:bg-stone-800 shadow-xs border border-stone-200/80 dark:border-stone-700 p-0.5 flex items-center justify-center overflow-hidden">
-                <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
-            </div>
-            <span class="text-stone-400 dark:text-stone-500 font-semibold">© 2026 Renger</span>
+<footer class="w-full py-8 mt-16 border-t border-stone-200 dark:border-stone-800 text-center text-sm text-stone-400 flex flex-col justify-center items-center gap-4">
+        <!-- Hubs SEO régionaux Suisse Romande -->
+        <div id="footer-seo-hubs" class="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs text-stone-500 dark:text-stone-400">
+            <span class="font-bold text-stone-600 dark:text-stone-300">Hubs régionaux :</span>
+            <a href="location-remorque-vaud.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Vaud</a>
+            <span class="text-stone-300 dark:text-stone-700">•</span>
+            <a href="location-remorque-geneve.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Genève</a>
+            <span class="text-stone-300 dark:text-stone-700">•</span>
+            <a href="location-remorque-valais.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Valais</a>
         </div>
-        <a href="mentions-legales.html" class="hover:text-terracotta-500 transition font-medium">Mentions Légales</a>
-        <a href="cgu.html" class="hover:text-terracotta-500 transition font-medium">Conditions Générales d'Utilisation (CGU)</a>
-        <a href="politique-confidentialite.html" class="hover:text-terracotta-500 transition font-medium">Politique de Confidentialité</a>
+        <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 pt-2">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-white dark:bg-stone-800 shadow-xs border border-stone-200/80 dark:border-stone-700 p-0.5 flex items-center justify-center overflow-hidden">
+                    <img src="Renger_Logo_SVG.svg?v=2" alt="Renger Logo" class="w-full h-full object-contain">
+                </div>
+                <span class="text-stone-400 dark:text-stone-500 font-semibold">© 2026 Renger</span>
+            </div>
+            <a href="mentions-legales.html" class="hover:text-terracotta-500 transition font-medium">Mentions Légales</a>
+            <a href="cgu.html" class="hover:text-terracotta-500 transition font-medium">Conditions Générales d'Utilisation (CGU)</a>
+            <a href="politique-confidentialite.html" class="hover:text-terracotta-500 transition font-medium">Politique de Confidentialité</a>
+        </div>
     </footer>
 
     <!-- CDN Librairies tierces (chargement différé dans l'ordre) -->

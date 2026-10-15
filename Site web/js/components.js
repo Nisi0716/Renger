@@ -884,6 +884,34 @@ async function submitReview() {
         if (submitBtn) submitBtn.disabled = false;
     }
 }
+// ==========================================
+// HUBS RÉGIONAUX SEO SUISSE ROMANDE
+// ==========================================
+const RENGER_SEO_HUBS = [
+    { name: 'Location Remorque Vaud', canton: 'Vaud', url: 'location-remorque-vaud.html' },
+    { name: 'Location Remorque Genève', canton: 'Genève', url: 'location-remorque-geneve.html' },
+    { name: 'Location Remorque Valais', canton: 'Valais', url: 'location-remorque-valais.html' }
+];
+
+function injectSeoFooterLinks() {
+    if (typeof document === 'undefined' || typeof document.querySelector !== 'function' || typeof document.getElementById !== 'function') return;
+    const footer = document.querySelector('footer');
+    if (!footer || document.getElementById('footer-seo-hubs')) return;
+
+    const hubsContainer = document.createElement('div');
+    hubsContainer.id = 'footer-seo-hubs';
+    hubsContainer.className = 'w-full pt-4 mt-2 border-t border-stone-200/60 dark:border-stone-800/60 flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs text-stone-500 dark:text-stone-400';
+    hubsContainer.innerHTML = `
+        <span class="font-bold text-stone-600 dark:text-stone-300">Hubs régionaux :</span>
+        <a href="location-remorque-vaud.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Vaud</a>
+        <span class="text-stone-300 dark:text-stone-700">•</span>
+        <a href="location-remorque-geneve.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Genève</a>
+        <span class="text-stone-300 dark:text-stone-700">•</span>
+        <a href="location-remorque-valais.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Valais</a>
+    `;
+    footer.prepend(hubsContainer);
+}
+
 function initPageUIState() {
     if (typeof window === 'undefined') return;
     const path = (window.location && window.location.pathname) || '';
@@ -900,6 +928,7 @@ function initPageUIState() {
     checkAndTriggerOnboarding();
     initBroadcastBanner();
     initMaintenanceMode();
+    injectSeoFooterLinks();
 }
 
 // ==========================================
@@ -1474,6 +1503,8 @@ if (typeof window !== 'undefined') {
     window.hideTooltip = hideTooltip;
     window.initBroadcastBanner = initBroadcastBanner;
     window.initMaintenanceMode = initMaintenanceMode;
+    window.RENGER_SEO_HUBS = RENGER_SEO_HUBS;
+    window.injectSeoFooterLinks = injectSeoFooterLinks;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -1497,6 +1528,8 @@ if (typeof module !== 'undefined' && module.exports) {
         showTooltipFor,
         hideTooltip,
         initBroadcastBanner,
-        initMaintenanceMode
+        initMaintenanceMode,
+        RENGER_SEO_HUBS,
+        injectSeoFooterLinks
     };
 }

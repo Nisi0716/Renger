@@ -56,7 +56,10 @@ describe('Tier 1: HTML Structure, Well-Formedness & Artifact Cleanup', () => {
         'cgu.html',
         'politique-confidentialite.html',
         'stats.html',
-        'mentions-legales.html'
+        'mentions-legales.html',
+        'location-remorque-vaud.html',
+        'location-remorque-geneve.html',
+        'location-remorque-valais.html'
     ];
 
     for (const fileName of htmlFiles) {
