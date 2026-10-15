@@ -14,3 +14,4 @@ Disallow: /tests/
 
 # Sitemap XML officiel
 Sitemap: https://renger.ch/sitemap.xml
+Sitemap: https://renger.ch/sitemap-renger.xml
