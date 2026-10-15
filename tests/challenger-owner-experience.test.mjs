@@ -317,6 +317,67 @@ describe('Challenger Suite: Trailer Owner Experience & Swiss Business Rigor (Mar
             assert.equal(resComplex.totalNetEarnings, 120);
             assert.equal(resComplex.availableBalance, 120);
             assert.equal(resComplex.canWithdraw, true, '120 CHF permet le retrait');
+
+            // 5. Ignorer les retraits échoués ou rejetés
+            const payoutsWithFailed = [
+                { amount: 50, status: 'vire' },
+                { amount: 40, status: 'echoue' },
+                { amount: 30, status: 'rejete' }
+            ];
+            const resFailedIgnored = trailers.calculateOwnerBalance(complexBookings, payoutsWithFailed, false, today);
+            assert.equal(resFailedIgnored.totalWithdrawn, 50, 'Seul le retrait viré doit être décompté');
+            assert.equal(resFailedIgnored.availableBalance, 70, '120 - 50 = 70 CHF disponible');
+            assert.equal(resFailedIgnored.canWithdraw, false, '70 CHF < 80 CHF');
+        });
+
+        it('trailers.js handleRequestPayout calls stripe-payout Edge Function and manages UI states', () => {
+            const trailersCode = fs.readFileSync(path.join(siteWebDir, 'js', 'trailers.js'), 'utf8');
+            assert.ok(trailersCode.includes('stripe-payout'), 'handleRequestPayout doit invoquer l Edge Function stripe-payout');
+            assert.ok(trailersCode.includes('stripe_account_id'), 'handleRequestPayout doit vérifier le compte Stripe Connect');
+            assert.ok(trailersCode.includes('MIN_PAYOUT_AMOUNT'), 'handleRequestPayout doit respecter le seuil MIN_PAYOUT_AMOUNT');
+        });
+    });
+
+    describe('Item 12: Stripe Connect Payout Edge Function (Zero-Trust DevSecOps Contract)', () => {
+        const edgeFunctionPath = path.join(projectRoot, 'supabase', 'functions', 'stripe-payout', 'index.ts');
+
+        it('supabase/functions/stripe-payout/index.ts must exist and be syntactically valid', () => {
+            assert.ok(fs.existsSync(edgeFunctionPath), 'Le fichier supabase/functions/stripe-payout/index.ts doit exister');
+            const code = fs.readFileSync(edgeFunctionPath, 'utf8');
+            assert.ok(code.length > 500, 'Le fichier index.ts doit contenir l implémentation complète');
+        });
+
+        it('stripe-payout must enforce strict authentication and Zero-Trust caller identification', () => {
+            const code = fs.readFileSync(edgeFunctionPath, 'utf8');
+            assert.ok(code.includes('getUser'), 'stripe-payout doit authentifier l utilisateur via getUser');
+            assert.ok(code.includes('Authorization'), 'stripe-payout doit exiger l en-tête Authorization');
+            assert.ok(code.includes('SERVICE_ROLE_KEY'), 'stripe-payout doit utiliser la clé service role');
+        });
+
+        it('stripe-payout must implement Rate Limiting against financial DoS attacks (max 5 attempts / 10 min)', () => {
+            const code = fs.readFileSync(edgeFunctionPath, 'utf8');
+            assert.ok(code.includes('rate_limits'), 'stripe-payout doit utiliser la table rate_limits');
+            assert.ok(code.includes('action'), 'stripe-payout doit filtrer par action');
+            assert.ok(code.includes('10 * 60 * 1000') || code.includes('10 * 60'), 'stripe-payout doit calculer une fenêtre de 10 minutes');
+            assert.ok(code.includes('429'), 'stripe-payout doit renvoyer un statut HTTP 429 en cas de dépassement');
+        });
+
+        it('stripe-payout must compute balance server-side from PostgreSQL and enforce 80 CHF minimum (Zero Trust)', () => {
+            const code = fs.readFileSync(edgeFunctionPath, 'utf8');
+            assert.ok(code.includes('bookings'), 'stripe-payout doit interroger la table bookings');
+            assert.ok(code.includes('payouts'), 'stripe-payout doit interroger la table payouts');
+            assert.ok(code.includes('80'), 'stripe-payout doit imposer le seuil strict de 80.00 CHF');
+            assert.ok(code.includes('stripe_account_id'), 'stripe-payout doit vérifier stripe_account_id');
+        });
+
+        it('stripe-payout must execute stripe.transfers.create and update payout status', () => {
+            const code = fs.readFileSync(edgeFunctionPath, 'utf8');
+            assert.ok(code.includes('stripe.transfers.create'), 'stripe-payout doit exécuter stripe.transfers.create');
+            assert.ok(code.includes("currency: 'chf'") || code.includes('currency: "chf"'), 'stripe-payout doit transférer en CHF');
+            assert.ok(code.includes('destination: profile.stripe_account_id'), 'stripe-payout doit cibler le compte Stripe Connect du propriétaire');
+            assert.ok(code.includes('stripe_transfer_id'), 'stripe-payout doit enregistrer le stripe_transfer_id');
+            assert.ok(code.includes('vire'), 'stripe-payout doit marquer le statut à vire en cas de succès');
+            assert.ok(code.includes('echoue'), 'stripe-payout doit marquer le statut à echoue en cas d erreur');
         });
     });
 
@@ -331,7 +392,9 @@ describe('Challenger Suite: Trailer Owner Experience & Swiss Business Rigor (Mar
             assert.match(sql, /ALTER\s+TABLE\s+trailers[\s\S]*?has_hitch_lock/i, 'migrations doit ajouter has_hitch_lock à trailers');
             assert.match(sql, /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+public\.payouts/i, 'migrations doit déclarer public.payouts');
             assert.match(sql, /amount\s+NUMERIC\(10,\s*2\)\s+NOT\s+NULL\s+CHECK\s*\(\s*amount\s*>=\s*80\.00\s*\)/i, 'payouts doit vérifier amount >= 80.00');
+            assert.match(sql, /stripe_transfer_id/i, 'payouts doit déclarer stripe_transfer_id');
         });
     });
 });
+
 

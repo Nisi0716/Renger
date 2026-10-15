@@ -1694,6 +1694,7 @@ if (typeof window !== 'undefined') {
     window.isAllowedEmailDomain = isAllowedEmailDomain;
     window.compressImageFile = compressImageFile;
     window.DISPOSABLE_EMAIL_DOMAINS = DISPOSABLE_EMAIL_DOMAINS;
+    window.callEdgeFunction = callEdgeFunction;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -1702,7 +1703,8 @@ if (typeof module !== 'undefined' && module.exports) {
         isValidEmail,
         isAllowedEmailDomain,
         compressImageFile,
-        DISPOSABLE_EMAIL_DOMAINS
+        DISPOSABLE_EMAIL_DOMAINS,
+        callEdgeFunction
     };
 }
 
