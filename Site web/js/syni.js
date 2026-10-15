@@ -3737,6 +3737,24 @@
         }
     }
 
+    const COLAB_NOTEBOOK_URL = 'https://colab.research.google.com/github/Nisi0716/Renger/blob/main/renger_analytics_colab.ipynb';
+
+    /**
+     * Ouvre le notebook Renger dans Google Colab (nouvel onglet, sans fuite de référent).
+     * Google ne permet pas de démarrer une session Colab à distance : l'ouverture est
+     * la seule action possible, puis "Exécution > Tout exécuter" lance la synchro Supabase.
+     */
+    function launchColab() {
+        if (typeof window !== 'undefined' && typeof window.open === 'function') {
+            window.open(COLAB_NOTEBOOK_URL, '_blank', 'noopener,noreferrer');
+        }
+        try { recordAuditLog('launch_colab', 'system', 'colab', 'Ouverture du notebook Google Colab depuis Syni'); } catch (_) {}
+        if (typeof showToast === 'function') {
+            showToast("Colab ouvert : cliquez sur Exécution > Tout exécuter", "info");
+        }
+        return COLAB_NOTEBOOK_URL;
+    }
+
     function setColabConfig(cfg) {
         inMemoryColabConfig = cfg || { endpointUrl: '', enabled: false };
         if (typeof window !== 'undefined' && window.localStorage) {
@@ -4615,6 +4633,14 @@
                 }
             },
             {
+                title: 'Lancer Google Colab (notebook Renger)',
+                badge: 'Colab',
+                handler: () => {
+                    closeCommandPalette();
+                    launchColab();
+                }
+            },
+            {
                 title: 'Exporter Dataset pour Google Colab (JSON)',
                 badge: 'Colab Data',
                 handler: () => {
@@ -5404,6 +5430,12 @@
             };
         }
 
+        // Lancement de Colab (ouvre le notebook dans un nouvel onglet)
+        const btnLaunchColab = document.getElementById('btn-colab-launch');
+        if (btnLaunchColab) {
+            btnLaunchColab.onclick = () => launchColab();
+        }
+
         // Export Dataset Colab
         const btnExportColab = document.getElementById('btn-colab-export-dataset');
         if (btnExportColab) {
@@ -5542,6 +5574,7 @@
         getColabConfig,
         setColabConfig,
         exportColabDataset,
+        launchColab,
         queryColabApi,
         renderCopilotSection,
         // Module 7 : Contrôle Global, Diffusion & Maintenance

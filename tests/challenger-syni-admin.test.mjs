@@ -1298,6 +1298,25 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.ok(res.widget);
             assert.equal(res.engine, 'Syni Data Science Local');
         });
+        it('launchColab ouvre le notebook Colab dans un nouvel onglet sécurisé et le bouton existe dans Syni', () => {
+            const syniHtml = fs.readFileSync(path.join(siteWebDir, 'syni.html'), 'utf8');
+            assert.ok(syniHtml.includes('id="btn-colab-launch"'), 'Bouton Lancer Colab requis');
+
+            const opened = [];
+            const originalWindow = global.window;
+            global.window = { open: (...args) => opened.push(args) };
+            try {
+                const url = syniModule.launchColab();
+                assert.ok(url.startsWith('https://colab.research.google.com/github/'));
+                assert.ok(url.endsWith('renger_analytics_colab.ipynb'));
+                assert.equal(opened.length, 1);
+                assert.equal(opened[0][1], '_blank');
+                assert.ok(opened[0][2].includes('noopener'));
+            } finally {
+                if (originalWindow !== undefined) global.window = originalWindow;
+                else delete global.window;
+            }
+        });
     });
 
 });
