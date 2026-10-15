@@ -1367,5 +1367,459 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
         });
     });
 
+    describe('22. Suivi des Soldes Propriétaires, Retraits & Fonds Stripe (Syni Tracking & Payouts)', () => {
+        const syniHtml = fs.readFileSync(path.join(siteWebDir, 'syni.html'), 'utf8');
+        const edgeFunctionCode = fs.readFileSync(edgeFunctionPath, 'utf8');
+
+        it('syni-data/index.ts requêtes public.payouts et inclut les payouts dans la réponse', () => {
+            assert.ok(edgeFunctionCode.includes("from('payouts').select('*')"), 'Edge Function syni-data doit interroger public.payouts');
+            assert.ok(edgeFunctionCode.includes('payoutsRes') && edgeFunctionCode.includes('payouts'), 'Edge Function doit renvoyer payouts dans la réponse');
+        });
+
+        it('syni.html contient la 5ème carte KPI Fonds Détenus Propriétaires et Séquestre en cours', () => {
+            assert.ok(syniHtml.includes('id="kpi-owners-stripe-balance"'), 'KPI solde retirable propriétaires');
+            assert.ok(syniHtml.includes('id="kpi-owners-ongoing-escrow"'), 'KPI séquestre locations en cours');
+            assert.ok(syniHtml.includes('FONDS DÉTENUS PROPRIÉTAIRES'), 'Titre de la carte KPI');
+        });
+
+        it('syni.html contient les KPIs Cashflow & le tableau centralisé des virements dans le Module 3', () => {
+            assert.ok(syniHtml.includes('id="cashflow-gross-volume"'), '#cashflow-gross-volume requis');
+            assert.ok(syniHtml.includes('id="cashflow-renger-revenue"'), '#cashflow-renger-revenue requis');
+            assert.ok(syniHtml.includes('id="cashflow-owners-balance"'), '#cashflow-owners-balance requis');
+            assert.ok(syniHtml.includes('id="cashflow-owners-ongoing"'), '#cashflow-owners-ongoing requis');
+            assert.ok(syniHtml.includes('id="cashflow-caution-escrow"'), '#cashflow-caution-escrow requis');
+            assert.ok(syniHtml.includes('id="cashflow-total-payouts"'), '#cashflow-total-payouts requis');
+            assert.ok(syniHtml.includes('id="syni-payouts-tbody"'), 'Tableau centralisé des virements #syni-payouts-tbody requis');
+        });
+
+        it('syni.html contient la modale inspecteur de profil utilisateur & solde propriétaire', () => {
+            assert.ok(syniHtml.includes('id="syni-user-detail-modal"'), '#syni-user-detail-modal requis');
+            assert.ok(syniHtml.includes('id="user-detail-modal-close"'), '#user-detail-modal-close requis');
+            assert.ok(syniHtml.includes('id="user-detail-modal-btn-close"'), '#user-detail-modal-btn-close requis');
+            assert.ok(syniHtml.includes('id="user-detail-profile-summary"'), '#user-detail-profile-summary requis');
+            assert.ok(syniHtml.includes('id="user-detail-finance-summary"'), '#user-detail-finance-summary requis');
+            assert.ok(syniHtml.includes('id="user-detail-trailers-list"'), '#user-detail-trailers-list requis');
+            assert.ok(syniHtml.includes('id="user-detail-payouts-list"'), '#user-detail-payouts-list requis');
+        });
+
+        it('syni.html contient le filtre des soldes retirables (≥ 80 CHF) et la colonne Solde Propriétaire', () => {
+            assert.ok(syniHtml.includes('<option value="withdrawable">'), 'Option withdrawable dans #users-filter-type');
+            assert.ok(syniHtml.includes('Solde Propriétaire'), 'En-tête de colonne Solde Propriétaire dans le tableau utilisateurs');
+        });
+
+        it('calculateOwnerBalance calcule fidèlement les gains nets PRO (100%) vs Standard (80%)', () => {
+            const today = new Date('2026-10-15T12:00:00Z');
+            const bookings = [
+                {
+                    id: 'b1',
+                    start_date: '2026-10-01',
+                    end_date: '2026-10-03', // 3 jours terminés
+                    status: 'paye',
+                    trailers: { price: 50 } // 3 * 50 = 150 CHF
+                }
+            ];
+
+            // Pour un propriétaire PRO (100% net = 150 CHF)
+            const balPro = syniModule.calculateOwnerBalance(bookings, [], true, today);
+            assert.equal(balPro.totalNetEarnings, 150.00);
+            assert.equal(balPro.totalWithdrawn, 0);
+            assert.equal(balPro.availableBalance, 150.00);
+            assert.equal(balPro.canWithdraw, true, 'Solde >= 80 CHF doit être retirable');
+
+            // Pour un propriétaire Standard (80% net = 120 CHF)
+            const balStd = syniModule.calculateOwnerBalance(bookings, [], false, today);
+            assert.equal(balStd.totalNetEarnings, 120.00);
+            assert.equal(balStd.totalWithdrawn, 0);
+            assert.equal(balStd.availableBalance, 120.00);
+            assert.equal(balStd.canWithdraw, true);
+        });
+
+        it('calculateOwnerBalance déduit les virements traités et ignore les virements échoués ou annulés', () => {
+            const today = new Date('2026-10-15T12:00:00Z');
+            const bookings = [
+                {
+                    id: 'b1',
+                    start_date: '2026-10-01',
+                    end_date: '2026-10-03',
+                    status: 'paye',
+                    trailers: { price: 50 } // 150 CHF brut PRO
+                }
+            ];
+            const payouts = [
+                { id: 'p1', amount: 80.00, status: 'vire' },
+                { id: 'p2', amount: 50.00, status: 'echoue' },
+                { id: 'p3', amount: 30.00, status: 'rejete' },
+                { id: 'p4', amount: 20.00, status: 'cancelled' }
+            ];
+
+            const bal = syniModule.calculateOwnerBalance(bookings, payouts, true, today);
+            assert.equal(bal.totalNetEarnings, 150.00);
+            assert.equal(bal.totalWithdrawn, 80.00, 'Seul le virement valide est déduit');
+            assert.equal(bal.availableBalance, 70.00, '150 - 80 = 70 CHF disponible');
+            assert.equal(bal.canWithdraw, false, '70 CHF < 80 CHF seuil minimum donc non retirable');
+        });
+
+        it('calculateOwnerBalance ignore les réservations en cours et les réservations annulées', () => {
+            const today = new Date('2026-10-15T12:00:00Z');
+            const bookings = [
+                {
+                    id: 'b_past',
+                    start_date: '2026-10-01',
+                    end_date: '2026-10-05',
+                    status: 'paye',
+                    trailers: { price: 50 } // 5 jours * 50 = 250 CHF PRO
+                },
+                {
+                    id: 'b_ongoing',
+                    start_date: '2026-10-14',
+                    end_date: '2026-10-18', // En cours
+                    status: 'paye',
+                    trailers: { price: 60 }
+                },
+                {
+                    id: 'b_cancelled',
+                    start_date: '2026-10-01',
+                    end_date: '2026-10-03',
+                    status: 'annule',
+                    trailers: { price: 50 }
+                }
+            ];
+
+            const bal = syniModule.calculateOwnerBalance(bookings, [], true, today);
+            assert.equal(bal.totalNetEarnings, 250.00, 'Seule la réservation terminée passée est comptabilisée');
+            assert.equal(bal.availableBalance, 250.00);
+        });
+
+        it('calculateOwnerOngoingEscrow calcule le montant séquestré pour les locations en cours', () => {
+            const today = new Date('2026-10-15T12:00:00Z');
+            const bookings = [
+                {
+                    id: 'b_past',
+                    start_date: '2026-10-01',
+                    end_date: '2026-10-05',
+                    status: 'paye',
+                    trailers: { price: 50 }
+                },
+                {
+                    id: 'b_ongoing',
+                    start_date: '2026-10-14',
+                    end_date: '2026-10-16', // 3 jours * 100 = 300 CHF
+                    status: 'paye',
+                    trailers: { price: 100 }
+                }
+            ];
+
+            const escrowPro = syniModule.calculateOwnerOngoingEscrow(bookings, true, today);
+            assert.equal(escrowPro, 300.00, '300 CHF à 100% PRO');
+
+            const escrowStd = syniModule.calculateOwnerOngoingEscrow(bookings, false, today);
+            assert.equal(escrowStd, 240.00, '300 * 80% = 240 CHF Standard');
+        });
+
+        it('computeSyniMetrics calcule les agrégats de soldes propriétaires et enrichit les profils', () => {
+            const mockData = {
+                profiles: [
+                    { id: 'u_owner_pro', is_pro: true, email: 'pro@renger.ch', username: 'pro_user' },
+                    { id: 'u_owner_std', is_pro: false, email: 'std@renger.ch', username: 'std_user' },
+                    { id: 'u_renter', is_pro: false, email: 'renter@renger.ch', username: 'renter_user' }
+                ],
+                trailers: [
+                    { id: 101, owner_id: 'u_owner_pro', price: 100, is_active: true },
+                    { id: 102, owner_id: 'u_owner_std', price: 50, is_active: true }
+                ],
+                bookings: [
+                    // u_owner_pro : terminée 2 jours * 100 = 200 CHF net PRO
+                    { id: 'b_p1', trailer_id: 101, owner_id: 'u_owner_pro', user_id: 'u_renter', start_date: '2026-09-01', end_date: '2026-09-02', status: 'paye', total_price: 200, created_at: '2026-09-01T10:00:00Z' },
+                    // u_owner_std : terminée 2 jours * 50 = 100 CHF brut * 80% = 80 CHF net Std
+                    { id: 'b_s1', trailer_id: 102, owner_id: 'u_owner_std', user_id: 'u_renter', start_date: '2026-09-05', end_date: '2026-09-06', status: 'paye', total_price: 100, created_at: '2026-09-05T10:00:00Z' },
+                    // u_owner_pro : en cours 1 jour * 100 = 100 CHF séquestre PRO (date future)
+                    { id: 'b_p2', trailer_id: 101, owner_id: 'u_owner_pro', user_id: 'u_renter', start_date: '2026-12-01', end_date: '2026-12-01', status: 'paye', total_price: 100, created_at: '2026-10-15T08:00:00Z' }
+                ],
+                payouts: [
+                    { id: 'pay_1', user_id: 'u_owner_pro', amount: 80.00, status: 'vire', stripe_transfer_id: 'tr_test_1' }
+                ],
+                inspections: [],
+                rateLimits: [],
+                analytics: [],
+                impressions: [],
+                clicks: []
+            };
+
+            const metrics = syniModule.computeSyniMetrics(mockData, 'all');
+
+            assert.ok(metrics.owners, 'metrics.owners doit être défini');
+            assert.equal(metrics.owners.activeOwnersCount, 2);
+            // PRO: 200 - 80 = 120 CHF dispo. STD: 80 dispo. Total = 200 CHF
+            assert.equal(metrics.owners.totalAvailableBalance, 200.00);
+            assert.equal(metrics.owners.totalOngoingEscrow, 100.00);
+            assert.equal(metrics.owners.totalWithdrawn, 80.00);
+            assert.equal(metrics.owners.withdrawableCount, 2, 'Les 2 propriétaires ont un solde >= 80 CHF');
+
+            // Vérification profil enrichi PRO
+            const proUser = metrics.users.list.find(u => u.id === 'u_owner_pro');
+            assert.equal(proUser.owner_balance, 120.00);
+            assert.equal(proUser.can_withdraw, true);
+            assert.equal(proUser.ongoing_escrow, 100.00);
+            assert.equal(proUser.associated_trailers.length, 1);
+            assert.equal(proUser.payouts.length, 1);
+
+            // Vérification profil enrichi Locataire
+            const renter = metrics.users.list.find(u => u.id === 'u_renter');
+            assert.equal(renter.owner_balance, null, 'Un non-propriétaire n a pas de solde');
+            assert.equal(renter.can_withdraw, false);
+
+            // Vérification payouts
+            assert.ok(metrics.payouts);
+            assert.equal(metrics.payouts.total, 1);
+            assert.equal(metrics.payouts.list[0].owner.username, 'pro_user');
+        });
+
+        it('renderUsersTable affiche le solde propriétaire et le bouton inspecter les détails', async () => {
+            await syniModule.fetchSyniData();
+
+            const originalDoc = global.document;
+            let tbodyContent = '';
+            const tbodyEl = {
+                set innerHTML(val) { tbodyContent = val; },
+                get innerHTML() { return tbodyContent; },
+                querySelectorAll: () => []
+            };
+            const searchInput = { value: '' };
+            const filterType = { value: 'all' };
+
+            global.document = {
+                getElementById: (id) => {
+                    if (id === 'syni-users-tbody') return tbodyEl;
+                    if (id === 'users-search-input') return searchInput;
+                    if (id === 'users-filter-type') return filterType;
+                    return null;
+                },
+                querySelectorAll: () => []
+            };
+
+            try {
+                syniModule.renderUsersTable();
+                assert.ok(tbodyContent.includes('btn-syni-user-inspect'), 'Bouton Détails d inspection présent');
+                assert.ok(tbodyContent.includes('CHF'), 'Montant en CHF présent dans le tableau');
+
+                // Test du filtre withdrawable
+                filterType.value = 'withdrawable';
+                syniModule.renderUsersTable();
+                assert.ok(tbodyContent.includes('text-emerald-400'), 'Les utilisateurs filtrés ont le badge retirable vert');
+            } finally {
+                global.document = originalDoc;
+            }
+        });
+
+        it('renderPayoutsTable remplit le tableau centralisé des virements', async () => {
+            await syniModule.fetchSyniData();
+
+            const originalDoc = global.document;
+            let tbodyContent = '';
+            const tbodyEl = {
+                set innerHTML(val) { tbodyContent = val; },
+                get innerHTML() { return tbodyContent; }
+            };
+
+            global.document = {
+                getElementById: (id) => {
+                    if (id === 'syni-payouts-tbody') return tbodyEl;
+                    return null;
+                }
+            };
+
+            try {
+                syniModule.renderPayoutsTable();
+                assert.ok(tbodyContent.includes('tr_mock_101'), 'Stripe transfer ID présent dans les lignes');
+                assert.ok(tbodyContent.includes('CHF'), 'Montant du virement formaté en CHF');
+                assert.ok(tbodyContent.includes('Viré') || tbodyContent.includes('En cours'), 'Badge de statut présent');
+            } finally {
+                global.document = originalDoc;
+            }
+        });
+
+        it('openUserDetailModal et closeUserDetailModal gèrent l ouverture, la fermeture et le peuplement', async () => {
+            await syniModule.fetchSyniData();
+
+            const originalDoc = global.document;
+            let modalHidden = true;
+            const modalEl = {
+                classList: {
+                    contains: (cls) => cls === 'hidden' ? modalHidden : false,
+                    remove: (cls) => { if (cls === 'hidden') modalHidden = false; },
+                    add: (cls) => { if (cls === 'hidden') modalHidden = true; }
+                }
+            };
+            const profileEl = { innerHTML: '' };
+            const finEl = { innerHTML: '' };
+            const trailersCountEl = { textContent: '' };
+            const trailersListEl = { innerHTML: '' };
+            const payoutsCountEl = { textContent: '' };
+            const payoutsListEl = { innerHTML: '' };
+
+            global.document = {
+                getElementById: (id) => {
+                    if (id === 'syni-user-detail-modal') return modalEl;
+                    if (id === 'user-detail-profile-summary') return profileEl;
+                    if (id === 'user-detail-finance-summary') return finEl;
+                    if (id === 'user-detail-trailers-count') return trailersCountEl;
+                    if (id === 'user-detail-trailers-list') return trailersListEl;
+                    if (id === 'user-detail-payouts-count') return payoutsCountEl;
+                    if (id === 'user-detail-payouts-list') return payoutsListEl;
+                    return null;
+                }
+            };
+
+            try {
+                syniModule.openUserDetailModal('usr-owner-1');
+                assert.equal(modalHidden, false, 'Modale visible après openUserDetailModal');
+                assert.ok(profileEl.innerHTML.includes('marc_remorques'), 'Username propriétaire affiché');
+                assert.ok(profileEl.innerHTML.includes('acct_101_connect'), 'Compte Stripe Connect affiché');
+                assert.ok(finEl.innerHTML.includes('Solde Disponible'), 'Synthèse financière affichée');
+                assert.ok(Number(trailersCountEl.textContent) > 0, 'Nombre de remorques renseigné');
+                assert.ok(Number(payoutsCountEl.textContent) > 0, 'Nombre de virements renseigné');
+
+                syniModule.closeUserDetailModal();
+                assert.equal(modalHidden, true, 'Modale masquée après closeUserDetailModal');
+            } finally {
+                global.document = originalDoc;
+            }
+        });
+
+        it('calculateRentalDays et calculateOwnerBalance gèrent avec exactitude les timestamps horaires et le passage à l heure d hiver (DST)', () => {
+            const today = new Date('2026-11-01T12:00:00Z');
+
+            // 1. Même jour avec timestamps non nuls (ex: 10h à 18h = 8h) : DOIT compter 1 seul jour et non 2
+            const sameDayBooking = [
+                {
+                    id: 'b_same_day',
+                    start_date: '2026-10-01T10:00:00Z',
+                    end_date: '2026-10-01T18:00:00Z',
+                    status: 'paye',
+                    trailers: { price: 50 }
+                }
+            ];
+            const balSameDay = syniModule.calculateOwnerBalance(sameDayBooking, [], true, today);
+            assert.equal(balSameDay.totalNetEarnings, 50.00, 'Une location sur une même journée avec heures doit compter 1 jour (50 CHF), non 2 jours (100 CHF)');
+
+            // 2. Location de 2 jours consécutifs traversant le basculement d heure d hiver (25h) : DOIT compter 2 jours et non 3
+            const dstBooking = [
+                {
+                    id: 'b_dst',
+                    start_date: '2026-10-24T09:00:00Z',
+                    end_date: '2026-10-25T10:00:00Z',
+                    status: 'paye',
+                    trailers: { price: 60 }
+                }
+            ];
+            const balDst = syniModule.calculateOwnerBalance(dstBooking, [], true, today);
+            assert.equal(balDst.totalNetEarnings, 120.00, 'Une location de samedi à dimanche traversant DST fall-back doit compter exactement 2 jours (120 CHF), non 3 jours (180 CHF)');
+        });
+
+        it('openUserDetailModal affiche "Non configuré" pour Stripe Connect si le profil n a qu un stripe_customer_id', async () => {
+            await syniModule.fetchSyniData();
+
+            const originalDoc = global.document;
+            const profileEl = { innerHTML: '' };
+            const finEl = { innerHTML: '' };
+            const trailersCountEl = { textContent: '' };
+            const trailersListEl = { innerHTML: '' };
+            const payoutsCountEl = { textContent: '' };
+            const payoutsListEl = { innerHTML: '' };
+
+            global.document = {
+                getElementById: (id) => {
+                    if (id === 'syni-user-detail-modal') return { classList: { remove: () => {}, add: () => {} } };
+                    if (id === 'user-detail-profile-summary') return profileEl;
+                    if (id === 'user-detail-finance-summary') return finEl;
+                    if (id === 'user-detail-trailers-count') return trailersCountEl;
+                    if (id === 'user-detail-trailers-list') return trailersListEl;
+                    if (id === 'user-detail-payouts-count') return payoutsCountEl;
+                    if (id === 'user-detail-payouts-list') return payoutsListEl;
+                    return null;
+                }
+            };
+
+            try {
+                // usr-renter-1 a stripe_customer_id: 'cus_201' mais AUCUN stripe_account_id
+                syniModule.openUserDetailModal('usr-renter-1');
+                assert.ok(profileEl.innerHTML.includes('Non configuré'), 'Stripe Connect doit indiquer Non configuré');
+                assert.ok(!profileEl.innerHTML.includes('Stripe Connect: cus_201'), 'Le Stripe Customer ID ne doit JAMAIS être pris pour un compte Connect');
+                assert.ok(profileEl.innerHTML.includes('Client Stripe:'), 'Le Client Stripe doit être identifié à part');
+            } finally {
+                global.document = originalDoc;
+            }
+        });
+
+        it('openMasterEditor et handleMasterEditorFormSave prennent en charge le Stripe Connect ID (stripe_account_id)', async () => {
+            await syniModule.fetchSyniData();
+
+            const originalDoc = global.document;
+            let fieldsHtml = '';
+            const fieldsContainer = {
+                set innerHTML(val) { fieldsHtml = val; },
+                get innerHTML() { return fieldsHtml; }
+            };
+
+            global.document = {
+                getElementById: (id) => {
+                    if (id === 'syni-master-editor-modal') return { classList: { remove: () => {}, add: () => {} } };
+                    if (id === 'master-editor-title') return { textContent: '' };
+                    if (id === 'master-editor-fields') return fieldsContainer;
+                    if (id === 'master-editor-reason') return { value: '' };
+                    return null;
+                }
+            };
+
+            try {
+                syniModule.openMasterEditor('user', 'usr-owner-1');
+                assert.ok(fieldsHtml.includes('id="me-field-stripe-account-id"'), 'Input stripe_account_id présent dans le Master Editor');
+                assert.ok(fieldsHtml.includes('acct_101_connect'), 'Valeur actuelle du compte Stripe Connect pré-remplie');
+
+                // Test de sauvegarde
+                const saved = syniModule.saveMasterEntity('user', 'usr-owner-1', {
+                    stripe_account_id: 'acct_custom_override_99'
+                }, 'Mise à jour compte connect');
+                assert.equal(saved.success, true);
+                assert.equal(saved.entity.stripe_account_id, 'acct_custom_override_99');
+            } finally {
+                global.document = originalDoc;
+            }
+        });
+
+        it('generateUsersCsv inclut le solde propriétaire, les fonds séquestre et le Stripe Connect ID', () => {
+            const users = [
+                {
+                    id: 'u-1',
+                    username: 'marc',
+                    email: 'marc@bluewin.ch',
+                    is_pro: true,
+                    is_admin: false,
+                    owner_balance: 150.00,
+                    ongoing_escrow: 50.00,
+                    total_withdrawn: 80.00,
+                    stripe_account_id: 'acct_123',
+                    stripe_customer_id: 'cus_456',
+                    trailers_count: 2,
+                    bookings_count: 3
+                }
+            ];
+
+            const csv = syniModule.generateUsersCsv(users);
+            assert.ok(csv.includes('Solde Propriétaire (CHF)'), 'En-tête Solde Propriétaire (CHF) présent');
+            assert.ok(csv.includes('Stripe Connect ID'), 'En-tête Stripe Connect ID présent');
+            assert.ok(csv.includes('150.00'), 'Montant du solde inclus dans les lignes');
+            assert.ok(csv.includes('acct_123'), 'Stripe Connect ID inclus dans les lignes');
+        });
+
+        it('searchCommandPalette permet de retrouver un virement par son stripe_transfer_id', async () => {
+            await syniModule.fetchSyniData();
+            const results = syniModule.searchCommandPalette('tr_mock_101');
+            assert.ok(results.length > 0, 'Recherche par Stripe Transfer ID doit renvoyer au moins un résultat');
+            assert.equal(results[0].type, 'payout');
+            assert.ok(results[0].title.includes('tr_mock_101'));
+        });
+    });
+
 });
 

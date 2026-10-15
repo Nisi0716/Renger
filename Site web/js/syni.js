@@ -28,6 +28,7 @@
     const MAINTENANCE_MODE_KEY = 'renger_maintenance_mode';
     const AUDIT_LOG_KEY = 'syni_audit_log';
     const COLAB_CONFIG_KEY = 'renger_colab_config';
+    const MIN_PAYOUT_AMOUNT = 80.00;
 
     // Modules Syni (10 modules de gestion suprême)
     const MODULES = ['cockpit', 'users', 'bookings', 'trailers', 'inspections', 'seo', 'control', 'simulator', 'palantir', 'copilot'];
@@ -149,14 +150,109 @@
     function calculateRentalDays(startDate, endDate) {
         if (!startDate || !endDate) return 1;
         try {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
+            const sStr = String(startDate).split('T')[0];
+            const eStr = String(endDate).split('T')[0];
+            const start = new Date(sStr + 'T00:00:00Z');
+            const end = new Date(eStr + 'T00:00:00Z');
             if (isNaN(start.getTime()) || isNaN(end.getTime())) return 1;
-            const diffTime = Math.abs(end.getTime() - start.getTime());
-            return Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
+            const diffMs = Math.abs(end.getTime() - start.getTime());
+            return Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
         } catch {
             return 1;
         }
+    }
+
+    /**
+     * Formate une date en format ISO local YYYY-MM-DD
+     */
+    function formatDateToLocalISO(date) {
+        if (!date) return '';
+        if (typeof date === 'string') return date.split('T')[0];
+        if (date instanceof Date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return String(date).split('T')[0];
+    }
+
+    /**
+     * Calcule le solde disponible et l'historique financier d'un propriétaire
+     * Règles de calcul :
+     * - Uniquement les locations payées et terminées (end_date < todayStr)
+     * - 100% PRO (0% commission), 80% Standard (20% commission)
+     * - Déduction des retraits passés (sauf statut échoué / rejeté)
+     */
+    function calculateOwnerBalance(sellerBookings = [], payouts = [], isPro = false, today = new Date()) {
+        const todayStr = formatDateToLocalISO(today);
+        let totalNetEarnings = 0;
+
+        (sellerBookings || []).forEach(booking => {
+            if (!booking) return;
+            const status = (booking.status || '').toLowerCase();
+            if (['indisponible', 'annule', 'cancelled'].includes(status)) return;
+            if (!['paye', 'paid', 'confirmed', 'termine'].includes(status)) return;
+
+            const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
+            if (endStr && todayStr > endStr) {
+                const days = calculateRentalDays(booking.start_date, booking.end_date);
+                const dailyPrice = (booking.trailers && booking.trailers.price != null)
+                    ? Number(booking.trailers.price)
+                    : ((booking.trailer && booking.trailer.price != null) ? Number(booking.trailer.price) : 0);
+                const baseRental = dailyPrice > 0 ? (days * dailyPrice) : (Number(booking.total_price) || 0);
+                const netRate = isPro ? 1.00 : 0.80;
+                totalNetEarnings += (baseRental * netRate);
+            }
+        });
+
+        totalNetEarnings = Math.round(totalNetEarnings * 100) / 100;
+
+        const totalWithdrawn = (payouts || []).reduce((sum, p) => {
+            const st = (p.status || '').toLowerCase();
+            if (['echoue', 'rejete', 'cancelled', 'refuse'].includes(st)) return sum;
+            const amt = Number(p.amount) || 0;
+            return sum + amt;
+        }, 0);
+
+        const availableBalance = Math.max(0, Math.round((totalNetEarnings - totalWithdrawn) * 100) / 100);
+        const canWithdraw = availableBalance >= MIN_PAYOUT_AMOUNT;
+
+        return {
+            totalNetEarnings,
+            totalWithdrawn,
+            availableBalance,
+            canWithdraw,
+            minThreshold: MIN_PAYOUT_AMOUNT
+        };
+    }
+
+    /**
+     * Calcule le total des fonds détenus en séquestre pour les locations en cours ou futures d'un propriétaire
+     */
+    function calculateOwnerOngoingEscrow(sellerBookings = [], isPro = false, today = new Date()) {
+        const todayStr = formatDateToLocalISO(today);
+        let ongoingNetEarnings = 0;
+
+        (sellerBookings || []).forEach(booking => {
+            if (!booking) return;
+            const status = (booking.status || '').toLowerCase();
+            if (['indisponible', 'annule', 'cancelled'].includes(status)) return;
+            if (!['paye', 'paid', 'confirmed'].includes(status)) return;
+
+            const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
+            if (endStr && todayStr <= endStr) {
+                const days = calculateRentalDays(booking.start_date, booking.end_date);
+                const dailyPrice = (booking.trailers && booking.trailers.price != null)
+                    ? Number(booking.trailers.price)
+                    : ((booking.trailer && booking.trailer.price != null) ? Number(booking.trailer.price) : 0);
+                const baseRental = dailyPrice > 0 ? (days * dailyPrice) : (Number(booking.total_price) || 0);
+                const netRate = isPro ? 1.00 : 0.80;
+                ongoingNetEarnings += (baseRental * netRate);
+            }
+        });
+
+        return Math.round(ongoingNetEarnings * 100) / 100;
     }
 
     /**
@@ -379,6 +475,8 @@
         const analytics = data?.analytics || [];
         const impressions = data?.impressions || [];
         const clicks = data?.clicks || [];
+        const payouts = data?.payouts || [];
+        const referenceDate = (data && data.referenceDate) ? new Date(data.referenceDate) : new Date();
 
         // Filtrage temporel
         const filteredBookings = bookings.filter(b => matchesTimeRange(b.created_at || b.start_date, timeRange));
@@ -414,16 +512,88 @@
             if (b.user_id) bookingsByUser[b.user_id] = (bookingsByUser[b.user_id] || 0) + 1;
         });
 
-        // Profils enrichis avec compteurs d'activité
+        // Indexation des réservations par propriétaire
+        const bookingsByOwner = new Map();
+        bookings.forEach(b => {
+            if (b.is_deleted) return;
+            const tr = trailersMap.get(b.trailer_id) || b.trailer || b.trailers || null;
+            const ownerId = b.owner_id || (tr ? tr.owner_id : null);
+            if (!ownerId) return;
+            if (!bookingsByOwner.has(ownerId)) bookingsByOwner.set(ownerId, []);
+            const normalizedBooking = {
+                ...b,
+                trailers: tr || b.trailers,
+                trailer: tr || b.trailer
+            };
+            bookingsByOwner.get(ownerId).push(normalizedBooking);
+        });
+
+        // Indexation des retraits par propriétaire
+        const payoutsByOwner = new Map();
+        payouts.forEach(p => {
+            if (!p.user_id) return;
+            if (!payoutsByOwner.has(p.user_id)) payoutsByOwner.set(p.user_id, []);
+            payoutsByOwner.get(p.user_id).push(p);
+        });
+
+        let totalPlatformOwnersAvailableBalance = 0;
+        let totalPlatformOwnersOngoingEscrow = 0;
+        let totalPlatformOwnersWithdrawn = 0;
+        let totalPlatformOwnersNetEarnings = 0;
+        let withdrawableOwnersCount = 0;
+
+        // Profils enrichis avec compteurs d'activité, soldes et remorques
         const enrichedProfiles = profiles.map(p => {
             const trailersCount = trailersByOwner[p.id] || 0;
             const bookingsCount = bookingsByUser[p.id] || 0;
+            const userBookings = bookingsByOwner.get(p.id) || [];
+            const userPayouts = payoutsByOwner.get(p.id) || [];
+            const isOwner = trailersCount > 0 || userBookings.length > 0;
+            const isRenter = bookingsCount > 0;
+            const isPro = !!p.is_pro;
+
+            const bal = calculateOwnerBalance(userBookings, userPayouts, isPro, referenceDate);
+            const ongoingEscrow = calculateOwnerOngoingEscrow(userBookings, isPro, referenceDate);
+
+            if (isOwner) {
+                totalPlatformOwnersAvailableBalance += bal.availableBalance;
+                totalPlatformOwnersOngoingEscrow += ongoingEscrow;
+                totalPlatformOwnersWithdrawn += bal.totalWithdrawn;
+                totalPlatformOwnersNetEarnings += bal.totalNetEarnings;
+                if (bal.canWithdraw) {
+                    withdrawableOwnersCount++;
+                }
+            }
+
+            const associatedTrailers = trailers.filter(t => t.owner_id === p.id && !t.is_deleted);
+
             return {
                 ...p,
                 trailers_count: trailersCount,
                 bookings_count: bookingsCount,
-                is_owner: trailersCount > 0,
-                is_renter: bookingsCount > 0
+                is_owner: isOwner,
+                is_renter: isRenter,
+                owner_balance: isOwner ? bal.availableBalance : null,
+                total_net_earnings: isOwner ? bal.totalNetEarnings : 0,
+                total_withdrawn: isOwner ? bal.totalWithdrawn : 0,
+                can_withdraw: isOwner ? bal.canWithdraw : false,
+                ongoing_escrow: isOwner ? ongoingEscrow : 0,
+                associated_trailers: associatedTrailers,
+                payouts: userPayouts
+            };
+        });
+
+        totalPlatformOwnersAvailableBalance = Math.round(totalPlatformOwnersAvailableBalance * 100) / 100;
+        totalPlatformOwnersOngoingEscrow = Math.round(totalPlatformOwnersOngoingEscrow * 100) / 100;
+        totalPlatformOwnersWithdrawn = Math.round(totalPlatformOwnersWithdrawn * 100) / 100;
+        totalPlatformOwnersNetEarnings = Math.round(totalPlatformOwnersNetEarnings * 100) / 100;
+
+        // Enrichissement des retraits plateforme avec le profil propriétaire
+        const detailedPayouts = payouts.map(p => {
+            const owner = profilesMap.get(p.user_id) || null;
+            return {
+                ...p,
+                owner
             };
         });
 
@@ -634,6 +804,19 @@
                 rateLimitAlerts: rateLimitAlertsCount,
                 list: rateLimits
             },
+            owners: {
+                totalAvailableBalance: totalPlatformOwnersAvailableBalance,
+                totalOngoingEscrow: totalPlatformOwnersOngoingEscrow,
+                totalWithdrawn: totalPlatformOwnersWithdrawn,
+                totalNetEarnings: totalPlatformOwnersNetEarnings,
+                activeOwnersCount,
+                withdrawableCount: withdrawableOwnersCount
+            },
+            payouts: {
+                total: payouts.length,
+                totalAmount: (payouts || []).reduce((s, p) => s + (Number(p.amount) || 0), 0),
+                list: detailedPayouts
+            },
             trash: {
                 usersCount: profiles.filter(p => !!p.is_deleted).length,
                 trailersCount: trailers.filter(t => !!t.is_deleted).length,
@@ -699,6 +882,10 @@
             'Admin',
             'Nb Remorques',
             'Nb Réservations',
+            'Solde Propriétaire (CHF)',
+            'Séquestre en cours (CHF)',
+            'Total Déjà Retiré (CHF)',
+            'Stripe Connect ID',
             'Stripe Customer ID'
         ];
 
@@ -711,6 +898,10 @@
             u.is_admin ? 'Oui' : 'Non',
             u.trailers_count || 0,
             u.bookings_count || 0,
+            u.owner_balance != null ? Number(u.owner_balance).toFixed(2) : '',
+            u.ongoing_escrow != null ? Number(u.ongoing_escrow).toFixed(2) : '',
+            u.total_withdrawn != null ? Number(u.total_withdrawn).toFixed(2) : '',
+            u.stripe_account_id || '',
             u.stripe_customer_id || ''
         ]);
 
@@ -791,8 +982,8 @@
         return {
             profiles: [
                 { id: 'usr-admin-1', email: 'enism2007@hotmail.com', username: 'enis_admin', is_admin: true, is_pro: true, is_deleted: false, created_at: '2026-01-01T08:00:00Z', stripe_customer_id: 'cus_syni_admin' },
-                { id: 'usr-owner-1', email: 'marc.dubois@bluewin.ch', username: 'marc_remorques', is_admin: false, is_pro: true, is_deleted: false, created_at: '2026-01-15T10:00:00Z', stripe_customer_id: 'cus_101' },
-                { id: 'usr-owner-2', email: 'julien.rossier@gmail.com', username: 'j_rossier', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-02-01T12:00:00Z', stripe_customer_id: 'cus_102' },
+                { id: 'usr-owner-1', email: 'marc.dubois@bluewin.ch', username: 'marc_remorques', is_admin: false, is_pro: true, is_deleted: false, created_at: '2026-01-15T10:00:00Z', stripe_customer_id: 'cus_101', stripe_account_id: 'acct_101_connect' },
+                { id: 'usr-owner-2', email: 'julien.rossier@gmail.com', username: 'j_rossier', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-02-01T12:00:00Z', stripe_customer_id: 'cus_102', stripe_account_id: 'acct_102_connect' },
                 { id: 'usr-renter-1', email: 'lucas.meier@sunrise.ch', username: 'lucas_m', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-02-10T14:30:00Z', stripe_customer_id: 'cus_201' },
                 { id: 'usr-renter-2', email: 'sophie.blanc@bluewin.ch', username: 'sophie_b', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-02-20T09:15:00Z', stripe_customer_id: 'cus_202' },
                 { id: 'usr-renter-3', email: 'david.favre@gmail.com', username: 'david_f', is_admin: false, is_pro: false, is_deleted: false, created_at: '2026-03-05T16:45:00Z', stripe_customer_id: 'cus_203' },
@@ -813,6 +1004,10 @@
                 { id: 'bkg-104', trailer_id: 4, user_id: 'usr-renter-1', start_date: '2026-10-18', end_date: '2026-10-19', total_price: 231.00, status: 'paye', stripe_fee: 7.00, is_deleted: false, created_at: '2026-10-13T11:00:00Z' },
                 { id: 'bkg-105', trailer_id: 5, user_id: 'usr-renter-2', start_date: '2026-10-08', end_date: '2026-10-08', total_price: 44.90, status: 'annule', stripe_fee: 1.60, is_deleted: false, created_at: '2026-10-06T12:00:00Z' },
                 { id: 'bkg-106', trailer_id: 2, user_id: 'usr-renter-1', start_date: '2026-08-15', end_date: '2026-08-16', total_price: 252.00, status: 'termine', stripe_fee: 7.60, is_deleted: true, deleted_at: '2026-09-12T14:00:00Z', created_at: '2026-08-10T10:00:00Z' }
+            ],
+            payouts: [
+                { id: 'pay-1', user_id: 'usr-owner-1', amount: 80.00, status: 'vire', stripe_transfer_id: 'tr_mock_101', created_at: '2026-10-04T12:00:00Z' },
+                { id: 'pay-2', user_id: 'usr-owner-2', amount: 100.00, status: 'en_cours', stripe_transfer_id: 'tr_mock_102', created_at: '2026-10-14T09:00:00Z' }
             ],
             inspections: [
                 { id: 'insp-1', booking_id: 'bkg-101', trailer_id: 1, user_id: 'usr-renter-1', mode: 'departure', step: 1, image_url: 'https://images.unsplash.com/photo-1586191582056-a67b5e197c36?auto=format&fit=crop&w=400&q=80', latitude: 46.5201, longitude: 6.6321, accuracy: 4.2, timestamp: '2026-10-01T08:00:00Z', created_at: '2026-10-01T08:00:00Z' },
@@ -910,14 +1105,15 @@
 
             // 2. Repli direct Supabase Client
             try {
-                const [pRes, tRes, bRes, iRes, rRes, aRes, sRes] = await Promise.all([
+                const [pRes, tRes, bRes, iRes, rRes, aRes, sRes, payRes] = await Promise.all([
                     window.supabaseClient.from('profiles').select('*').limit(200),
                     window.supabaseClient.from('trailers').select('*').limit(200),
                     window.supabaseClient.from('bookings').select('*').limit(200),
                     window.supabaseClient.from('inspections').select('*').limit(200),
                     window.supabaseClient.from('rate_limits').select('*').limit(100),
                     window.supabaseClient.from('analytics_events').select('*').limit(500),
-                    window.supabaseClient.from('search_events').select('*').limit(500).catch(() => ({ data: [] }))
+                    window.supabaseClient.from('search_events').select('*').limit(500).catch(() => ({ data: [] })),
+                    window.supabaseClient.from('payouts').select('*').limit(200).catch(() => ({ data: [] }))
                 ]);
 
                 if (pRes.data && pRes.data.length > 0) {
@@ -931,6 +1127,7 @@
                         analytics: aRes.data || [],
                         searches: sRes?.data || [],
                         search_events: sRes?.data || [],
+                        payouts: payRes?.data || [],
                         impressions: [],
                         clicks: []
                     };
@@ -1202,11 +1399,57 @@
         const elPlatformRevenue = document.getElementById('kpi-net-platform-revenue');
         if (elPlatformRevenue) elPlatformRevenue.textContent = formatChf(computedMetrics.bookings.platformNetRevenue);
 
+        const elOwnersStripeBalance = document.getElementById('kpi-owners-stripe-balance');
+        if (elOwnersStripeBalance) elOwnersStripeBalance.textContent = formatChf(computedMetrics.owners?.totalAvailableBalance || 0);
+
+        const elOwnersOngoingEscrow = document.getElementById('kpi-owners-ongoing-escrow');
+        if (elOwnersOngoingEscrow) {
+            const ongoingAmt = computedMetrics.owners?.totalOngoingEscrow || 0;
+            elOwnersOngoingEscrow.textContent = `+ ${formatChf(ongoingAmt)} en séquestre`;
+        }
+
         const elCautionEscrow = document.getElementById('kpi-caution-escrow');
         if (elCautionEscrow) elCautionEscrow.textContent = formatChf(computedMetrics.bookings.cautionInEscrow);
 
         const elConversionRate = document.getElementById('kpi-conversion-rate');
         if (elConversionRate) elConversionRate.textContent = `${computedMetrics.analytics.conversionRate}%`;
+
+        // Module 3 : Synthèse Cashflow KPIs
+        const elCashflowGross = document.getElementById('cashflow-gross-volume');
+        if (elCashflowGross) elCashflowGross.textContent = formatChf(computedMetrics.bookings.grossVolume);
+
+        const elCashflowBookings = document.getElementById('cashflow-bookings-count');
+        if (elCashflowBookings) elCashflowBookings.textContent = `${formatNumber(computedMetrics.bookings.confirmed)} réservations`;
+
+        const elCashflowRenger = document.getElementById('cashflow-renger-revenue');
+        if (elCashflowRenger) elCashflowRenger.textContent = formatChf(computedMetrics.bookings.platformNetRevenue);
+
+        const elCashflowOwners = document.getElementById('cashflow-owners-balance');
+        if (elCashflowOwners) elCashflowOwners.textContent = formatChf(computedMetrics.owners?.totalAvailableBalance || 0);
+
+        const elCashflowOwnersOngoing = document.getElementById('cashflow-owners-ongoing');
+        if (elCashflowOwnersOngoing) {
+            const ongoingAmt = computedMetrics.owners?.totalOngoingEscrow || 0;
+            elCashflowOwnersOngoing.textContent = `+ ${formatChf(ongoingAmt)} en séquestre`;
+        }
+
+        const elCashflowCaution = document.getElementById('cashflow-caution-escrow');
+        if (elCashflowCaution) elCashflowCaution.textContent = formatChf(computedMetrics.bookings.cautionInEscrow);
+
+        const elCashflowPayouts = document.getElementById('cashflow-total-payouts');
+        if (elCashflowPayouts) elCashflowPayouts.textContent = formatChf(computedMetrics.owners?.totalWithdrawn || 0);
+
+        const elCashflowPayoutsCount = document.getElementById('cashflow-payouts-count');
+        if (elCashflowPayoutsCount) {
+            const allPayouts = computedMetrics.payouts?.list || [];
+            const vireCount = allPayouts.filter(p => p.status === 'vire' || p.status === 'traite').length;
+            const enCoursCount = allPayouts.filter(p => p.status === 'en_cours' || p.status === 'en_attente').length;
+            if (enCoursCount > 0) {
+                elCashflowPayoutsCount.textContent = `${vireCount} viré(s) • ${enCoursCount} en cours`;
+            } else {
+                elCashflowPayoutsCount.textContent = `${vireCount} virement(s) viré(s)`;
+            }
+        }
 
         // Rendu des graphiques
         renderCharts(computedMetrics);
@@ -1216,6 +1459,7 @@
 
         // Module 3 : Réservations & Cashflow
         renderBookingsTable();
+        renderPayoutsTable();
 
         // Module 4 : Flotte de Remorques
         renderTrailersTable();
@@ -1536,6 +1780,7 @@
                 if (filterType === 'pro' && !u.is_pro) return false;
                 if (filterType === 'admin' && !u.is_admin) return false;
                 if (filterType === 'owners' && !(u.is_owner || (u.trailers_count > 0))) return false;
+                if (filterType === 'withdrawable' && !(u.owner_balance >= 80)) return false;
                 if (filterType === 'renters' && !(u.is_renter || (u.bookings_count > 0))) return false;
             }
             if (query) {
@@ -1547,7 +1792,28 @@
             return true;
         });
 
-        tbody.innerHTML = filtered.map(u => `
+        tbody.innerHTML = filtered.map(u => {
+            let balanceBadge = '<span class="text-stone-500 font-mono">—</span>';
+            if (u.is_owner || u.trailers_count > 0 || (u.owner_balance != null && u.owner_balance > 0)) {
+                const bal = Number(u.owner_balance) || 0;
+                if (bal >= 80) {
+                    balanceBadge = `
+                        <span class="inline-block bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-2 py-0.5 rounded-full font-mono">
+                            ${formatChf(bal)}
+                        </span>
+                        ${u.ongoing_escrow > 0 ? `<div class="text-[10px] text-stone-400 mt-0.5">+${formatChf(u.ongoing_escrow)} en cours</div>` : ''}
+                    `;
+                } else {
+                    balanceBadge = `
+                        <span class="inline-block bg-stone-800 text-stone-300 border border-stone-700 text-xs font-mono px-2 py-0.5 rounded-full">
+                            ${formatChf(bal)}
+                        </span>
+                        ${u.ongoing_escrow > 0 ? `<div class="text-[10px] text-stone-400 mt-0.5">+${formatChf(u.ongoing_escrow)} en cours</div>` : ''}
+                    `;
+                }
+            }
+
+            return `
             <tr class="border-b border-stone-800 hover:bg-stone-800/40 transition">
                 <td class="py-3 px-4">
                     <div class="flex items-center gap-3">
@@ -1574,6 +1840,9 @@
                 <td class="py-3 px-4 text-xs text-stone-300">
                     <span class="font-bold text-white">${u.trailers_count || 0}</span> remorque(s) • <span class="font-bold text-white">${u.bookings_count || 0}</span> location(s)
                 </td>
+                <td class="py-3 px-4 text-right">
+                    ${balanceBadge}
+                </td>
                 <td class="py-3 px-4 text-xs text-stone-400 font-mono">
                     ${escapeHtml(u.stripe_customer_id || '—')}
                 </td>
@@ -1582,6 +1851,9 @@
                 </td>
                 <td class="py-3 px-4 text-center">
                     <div class="flex items-center justify-center gap-1.5 flex-nowrap">
+                        <button type="button" class="btn-syni-user-inspect px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-sky-950/60 hover:bg-sky-900/80 text-sky-300 border border-sky-800/40" data-user-id="${escapeHtml(u.id)}" title="Inspecter le profil, les remorques et le solde">
+                            Détails
+                        </button>
                         <button type="button" class="btn-syni-user-edit px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700" data-user-id="${escapeHtml(u.id)}" title="Éditer tous les champs">
                             Éditer
                         </button>
@@ -1603,12 +1875,20 @@
                     </div>
                 </td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
 
         attachUsersTableActionListeners();
     }
 
     function attachUsersTableActionListeners() {
+        document.querySelectorAll('.btn-syni-user-inspect').forEach(btn => {
+            btn.onclick = () => {
+                const userId = btn.getAttribute('data-user-id');
+                openUserDetailModal(userId);
+            };
+        });
+
         document.querySelectorAll('.btn-syni-user-edit').forEach(btn => {
             btn.onclick = () => {
                 const userId = btn.getAttribute('data-user-id');
@@ -1680,6 +1960,247 @@
                 if (typeof showToast === 'function') showToast(res.message, 'success');
             };
         });
+    }
+
+    /**
+     * Ouvre et peuple la modale inspecteur de profil utilisateur & solde propriétaire
+     */
+    function openUserDetailModal(userId) {
+        const modal = document.getElementById('syni-user-detail-modal');
+        if (!modal || !computedMetrics) return;
+
+        const user = (computedMetrics.users.list || []).find(u => String(u.id) === String(userId));
+        if (!user) return;
+
+        // 1. Synthèse profil (username, email, rôle PRO/Standard, Stripe Connect ID, UUID)
+        const profileEl = document.getElementById('user-detail-profile-summary');
+        if (profileEl) {
+            const isOwner = user.is_owner || (user.trailers_count > 0) || (user.associated_trailers && user.associated_trailers.length > 0);
+            const stripeConnectBadge = user.stripe_account_id 
+                ? `<span class="text-amber-400 font-bold">${escapeHtml(user.stripe_account_id)}</span>`
+                : '<span class="text-stone-500 font-normal">Non configuré</span>';
+            const stripeCustomerLine = user.stripe_customer_id
+                ? `<div>Client Stripe: <span class="text-stone-300">${escapeHtml(user.stripe_customer_id)}</span></div>`
+                : '';
+
+            profileEl.innerHTML = `
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-stone-800 text-white font-bold flex items-center justify-center text-lg border border-stone-700">
+                            ${(user.username || user.email || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-black text-white">@${escapeHtml(user.username || 'sans_nom')}</h4>
+                                ${user.is_pro ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">PRO (0% com)</span>' : '<span class="bg-stone-800 text-stone-300 border border-stone-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Standard (20% com)</span>'}
+                                ${user.is_admin ? '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Admin</span>' : ''}
+                                ${!isOwner ? '<span class="bg-stone-800 text-stone-400 border border-stone-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Locataire</span>' : ''}
+                            </div>
+                            <div class="text-xs text-stone-400 font-mono mt-0.5">${escapeHtml(user.email || '—')}</div>
+                        </div>
+                    </div>
+                    <div class="text-right text-[11px] text-stone-400 font-mono space-y-0.5">
+                        <div>UUID: <span class="text-stone-300">${escapeHtml(user.id)}</span></div>
+                        <div>Stripe Connect: ${stripeConnectBadge}</div>
+                        ${stripeCustomerLine}
+                        <div>Inscrit le: <span class="text-stone-300">${user.created_at ? new Date(user.created_at).toLocaleDateString('fr-CH') : '—'}</span></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. Synthèse Financière (Total gains nets, total retiré, solde disponible, séquestre)
+        const finEl = document.getElementById('user-detail-finance-summary');
+        if (finEl) {
+            const bal = Number(user.owner_balance) || 0;
+            const earnings = Number(user.total_net_earnings) || 0;
+            const withdrawn = Number(user.total_withdrawn) || 0;
+            const ongoing = Number(user.ongoing_escrow) || 0;
+            const canWithdraw = bal >= MIN_PAYOUT_AMOUNT;
+
+            finEl.innerHTML = `
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-stone-900/90 border border-stone-800 rounded-xl p-3">
+                        <span class="text-[10px] uppercase font-bold text-stone-400">Total Gains Nets</span>
+                        <div class="text-lg font-black text-white mt-1">${formatChf(earnings)}</div>
+                        <span class="text-[10px] text-stone-500">Locations terminées</span>
+                    </div>
+                    <div class="bg-stone-900/90 border border-stone-800 rounded-xl p-3">
+                        <span class="text-[10px] uppercase font-bold text-stone-400">Total Déjà Retiré</span>
+                        <div class="text-lg font-black text-sky-400 mt-1">${formatChf(withdrawn)}</div>
+                        <span class="text-[10px] text-stone-500">Virements traités</span>
+                    </div>
+                    <div class="bg-stone-900/90 border ${canWithdraw ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-stone-800'} rounded-xl p-3">
+                        <span class="text-[10px] uppercase font-bold ${canWithdraw ? 'text-emerald-400' : 'text-stone-400'}">Solde Disponible</span>
+                        <div class="text-lg font-black ${canWithdraw ? 'text-emerald-400' : 'text-white'} mt-1">${formatChf(bal)}</div>
+                        <span class="text-[10px] ${canWithdraw ? 'text-emerald-400 font-bold' : 'text-stone-500'}">
+                            ${canWithdraw ? '✓ Retirable (≥ 80 CHF)' : 'Seuil min: 80 CHF'}
+                        </span>
+                    </div>
+                    <div class="bg-stone-900/90 border border-stone-800 rounded-xl p-3">
+                        <span class="text-[10px] uppercase font-bold text-amber-400">En Séquestre</span>
+                        <div class="text-lg font-black text-amber-400 mt-1">${formatChf(ongoing)}</div>
+                        <span class="text-[10px] text-stone-500">Locations en cours</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 3. Remorques associées à ce propriétaire
+        const trailersCountEl = document.getElementById('user-detail-trailers-count');
+        const trailersListEl = document.getElementById('user-detail-trailers-list');
+        const trailers = user.associated_trailers || [];
+        if (trailersCountEl) trailersCountEl.textContent = trailers.length;
+        if (trailersListEl) {
+            if (trailers.length === 0) {
+                trailersListEl.innerHTML = `
+                    <div class="p-4 text-center text-stone-500 bg-stone-950/40 border border-stone-800/60 rounded-xl">
+                        Aucune remorque associée à ce profil.
+                    </div>
+                `;
+            } else {
+                trailersListEl.innerHTML = trailers.map(t => {
+                    const imgUrl = t.image_url || (Array.isArray(t.photos) && t.photos[0]) || 'https://images.unsplash.com/photo-1586191582056-a67b5e197c36?auto=format&fit=crop&w=400&q=80';
+                    const isBraked = t.is_braked || t.braked;
+                    const plate = t.license_plate || t.plate || 'Non renseignée';
+                    const activeBadge = t.is_active !== false && !t.is_deleted
+                        ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded">Active</span>'
+                        : '<span class="bg-stone-700 text-stone-400 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded">Inactive</span>';
+
+                    return `
+                        <div class="flex items-center justify-between p-3 bg-stone-950/70 border border-stone-800 rounded-xl gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(t.title || 'Remorque')}" class="w-12 h-12 object-cover rounded-lg border border-stone-800 flex-shrink-0" onerror="this.src='https://placehold.co/100x100?text=Remorque'">
+                                <div class="min-w-0">
+                                    <div class="font-bold text-white truncate text-xs">${escapeHtml(t.title || 'Sans titre')}</div>
+                                    <div class="text-[11px] text-stone-400 flex items-center gap-2 mt-0.5">
+                                        <span class="capitalize">${escapeHtml(t.category || 'utilitaire')}</span> •
+                                        <span>Plaque: <span class="font-mono text-stone-300">${escapeHtml(plate)}</span></span> •
+                                        <span>${isBraked ? 'Freinée' : 'Non freinée'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <div class="font-bold text-white text-xs font-mono">${formatChf(Number(t.price) || 0)} / j</div>
+                                <div class="mt-1">${activeBadge}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // 4. Historique des virements du propriétaire
+        const payoutsCountEl = document.getElementById('user-detail-payouts-count');
+        const payoutsListEl = document.getElementById('user-detail-payouts-list');
+        const userPayouts = user.payouts || [];
+        if (payoutsCountEl) payoutsCountEl.textContent = userPayouts.length;
+        if (payoutsListEl) {
+            if (userPayouts.length === 0) {
+                payoutsListEl.innerHTML = `
+                    <div class="p-4 text-center text-stone-500">
+                        Aucun virement ou retrait enregistré pour ce compte.
+                    </div>
+                `;
+            } else {
+                payoutsListEl.innerHTML = `
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-stone-800 text-[10px] uppercase tracking-wider text-stone-400 bg-stone-900/60">
+                                <th class="py-2 px-3 font-bold">Date</th>
+                                <th class="py-2 px-3 font-bold text-right">Montant CHF</th>
+                                <th class="py-2 px-3 font-bold">Statut</th>
+                                <th class="py-2 px-3 font-bold">Stripe Transfer ID</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-800/40 text-xs">
+                            ${userPayouts.map(p => {
+                                const st = (p.status || 'en_attente').toLowerCase();
+                                let badge = '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded">En attente</span>';
+                                if (st === 'vire' || st === 'traite') badge = '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded">Viré</span>';
+                                else if (st === 'en_cours') badge = '<span class="bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded">En cours</span>';
+                                else if (st === 'echoue') badge = '<span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded">Échoué</span>';
+
+                                return `
+                                    <tr>
+                                        <td class="py-2 px-3 text-stone-300">${p.created_at ? new Date(p.created_at).toLocaleDateString('fr-CH') : '—'}</td>
+                                        <td class="py-2 px-3 font-bold text-white text-right font-mono">${formatChf(Number(p.amount) || 0)}</td>
+                                        <td class="py-2 px-3">${badge}</td>
+                                        <td class="py-2 px-3 font-mono text-stone-400 text-[11px]">${escapeHtml(p.stripe_transfer_id || '—')}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeUserDetailModal() {
+        const modal = document.getElementById('syni-user-detail-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    /**
+     * Rendu du tableau centralisé de tous les versements de la plateforme dans le Module 3
+     */
+    function renderPayoutsTable() {
+        const tbody = document.getElementById('syni-payouts-tbody');
+        if (!tbody || !computedMetrics) return;
+
+        const payoutsList = computedMetrics.payouts?.list || [];
+        if (payoutsList.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="py-8 text-center text-stone-500">
+                        Aucun virement ou retrait enregistré dans public.payouts
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = payoutsList.map(p => {
+            const amt = Number(p.amount) || 0;
+            const owner = p.owner || {};
+            const st = (p.status || 'en_attente').toLowerCase();
+            let statusBadge = '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">En attente</span>';
+            if (st === 'vire' || st === 'traite') {
+                statusBadge = '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Viré</span>';
+            } else if (st === 'en_cours') {
+                statusBadge = '<span class="bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">En cours</span>';
+            } else if (st === 'echoue' || st === 'rejete' || st === 'refuse') {
+                statusBadge = '<span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Échoué</span>';
+            }
+
+            return `
+                <tr class="border-b border-stone-800 hover:bg-stone-800/40 transition">
+                    <td class="py-3 px-4 text-xs text-stone-300">
+                        ${p.created_at ? new Date(p.created_at).toLocaleString('fr-CH') : '—'}
+                    </td>
+                    <td class="py-3 px-4 text-xs text-stone-200">
+                        <div class="font-bold">@${escapeHtml(owner.username || 'propriétaire')}</div>
+                        <div class="text-[10px] text-stone-400 font-mono">${escapeHtml(owner.email || p.user_id || '—')}</div>
+                    </td>
+                    <td class="py-3 px-4 text-xs font-bold text-white text-right font-mono">
+                        ${formatChf(amt)}
+                    </td>
+                    <td class="py-3 px-4">
+                        ${statusBadge}
+                        ${p.error_message ? `<div class="text-[10px] text-red-400 mt-0.5 truncate max-w-xs" title="${escapeHtml(p.error_message)}">${escapeHtml(p.error_message)}</div>` : ''}
+                    </td>
+                    <td class="py-3 px-4 text-xs font-mono text-stone-400">
+                        ${escapeHtml(p.stripe_transfer_id || '—')}
+                    </td>
+                    <td class="py-3 px-4 text-xs font-mono text-stone-500">
+                        ${escapeHtml(p.id || '—')}
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
     function renderBookingsTable() {
@@ -2111,6 +2632,10 @@
                         <option value="false" ${!entity?.is_banned ? 'selected' : ''}>Actif (autorisé)</option>
                         <option value="true" ${entity?.is_banned ? 'selected' : ''}>Banni (bloqué)</option>
                     </select>
+                <div>
+                    <label class="block text-[11px] font-bold text-stone-300 mb-1">Stripe Connect ID (Compte Virement)</label>
+                    <input type="text" id="me-field-stripe-account-id" value="${escapeHtml(entity?.stripe_account_id || '')}" placeholder="acct_..."
+                        class="w-full px-3 py-2 bg-stone-950 border border-stone-800 text-white rounded-xl text-xs font-mono focus:border-terracotta-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-stone-300 mb-1">Stripe Customer ID</label>
@@ -2330,6 +2855,7 @@
             formData.is_pro = document.getElementById('me-field-is-pro')?.value === 'true';
             formData.is_admin = document.getElementById('me-field-is-admin')?.value === 'true';
             formData.is_banned = document.getElementById('me-field-is-banned')?.value === 'true';
+            formData.stripe_account_id = document.getElementById('me-field-stripe-account-id')?.value || '';
             formData.stripe_customer_id = document.getElementById('me-field-stripe-id')?.value || '';
         } else if (entityType === 'trailer') {
             formData.title = document.getElementById('me-field-title')?.value || 'Remorque Renger';
@@ -5086,6 +5612,23 @@
                     });
                 }
             });
+
+            (rawData.payouts || []).forEach(p => {
+                const transferId = String(p.stripe_transfer_id || '').toLowerCase();
+                const pid = String(p.id || '').toLowerCase();
+                const puser = String(p.user_id || '').toLowerCase();
+                if (transferId.includes(q) || pid.includes(q) || puser.includes(q)) {
+                    results.push({
+                        type: 'payout',
+                        title: `Virement ${formatChf(p.amount || 0)} (${p.status || 'inconnu'}) • ${p.stripe_transfer_id || p.id}`,
+                        badge: 'Virement',
+                        handler: () => {
+                            switchSyniModule('bookings');
+                            closeCommandPalette();
+                        }
+                    });
+                }
+            });
         }
 
         return results;
@@ -5398,6 +5941,20 @@
             };
         }
 
+        // Modale Détail Utilisateur & Solde Propriétaire
+        const btnCloseUserDetail = document.getElementById('user-detail-modal-close');
+        if (btnCloseUserDetail) btnCloseUserDetail.onclick = closeUserDetailModal;
+
+        const btnCloseUserDetailFooter = document.getElementById('user-detail-modal-btn-close');
+        if (btnCloseUserDetailFooter) btnCloseUserDetailFooter.onclick = closeUserDetailModal;
+
+        const modalUserDetail = document.getElementById('syni-user-detail-modal');
+        if (modalUserDetail) {
+            modalUserDetail.onclick = (e) => {
+                if (e.target === modalUserDetail) closeUserDetailModal();
+            };
+        }
+
         // Palette de commande rapide (Cmd+K / Ctrl+K)
         const btnOpenPalette = document.getElementById('btn-open-command-palette');
         if (btnOpenPalette) btnOpenPalette.onclick = openCommandPalette;
@@ -5444,6 +6001,7 @@
                 } else if (e.key === 'Escape') {
                     closeCommandPalette();
                     closeMasterEditor();
+                    closeUserDetailModal();
                 }
             });
         }
@@ -5855,8 +6413,15 @@
         // Calculs financiers et métriques
         calculateRentalDays,
         calculateBookingFinancials,
+        calculateOwnerBalance,
+        calculateOwnerOngoingEscrow,
         computeSyniMetrics,
         computeGoogleSeoMetrics,
+        // Modale Détail Utilisateur & Solde Propriétaire
+        openUserDetailModal,
+        closeUserDetailModal,
+        renderPayoutsTable,
+        renderUsersTable,
         // Master Editor & CRUD Absolu (Dieu du Système)
         openMasterEditor,
         closeMasterEditor,
@@ -5920,6 +6485,7 @@
         fetchSyniData,
         initSyni,
         // Constantes
+        MIN_PAYOUT_AMOUNT,
         SUPREME_ADMIN_EMAIL,
         SYNI_MASTER_KEY_DEFAULT,
         MODULES,

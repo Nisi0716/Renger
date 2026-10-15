@@ -142,9 +142,12 @@ serve(async (req) => {
       const endStr = b.end_date ? b.end_date.split('T')[0] : ''
       // Ne comptabiliser que les locations terminées (restitution effectuée avant aujourd'hui)
       if (endStr && todayStr > endStr) {
-        const sDate = new Date(b.start_date)
-        const eDate = new Date(b.end_date)
-        const days = Math.max(1, Math.ceil(Math.abs(eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+        const sStr = String(b.start_date).split('T')[0]
+        const eStr = String(b.end_date).split('T')[0]
+        const sDate = new Date(sStr + 'T00:00:00Z')
+        const eDate = new Date(eStr + 'T00:00:00Z')
+        const diffMs = Math.abs(eDate.getTime() - sDate.getTime())
+        const days = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1)
         const dailyPrice = (b.trailers && (b.trailers as any).price != null) ? Number((b.trailers as any).price) : 0
         const baseRental = dailyPrice > 0 ? (days * dailyPrice) : (Number(b.total_price) || 0)
         totalNetEarnings += (baseRental * commissionRate)

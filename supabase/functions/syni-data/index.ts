@@ -106,7 +106,8 @@ serve(async (req) => {
 
     // 4. Validation de la Passphrase Maîtresse SYNI_MASTER_KEY
     const body = await req.json().catch(() => ({}))
-    const { masterKey, timeRange } = body
+    const masterKey = body.masterKey || body.passphrase || ''
+    const { timeRange } = body
 
     if (!masterKey || String(masterKey).trim() !== masterKeyExpected.trim()) {
       // Consigner la tentative infructueuse dans rate_limits
@@ -137,7 +138,8 @@ serve(async (req) => {
       analyticsRes,
       impressionsRes,
       clicksRes,
-      searchesRes
+      searchesRes,
+      payoutsRes
     ] = await Promise.all([
       supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false }),
       supabaseAdmin.from('trailers').select('*').order('created_at', { ascending: false }),
@@ -148,6 +150,7 @@ serve(async (req) => {
       fetchAllRows(supabaseAdmin, 'impressions', 'id, trailer_id, user_id, created_at'),
       fetchAllRows(supabaseAdmin, 'clicks', 'id, trailer_id, user_id, created_at'),
       fetchAllRows(supabaseAdmin, 'search_events', 'id, category, search_text, has_dates, results_count, results_avg_price, results_min_price, results_max_price, created_at'),
+      supabaseAdmin.from('payouts').select('*').order('created_at', { ascending: false }),
     ])
 
     const profiles = profilesRes.data || []
@@ -159,6 +162,7 @@ serve(async (req) => {
     const impressions = impressionsRes.data || []
     const clicks = clicksRes.data || []
     const searches = searchesRes.data || []
+    const payouts = payoutsRes?.data || []
 
     return new Response(JSON.stringify({
       status: 'ok',
@@ -174,7 +178,8 @@ serve(async (req) => {
         analytics,
         impressions,
         clicks,
-        searches
+        searches,
+        payouts
       }
     }), {
       status: 200,

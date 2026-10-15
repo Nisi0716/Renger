@@ -309,8 +309,8 @@
             <!-- MODULE 1 : COCKPIT GÉNÉRAL -->
             <!-- ==================================================== -->
             <section id="syni-mod-cockpit" class="space-y-8">
-                <!-- Grille des 6 KPIs clés majeurs -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Grille des 5 KPIs clés majeurs -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                     <!-- Utilisateurs -->
                     <div class="bg-stone-900/80 border border-stone-800/80 rounded-2xl p-5">
                         <div class="flex items-center justify-between text-stone-400 text-xs mb-2">
@@ -349,6 +349,16 @@
                         </div>
                         <div class="text-2xl font-black text-emerald-400" id="kpi-net-platform-revenue">— CHF</div>
                         <div class="text-xs text-stone-400 mt-1 font-mono">Commissions & frais</div>
+                    </div>
+
+                    <!-- Total des Fonds Détenus par les Propriétaires sur Stripe -->
+                    <div class="bg-stone-900/80 border border-amber-500/30 rounded-2xl p-5">
+                        <div class="flex items-center justify-between text-stone-400 text-xs mb-2">
+                            <span class="text-amber-400 font-bold">FONDS DÉTENUS PROPRIÉTAIRES</span>
+                            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        </div>
+                        <div class="text-2xl font-black text-white" id="kpi-owners-stripe-balance">— CHF</div>
+                        <div class="text-xs text-stone-400 mt-1 font-mono" id="kpi-owners-ongoing-escrow">+ — CHF en séquestre</div>
                     </div>
                 </div>
 
@@ -428,6 +438,7 @@
                             <option value="all">Tous les comptes</option>
                             <option value="pro">Membres PRO uniquement</option>
                             <option value="owners">Propriétaires (≥ 1 remorque)</option>
+                            <option value="withdrawable">Solde ≥ 80 CHF (Retirable)</option>
                             <option value="renters">Locataires (≥ 1 location)</option>
                             <option value="admin">Administrateurs</option>
                             <option value="trash">Corbeille (Supprimés)</option>
@@ -455,6 +466,7 @@
                                     <th class="py-3 px-4 font-bold">Inscription</th>
                                     <th class="py-3 px-4 font-bold">Statut</th>
                                     <th class="py-3 px-4 font-bold">Activité (Flotte / Locations)</th>
+                                    <th class="py-3 px-4 font-bold text-right">Solde Propriétaire</th>
                                     <th class="py-3 px-4 font-bold">Stripe Customer</th>
                                     <th class="py-3 px-4 font-bold">UUID</th>
                                     <th class="py-3 px-4 font-bold text-center">Actions</th>
@@ -472,6 +484,35 @@
             <!-- MODULE 3 : RÉSERVATIONS & CASHFLOW -->
             <!-- ==================================================== -->
             <section id="syni-mod-bookings" class="hidden space-y-6">
+                <!-- Synthèse Cashflow & Fonds Détenus -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-stone-900/80 border border-stone-800 rounded-2xl p-4">
+                        <div class="text-[11px] text-stone-400 font-bold uppercase mb-1">Volume Brut Payé</div>
+                        <div class="text-xl font-black text-white" id="cashflow-gross-volume">— CHF</div>
+                        <div class="text-[11px] text-stone-500" id="cashflow-bookings-count">— réservations</div>
+                    </div>
+                    <div class="bg-stone-900/80 border border-stone-800 rounded-2xl p-4">
+                        <div class="text-[11px] text-terracotta-400 font-bold uppercase mb-1">Revenus Nets Renger</div>
+                        <div class="text-xl font-black text-emerald-400" id="cashflow-renger-revenue">— CHF</div>
+                        <div class="text-[11px] text-stone-500">Frais + commissions</div>
+                    </div>
+                    <div class="bg-stone-900/80 border border-amber-500/30 rounded-2xl p-4">
+                        <div class="text-[11px] text-amber-400 font-bold uppercase mb-1">Fonds Propriétaires Stripe</div>
+                        <div class="text-xl font-black text-white" id="cashflow-owners-balance">— CHF</div>
+                        <div class="text-[11px] text-stone-400 font-mono" id="cashflow-owners-ongoing">+ — CHF en séquestre</div>
+                    </div>
+                    <div class="bg-stone-900/80 border border-stone-800 rounded-2xl p-4">
+                        <div class="text-[11px] text-amber-400 font-bold uppercase mb-1">Cautions Off-Session</div>
+                        <div class="text-xl font-black text-amber-400" id="cashflow-caution-escrow">— CHF</div>
+                        <div class="text-[11px] text-stone-500">Empreintes actives</div>
+                    </div>
+                    <div class="bg-stone-900/80 border border-stone-800 rounded-2xl p-4">
+                        <div class="text-[11px] text-sky-400 font-bold uppercase mb-1">Virements Déjà Traités</div>
+                        <div class="text-xl font-black text-sky-400" id="cashflow-total-payouts">— CHF</div>
+                        <div class="text-[11px] text-stone-500" id="cashflow-payouts-count">— virement(s)</div>
+                    </div>
+                </div>
+
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
                     <div class="flex items-center gap-3 flex-1 max-w-md">
                         <input type="text" id="bookings-search-input" placeholder="Rechercher réservation, remorque, locataire..."
@@ -518,6 +559,39 @@
                                 <!-- Injecté dynamiquement -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- SECTION RETRAITS & VIREMENTS STRIPE PROPRIÉTAIRES -->
+                <div class="space-y-4 pt-6 border-t border-stone-800/80">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                <span>Demandes de Retrait & Virements Propriétaires (public.payouts)</span>
+                            </h3>
+                            <p class="text-xs text-stone-400">Historique des ordres de virement exécutés via Stripe Connect vers les comptes bancaires suisses</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
+                                        <th class="py-3 px-4 font-bold">Date</th>
+                                        <th class="py-3 px-4 font-bold">Propriétaire</th>
+                                        <th class="py-3 px-4 font-bold text-right">Montant CHF</th>
+                                        <th class="py-3 px-4 font-bold">Statut</th>
+                                        <th class="py-3 px-4 font-bold">Stripe Transfer ID</th>
+                                        <th class="py-3 px-4 font-bold font-mono">ID Retrait</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="syni-payouts-tbody" class="text-xs divide-y divide-stone-800/40">
+                                    <!-- Injecté dynamiquement -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1416,6 +1490,66 @@
                         Enregistrer
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE INSPECTEUR PROFIL UTILISATEUR & SOLDE PROPRIÉTAIRE -->
+    <div id="syni-user-detail-modal" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="max-w-3xl w-full bg-stone-900 border border-stone-800 rounded-3xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between pb-3 border-b border-stone-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="user-detail-modal-title" class="text-base font-bold text-white">Détails du Compte & Solde Propriétaire</h3>
+                        <p class="text-xs text-stone-400">Synthèse d'activité, flotte associée et flux financiers</p>
+                    </div>
+                </div>
+                <button type="button" id="user-detail-modal-close" class="text-stone-400 hover:text-white p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="space-y-6 overflow-y-auto pr-1 flex-1 text-xs">
+                <!-- Synthèse Profil -->
+                <div id="user-detail-profile-summary" class="bg-stone-950/60 p-4 rounded-2xl border border-stone-800/80">
+                    <!-- Injecté dynamiquement -->
+                </div>
+
+                <!-- Synthèse Financière -->
+                <div id="user-detail-finance-summary" class="bg-stone-950/60 p-4 rounded-2xl border border-stone-800/80">
+                    <!-- Injecté dynamiquement -->
+                </div>
+
+                <!-- Remorques associées -->
+                <div>
+                    <h4 class="text-xs font-bold text-stone-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-terracotta-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8.5h13v5.5H3V8.5zM7.5 8.5v5.5M12 8.5v5.5M16 13.5h3.5l2 1.5M18.5 13.5v3.5"/></svg>
+                        <span>Flotte de remorques associées (<span id="user-detail-trailers-count">0</span>)</span>
+                    </h4>
+                    <div id="user-detail-trailers-list" class="space-y-2">
+                        <!-- Injecté dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- Historique des virements / payouts -->
+                <div>
+                    <h4 class="text-xs font-bold text-stone-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Historique des retraits & virements (<span id="user-detail-payouts-count">0</span>)</span>
+                    </h4>
+                    <div id="user-detail-payouts-list" class="bg-stone-950/60 rounded-xl border border-stone-800/80 overflow-hidden">
+                        <!-- Injecté dynamiquement -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end pt-3 border-t border-stone-800">
+                <button type="button" id="user-detail-modal-btn-close" class="px-4 py-2.5 rounded-xl text-xs font-bold text-stone-300 bg-stone-800 hover:bg-stone-700 transition">
+                    Fermer
+                </button>
             </div>
         </div>
     </div>

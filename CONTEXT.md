@@ -710,7 +710,30 @@ Toute IA manipulant les prix ou le flux Stripe **doit appliquer scrupuleusement 
   - **Validation & Couverture de Tests Automatisés** :
     - Ajout du groupe Item 12 dans `tests/challenger-owner-experience.test.mjs` testant l'Edge Function et ses garde-fous Zero-Trust DevSecOps.
     - **100% de réussite** : 396 tests (Tiers 1 à 8) + 374 tests challengers. Total de **770 tests automatisés validés avec succès**.
+- [x] **Cockpit Syni : Suivi Financier des Soldes Propriétaires, Flottes & Fonds Stripe (16 Octobre 2026) :**
+  - **Carte KPI Globale des Fonds Propriétaires (`Site web/syni.html`, `Site web/js/syni.js`)** :
+    - Intégration en 5ème carte KPI majeure dans le Cockpit Général (`#kpi-owners-funds-cockpit`) et dans le Module 3 Réservations & Cashflow (`#kpi-owners-funds-cashflow`).
+    - Métrique principale : Total des gains nets non encore retirés et immédiatement disponibles pour les propriétaires (`todayStr > endStr`, 100% PRO / 80% Standard, déduction des virements initiés/effectués).
+    - Métrique secondaire / sous-titre : Total des fonds séquestrés en cours de sécurisation (`#kpi-owners-ongoing-escrow`) pour les locations actives (`todayStr <= endStr`).
+  - **Tableau des Utilisateurs Enrichi (`Site web/syni.html`, `Site web/js/syni.js`)** :
+    - Nouvelle colonne "Solde Propriétaire" avec badge dynamique vert émeraude si retirable (`≥ 80.00 CHF`), badge neutre si `< 80.00 CHF`, et tiret pour les locataires purs.
+    - Nouveau filtre rapide dans le sélecteur d'utilisateurs : `<option value="withdrawable">Solde ≥ 80 CHF (Retirable)</option>`.
+    - Bouton "Inspecter" ouvrant un volet/modale d'inspection de profil (`#syni-user-detail-modal`) :
+      * Coordonnées, rôle (PRO/Standard/Locataire), Stripe Customer ID et statut Stripe Connect isolé.
+      * Synthèse financière certifiée (Total gains nets, total déjà retiré, solde immédiatement disponible, fonds séquestrés en cours).
+      * Grille de toutes les remorques associées au propriétaire (photos, tarifs, plaques d'immatriculation, freinage, statut).
+      * Historique exhaustif des demandes de virement du propriétaire avec date, montant, statut (`vire`, `en_cours`, `echoue`) et référence `stripe_transfer_id`.
+  - **Module Réservations & Cashflow (`Site web/syni.html`, `Site web/js/syni.js`)** :
+    - Tableau centralisé de tous les virements de la plateforme (`#syni-payouts-tbody`) avec filtrage, statut et lien direct vers les profils.
+    - Export CSV enrichi intégrant le solde propriétaire, les fonds sous séquestre et le Stripe Connect ID.
+    - Recherche instantanée dans la palette de commandes (Cmd+K) par référence de virement Stripe.
+  - **Backend & Edge Functions (`supabase/functions/syni-data/index.ts`)** :
+    - Intégration de la requête `public.payouts` dans `syni-data` et déploiement live sur Supabase Cloud (`cwifrzajxrcpnqceyxnj`).
+    - Arithmétique calendaire robuste sur fuseau horaire UTC minuit éliminant les biais horaires et de changements d'heure (DST).
+  - **Suite Automatisée & Couverture** :
+    - Ajout de la Suite 22 dans `tests/challenger-syni-admin.test.mjs` (18 tests complets couvrant calculs, filtres, modale et Edge Functions).
+    - **100% de réussite** : 414 tests des 8 paliers du runner + 392 tests challengers. Total de **806 tests automatisés validés à 100%**.
 
 ### ⏳ Prochaines Évolutions Prioritaires
 - [ ] Optimiser le chargement mobile des images d'annonces (format WebP automatique).
-- [ ] Déployer la fonction `stripe-portal` et `syni-data` sur Supabase Cloud et renseigner `SYNI_MASTER_KEY` dans les secrets Supabase.
+- [ ] Déployer la fonction `stripe-portal` sur Supabase Cloud et renseigner `SYNI_MASTER_KEY` dans les secrets Supabase.
