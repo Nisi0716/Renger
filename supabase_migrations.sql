@@ -132,6 +132,18 @@ BEGIN
             NEW.is_admin = OLD.is_admin;
         END IF;
     END IF;
+
+    -- Protection zero-confiance contre l'auto-promotion PRO et l'altération des identifiants Stripe
+    IF (NEW.is_pro IS DISTINCT FROM OLD.is_pro OR
+        NEW.stripe_customer_id IS DISTINCT FROM OLD.stripe_customer_id OR
+        NEW.stripe_subscription_id IS DISTINCT FROM OLD.stripe_subscription_id) THEN
+        IF auth.jwt() ->> 'email' <> 'enism2007@hotmail.com' AND current_user <> 'service_role' THEN
+            NEW.is_pro = OLD.is_pro;
+            NEW.stripe_customer_id = OLD.stripe_customer_id;
+            NEW.stripe_subscription_id = OLD.stripe_subscription_id;
+        END IF;
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
