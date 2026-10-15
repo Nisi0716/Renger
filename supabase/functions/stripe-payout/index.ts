@@ -83,14 +83,29 @@ serve(async (req) => {
     }
 
     // 3. Récupération du profil propriétaire (Stripe Connect & statut PRO)
-    const { data: profile, error: profileErr } = await supabaseAdmin
+    let { data: profile, error: profileErr } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, full_name, stripe_account_id, is_pro')
+      .select('id, stripe_account_id, is_pro')
       .eq('id', user.id)
       .maybeSingle()
 
-    if (profileErr || !profile) {
-      return new Response(JSON.stringify({ error: "Profil propriétaire introuvable." }), {
+    // Si le profil n'existe pas encore dans public.profiles, création automatique
+    if (!profile && !profileErr) {
+      const { data: newProfile, error: createErr } = await supabaseAdmin
+        .from('profiles')
+        .insert([{ id: user.id }])
+        .select('id, stripe_account_id, is_pro')
+        .maybeSingle()
+      if (!createErr && newProfile) {
+        profile = newProfile
+      }
+    }
+
+    if (!profile) {
+      console.error("Erreur récupération profil:", profileErr)
+      return new Response(JSON.stringify({ 
+        error: "Profil propriétaire introuvable. Veuillez recharger votre page de profil." 
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -187,7 +202,7 @@ serve(async (req) => {
         amount: Math.round(payoutAmount * 100), // En centimes suisses
         currency: 'chf',
         destination: profile.stripe_account_id,
-        description: `Virement de gains locatifs Renger (${profile.full_name || user.email})`,
+        description: `Virement de gains locatifs Renger (${user.email || user.id})`,
         metadata: {
           user_id: user.id,
           payout_id: payoutRow.id,
