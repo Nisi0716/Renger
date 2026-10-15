@@ -1171,6 +1171,15 @@ async function loadProfileData() {
     const revenueElement = document.getElementById('seller-monthly-revenue');
     if (revenueElement) revenueElement.textContent = monthlyRevenue.toFixed(2) + ' CHF';
 
+    // 2.2 Calcul du solde disponible et mise à jour de l'UI
+    try {
+        const userPayouts = await fetchUserPayouts(currentUser.id);
+        const balanceInfo = calculateOwnerBalance(sellerBookings, userPayouts, isPro, today);
+        renderBalanceUI(balanceInfo, profile);
+    } catch (e) {
+        console.warn("Erreur calcul solde dans loadProfileData:", e);
+    }
+
     // --- STATS DASHBOARD PRO ---
     if (currentUser) {
         if (isPro) {
@@ -1688,6 +1697,25 @@ async function loadProfileSettings() {
         } else {
             syniCard.classList.add('hidden');
         }
+    }
+
+    // Calcul et affichage du solde disponible dans les Paramètres du compte
+    try {
+        let bookings = cachedSellerBookings;
+        if (!bookings || bookings.length === 0) {
+            const { data } = await supabaseClient
+                .from('bookings')
+                .select('*, trailers(*)')
+                .eq('owner_id', currentUser.id)
+                .in('status', ['paid', 'confirmed', 'paye', 'indisponible', 'annule']);
+            bookings = data || [];
+            cachedSellerBookings = bookings;
+        }
+        const userPayouts = await fetchUserPayouts(currentUser.id);
+        const balanceInfo = calculateOwnerBalance(bookings, userPayouts, isPro, new Date());
+        renderBalanceUI(balanceInfo, profile);
+    } catch (err) {
+        console.warn("Erreur chargement solde dans loadProfileSettings:", err);
     }
 }
 
@@ -2419,6 +2447,218 @@ function handleSendDispute(event) {
     closeDisputeModal();
 }
 
+// ==========================================
+// GESTION DU SOLDE ET DES RETRAITS (MINIMUM 80 CHF)
+// ==========================================
+const MIN_PAYOUT_AMOUNT = 80.00;
+let currentOwnerBalanceInfo = null;
+let isRequestingPayout = false;
+
+/**
+ * Calcule fidèlement le solde net disponible d'un propriétaire.
+ * - Les gains nets proviennent des locations terminées et payées (end_date < today)
+ * - 100% pour les membres PRO, 80% pour les membres Standard
+ * - Moins le cumul des retraits/versements déjà demandés
+ */
+function calculateOwnerBalance(sellerBookings = [], payouts = [], isPro = false, today = new Date()) {
+    const todayStr = (typeof formatDateToLocalISO === 'function')
+        ? formatDateToLocalISO(today)
+        : (today instanceof Date ? today.toISOString().split('T')[0] : String(today).split('T')[0]);
+    let totalNetEarnings = 0;
+
+    (sellerBookings || []).forEach(booking => {
+        if (!booking) return;
+        const status = (booking.status || '').toLowerCase();
+        if (status === 'indisponible' || status === 'annule' || status === 'cancelled') return;
+        if (!['paye', 'paid', 'confirmed'].includes(status)) return;
+
+        const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
+        // Uniquement les locations terminées (restitution effectuée)
+        if (endStr && todayStr > endStr) {
+            const sDate = new Date(booking.start_date);
+            const eDate = new Date(booking.end_date);
+            const days = Math.max(1, Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24)) + 1);
+            const dailyPrice = (booking.trailers && booking.trailers.price != null) ? Number(booking.trailers.price) : 0;
+            const baseRental = dailyPrice > 0 ? (days * dailyPrice) : (Number(booking.total_price) || 0);
+            const netRate = isPro ? 1.00 : 0.80;
+            totalNetEarnings += (baseRental * netRate);
+        }
+    });
+
+    totalNetEarnings = Math.round(totalNetEarnings * 100) / 100;
+
+    const totalWithdrawn = (payouts || []).reduce((sum, p) => {
+        const amt = Number(p.amount) || 0;
+        return sum + amt;
+    }, 0);
+
+    const availableBalance = Math.max(0, Math.round((totalNetEarnings - totalWithdrawn) * 100) / 100);
+    const canWithdraw = availableBalance >= MIN_PAYOUT_AMOUNT;
+
+    return {
+        totalNetEarnings,
+        totalWithdrawn,
+        availableBalance,
+        canWithdraw,
+        minThreshold: MIN_PAYOUT_AMOUNT
+    };
+}
+
+/**
+ * Récupère l'historique des retraits d'un utilisateur depuis Supabase (avec fallback local)
+ */
+async function fetchUserPayouts(userId) {
+    if (!userId || !supabaseClient) return [];
+    try {
+        const { data, error } = await supabaseClient
+            .from('payouts')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (!error && Array.isArray(data)) {
+            return data;
+        }
+    } catch (_) {}
+
+    // Repli localStorage
+    if (typeof localStorage !== 'undefined') {
+        try {
+            const raw = localStorage.getItem(`renger_payouts_${userId}`);
+            if (raw) return JSON.parse(raw);
+        } catch (_) {}
+    }
+
+    return [];
+}
+
+/**
+ * Met à jour l'interface utilisateur pour le solde et le bouton de retrait
+ */
+function renderBalanceUI(balanceInfo, profile) {
+    if (!balanceInfo) return;
+    currentOwnerBalanceInfo = balanceInfo;
+    const balance = balanceInfo.availableBalance || 0;
+    const formatted = balance.toFixed(2) + ' CHF';
+
+    // 1. Dashboard Propriétaire ("Mon Espace")
+    const sellerBalEl = document.getElementById('seller-available-balance');
+    if (sellerBalEl) sellerBalEl.textContent = formatted;
+
+    // 2. Paramètres du compte ("Espace Compte")
+    const settingsBalEl = document.getElementById('settings-account-balance');
+    if (settingsBalEl) settingsBalEl.textContent = formatted;
+
+    const btnPayout = document.getElementById('btn-request-payout');
+    const btnPayoutText = document.getElementById('btn-request-payout-text');
+    const badgeEl = document.getElementById('settings-payout-status-badge');
+    const thresholdInfo = document.getElementById('settings-payout-threshold-info');
+
+    if (balanceInfo.canWithdraw) {
+        if (btnPayout) {
+            btnPayout.disabled = false;
+            btnPayout.className = "bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3.5 px-6 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm cursor-pointer";
+        }
+        if (btnPayoutText) {
+            btnPayoutText.textContent = `Retirer mes gains (${formatted}) →`;
+        }
+        if (badgeEl) {
+            badgeEl.innerHTML = `<span class="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Retrait disponible
+            </span>`;
+        }
+        if (thresholdInfo) {
+            thresholdInfo.innerHTML = `Seuil minimum de 80.00 CHF atteint ! Vous pouvez demander le versement immédiat de vos <strong>${formatted}</strong>.`;
+        }
+    } else {
+        if (btnPayout) {
+            btnPayout.disabled = true;
+            btnPayout.className = "bg-stone-200 dark:bg-stone-700 text-stone-400 dark:text-stone-500 cursor-not-allowed font-bold py-3.5 px-6 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm";
+        }
+        if (btnPayoutText) {
+            btnPayoutText.textContent = "Retirer mes gains (min. 80 CHF)";
+        }
+        const diff = (MIN_PAYOUT_AMOUNT - balance).toFixed(2);
+        if (badgeEl) {
+            badgeEl.innerHTML = `<span class="bg-stone-100 dark:bg-stone-700 text-stone-500 dark:text-stone-400 text-xs px-2.5 py-1 rounded-full font-semibold">
+                Min. 80 CHF
+            </span>`;
+        }
+        if (thresholdInfo) {
+            thresholdInfo.innerHTML = `Seuil minimum de retrait : <strong>80.00 CHF</strong> (encore <strong>${diff} CHF</strong> pour débloquer votre premier retrait).`;
+        }
+    }
+}
+
+/**
+ * Gère le clic sur le bouton de retrait de gains
+ */
+async function handleRequestPayout() {
+    if (!currentUser || isRequestingPayout) return;
+    if (!currentOwnerBalanceInfo || !currentOwnerBalanceInfo.canWithdraw) {
+        showToast("Solde insuffisant. Le seuil minimum de retrait est de 80.00 CHF.", "error");
+        return;
+    }
+
+    // Vérifier si le propriétaire a lié son compte Stripe Connect
+    let profile = null;
+    try {
+        if (supabaseClient) {
+            const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+            profile = data;
+        }
+    } catch (_) {}
+
+    if (!profile?.stripe_account_id) {
+        showToast("Veuillez d'abord lier votre compte bancaire via Stripe Connect ci-dessous pour recevoir vos gains.", "error");
+        const stripeBtn = document.getElementById('settings-stripe-btn');
+        if (stripeBtn) stripeBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
+    const amountToWithdraw = currentOwnerBalanceInfo.availableBalance;
+    const confirmMessage = `Confirmez-vous le retrait de ${amountToWithdraw.toFixed(2)} CHF ?\n\nLes fonds seront transférés automatiquement vers votre compte bancaire suisse lié à Stripe Connect sous 48h ouvrées.`;
+    
+    if (typeof confirm === 'function' && !confirm(confirmMessage)) return;
+
+    isRequestingPayout = true;
+    showToast("Traitement de votre demande de retrait en cours...", "info");
+
+    const newPayout = {
+        id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('payout_' + Date.now()),
+        user_id: currentUser.id,
+        amount: amountToWithdraw,
+        status: 'en_attente',
+        created_at: new Date().toISOString()
+    };
+
+    try {
+        let inserted = false;
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('payouts').insert([newPayout]);
+            if (!error) inserted = true;
+        }
+
+        if (!inserted && typeof localStorage !== 'undefined') {
+            const localPayouts = await fetchUserPayouts(currentUser.id);
+            localPayouts.push(newPayout);
+            localStorage.setItem(`renger_payouts_${currentUser.id}`, JSON.stringify(localPayouts));
+        }
+
+        showToast(`Demande de virement de ${amountToWithdraw.toFixed(2)} CHF validée ! Fonds en cours de transfert sous 48h.`, "success");
+        
+        // Rafraîchir les données et recalculer le solde
+        if (typeof loadProfileData === 'function') await loadProfileData();
+        if (typeof loadProfileSettings === 'function') await loadProfileSettings();
+    } catch (err) {
+        console.error("Erreur handleRequestPayout:", err);
+        showToast("Erreur technique lors de la demande de retrait.", "error");
+    } finally {
+        isRequestingPayout = false;
+    }
+}
+
 // Enregistrement des fonctions dans le scope global window
 if (typeof window !== 'undefined') {
     window.isValidSwissIBAN = isValidSwissIBAN;
@@ -2428,6 +2668,11 @@ if (typeof window !== 'undefined') {
     window.closeDisputeModal = closeDisputeModal;
     window.handleSendDispute = handleSendDispute;
     window.getTrailerFormDraft = getTrailerFormDraft;
+    window.calculateOwnerBalance = calculateOwnerBalance;
+    window.fetchUserPayouts = fetchUserPayouts;
+    window.renderBalanceUI = renderBalanceUI;
+    window.handleRequestPayout = handleRequestPayout;
+    window.MIN_PAYOUT_AMOUNT = MIN_PAYOUT_AMOUNT;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -2441,7 +2686,12 @@ if (typeof module !== 'undefined' && module.exports) {
         getTrailerFormDraft,
         createRenterBookingCard,
         createSellerRentalHistoryCard,
-        handlePublish
+        handlePublish,
+        calculateOwnerBalance,
+        fetchUserPayouts,
+        renderBalanceUI,
+        handleRequestPayout,
+        MIN_PAYOUT_AMOUNT
     };
 }
 

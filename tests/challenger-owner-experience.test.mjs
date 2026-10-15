@@ -258,6 +258,68 @@ describe('Challenger Suite: Trailer Owner Experience & Swiss Business Rigor (Mar
         });
     });
 
+    describe('Item 11: Owner Balance & Minimum 80 CHF Payout Withdrawal System', () => {
+        let trailers;
+        beforeEach(async () => {
+            const trailersModule = await import('../Site web/js/trailers.js');
+            trailers = trailersModule.default || trailersModule;
+        });
+
+        it('profil.html must contain #settings-account-balance, #seller-available-balance and #btn-request-payout', () => {
+            const html = fs.readFileSync(path.join(siteWebDir, 'profil.html'), 'utf8');
+            assert.ok(html.includes('id="settings-account-balance"'), 'profil.html doit inclure #settings-account-balance');
+            assert.ok(html.includes('id="seller-available-balance"'), 'profil.html doit inclure #seller-available-balance');
+            assert.ok(html.includes('id="btn-request-payout"'), 'profil.html doit inclure #btn-request-payout');
+            assert.ok(html.includes('handleRequestPayout()'), 'profil.html doit appeler handleRequestPayout()');
+            assert.ok(html.includes('80'), 'profil.html doit mentionner le seuil de 80 CHF');
+        });
+
+        it('trailers.js calculateOwnerBalance enforces 80 CHF minimum threshold and 80%/100% rates', () => {
+            assert.equal(typeof trailers.calculateOwnerBalance, 'function', 'calculateOwnerBalance doit être exportée');
+            assert.equal(trailers.MIN_PAYOUT_AMOUNT, 80, 'MIN_PAYOUT_AMOUNT doit être égal à 80');
+
+            const today = new Date('2026-10-15T12:00:00Z');
+
+            // 1. Location terminée de 2 jours à 40 CHF/jour = 80 CHF brut
+            // Standard (80%) -> 64 CHF net -> < 80 CHF -> canWithdraw: false
+            const standardBookings = [{
+                start_date: '2026-10-10',
+                end_date: '2026-10-11',
+                status: 'paye',
+                trailers: { price: 40 }
+            }];
+            const resStandard = trailers.calculateOwnerBalance(standardBookings, [], false, today);
+            assert.equal(resStandard.totalNetEarnings, 64);
+            assert.equal(resStandard.availableBalance, 64);
+            assert.equal(resStandard.canWithdraw, false, '64 CHF doit être inférieur au seuil de 80 CHF');
+
+            // 2. Même location pour un membre PRO (100%) -> 80 CHF net -> >= 80 CHF -> canWithdraw: true
+            const resPro = trailers.calculateOwnerBalance(standardBookings, [], true, today);
+            assert.equal(resPro.totalNetEarnings, 80);
+            assert.equal(resPro.availableBalance, 80);
+            assert.equal(resPro.canWithdraw, true, '80 CHF doit permettre le retrait');
+
+            // 3. Déduction des versements passés
+            const payouts = [{ amount: 50 }];
+            const resWithPayout = trailers.calculateOwnerBalance(standardBookings, payouts, true, today);
+            assert.equal(resWithPayout.totalWithdrawn, 50);
+            assert.equal(resWithPayout.availableBalance, 30);
+            assert.equal(resWithPayout.canWithdraw, false, '30 CHF restant est inférieur au seuil de 80 CHF');
+
+            // 4. Ignorer les réservations futures, annulées ou indisponibles
+            const complexBookings = [
+                { start_date: '2026-10-01', end_date: '2026-10-03', status: 'paye', trailers: { price: 50 } }, // 3j * 50 = 150 CHF (terminé) -> 80% = 120 CHF
+                { start_date: '2026-10-20', end_date: '2026-10-22', status: 'paye', trailers: { price: 50 } }, // Futur -> ignoré
+                { start_date: '2026-10-05', end_date: '2026-10-06', status: 'annule', trailers: { price: 50 } }, // Annulé -> ignoré
+                { start_date: '2026-10-07', end_date: '2026-10-08', status: 'indisponible', trailers: { price: 50 } } // Indisponible -> ignoré
+            ];
+            const resComplex = trailers.calculateOwnerBalance(complexBookings, [], false, today);
+            assert.equal(resComplex.totalNetEarnings, 120);
+            assert.equal(resComplex.availableBalance, 120);
+            assert.equal(resComplex.canWithdraw, true, '120 CHF permet le retrait');
+        });
+    });
+
     describe('Database Migrations Contract (supabase_migrations.sql)', () => {
         it('supabase_migrations.sql must contain all owner experience columns with safe IF NOT EXISTS', () => {
             const sql = fs.readFileSync(path.join(projectRoot, 'supabase_migrations.sql'), 'utf8');
@@ -267,6 +329,9 @@ describe('Challenger Suite: Trailer Owner Experience & Swiss Business Rigor (Mar
             assert.match(sql, /ALTER\s+TABLE\s+trailers[\s\S]*?license_plate/i, 'migrations doit ajouter license_plate à trailers');
             assert.match(sql, /ALTER\s+TABLE\s+trailers[\s\S]*?deposit_amount/i, 'migrations doit ajouter deposit_amount à trailers');
             assert.match(sql, /ALTER\s+TABLE\s+trailers[\s\S]*?has_hitch_lock/i, 'migrations doit ajouter has_hitch_lock à trailers');
+            assert.match(sql, /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+public\.payouts/i, 'migrations doit déclarer public.payouts');
+            assert.match(sql, /amount\s+NUMERIC\(10,\s*2\)\s+NOT\s+NULL\s+CHECK\s*\(\s*amount\s*>=\s*80\.00\s*\)/i, 'payouts doit vérifier amount >= 80.00');
         });
     });
 });
+
