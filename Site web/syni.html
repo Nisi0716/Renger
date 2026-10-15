@@ -1296,6 +1296,9 @@
                         <div class="p-2.5 border-b border-stone-800/80 bg-stone-950/30 overflow-x-auto">
                             <div class="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1.5">Suggestions d'analyses en 1 clic :</div>
                             <div class="flex items-center gap-1.5 flex-nowrap" id="copilot-shortcuts-bar">
+                                <button type="button" class="btn-copilot-shortcut text-[11px] px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 whitespace-nowrap transition active:scale-95" data-prompt="Quantité de recherche pour des remorques à cheval en relation avec les prix de celle-ci">
+                                    Vans à chevaux : Recherches vs Prix
+                                </button>
                                 <button type="button" class="btn-copilot-shortcut text-[11px] px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 whitespace-nowrap transition active:scale-95" data-prompt="Croise les filtres de recherche les plus utilisés avec le prix des remorques correspondantes et leur évolution">
                                     Filtres x Prix des remorques
                                 </button>
@@ -1318,7 +1321,7 @@
 
                         <!-- Formulaire de saisie du prompt -->
                         <form id="copilot-chat-form" class="p-3 border-t border-stone-800 bg-stone-950/70 flex items-center gap-2">
-                            <input type="text" id="copilot-input" placeholder="Ex: Croise les filtres de recherche avec le prix des remorques..." autocomplete="off"
+                            <input type="text" id="copilot-input" placeholder="Ex: Quantité de recherche pour des remorques à cheval en relation avec les prix..." autocomplete="off"
                                 class="flex-1 bg-stone-950 border border-stone-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-terracotta-500">
                             <button type="submit" id="copilot-submit" class="bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition active:scale-95 flex items-center gap-1.5 shadow-md flex-shrink-0">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>

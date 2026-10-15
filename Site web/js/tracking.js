@@ -109,3 +109,58 @@ async function startTracking() {
 // Initialisation au chargement
 document.addEventListener('DOMContentLoaded', initCookieBanner);
 
+
+// ==========================================
+// COLLECTE DES RECHERCHES DU CATALOGUE (alimente Syni Copilot)
+// ==========================================
+// Minimisation (nLPD/RGPD) : uniquement si consentement "accepted", aucun user_id,
+// texte tronqué à 80 caractères, une même recherche n'est pas réenregistrée dans les 30 s.
+const SEARCH_VALID_CATEGORIES = ['all', 'utilitaire', 'cheval', 'voiture', 'moto', 'refrigere', 'porte-velo', 'bagage'];
+let lastTrackedSearchSignature = '';
+let lastTrackedSearchAt = 0;
+
+function buildSearchEventPayload({ category, searchText, hasDates, trailers }) {
+    const cat = SEARCH_VALID_CATEGORIES.includes(category) ? category : 'all';
+    const text = String(searchText || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const prices = (Array.isArray(trailers) ? trailers : [])
+        .map(t => Number(t && t.price))
+        .filter(p => Number.isFinite(p) && p >= 0 && p <= 100000);
+    const round2 = (n) => Math.round(n * 100) / 100;
+    return {
+        category: cat,
+        search_text: text || null,
+        has_dates: !!hasDates,
+        results_count: Math.min(10000, Array.isArray(trailers) ? trailers.length : 0),
+        results_avg_price: prices.length ? round2(prices.reduce((a, b) => a + b, 0) / prices.length) : null,
+        results_min_price: prices.length ? round2(Math.min(...prices)) : null,
+        results_max_price: prices.length ? round2(Math.max(...prices)) : null
+    };
+}
+
+async function trackSearch(params) {
+    try {
+        if (typeof supabaseClient === 'undefined' || !supabaseClient) return false;
+        if (localStorage.getItem(COOKIE_CONSENT_KEY) !== 'accepted') return false;
+
+        const payload = buildSearchEventPayload(params || {});
+        // Une navigation "toutes catégories" sans texte ni dates n'est pas une recherche active
+        if (payload.category === 'all' && !payload.search_text && !payload.has_dates) return false;
+
+        const signature = JSON.stringify([payload.category, payload.search_text, payload.has_dates]);
+        const now = Date.now();
+        if (signature === lastTrackedSearchSignature && now - lastTrackedSearchAt < 30000) return false;
+        lastTrackedSearchSignature = signature;
+        lastTrackedSearchAt = now;
+
+        payload.session_id = sessionStorage.getItem('renger_session_id') || null;
+        const { error } = await supabaseClient.from('search_events').insert([payload]);
+        return !error;
+    } catch (e) {
+        return false;
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.trackSearch = trackSearch;
+    window.buildSearchEventPayload = buildSearchEventPayload;
+}

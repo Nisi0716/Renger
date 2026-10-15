@@ -954,6 +954,18 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         }
     }
 
+    // Collecte de la recherche (consentement requis, cf. tracking.js) pour Syni Copilot
+    if (typeof trackSearch === 'function') {
+        try {
+            trackSearch({
+                category: filter,
+                searchText: cleanSearch,
+                hasDates: !!(currentStartDate && currentEndDate),
+                trailers: visibleTrailers || []
+            });
+        } catch (_) { /* la télémétrie ne doit jamais bloquer le catalogue */ }
+    }
+
     // R2.4: Compteur dynamique de remorques disponibles
     const countEl = document.getElementById('available-trailers-count');
     if (countEl) {

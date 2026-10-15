@@ -1159,7 +1159,13 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.ok(Array.isArray(parsed.cells), 'Doit contenir des cellules de code/markdown');
             assert.ok(content.includes('pandas'), 'Doit importer pandas');
             assert.ok(content.includes('analyze_search_vs_prices'), 'Doit définir l analyse des filtres vs prix');
+            assert.ok(content.includes('analyze_category_depth'), 'Doit définir le deep-dive catégoriel recherches vs prix');
             assert.ok(content.includes('FastAPI'), 'Doit contenir le serveur bridge FastAPI');
+        });
+
+        it('syni.html contient le raccourci dédié aux vans à chevaux (Recherches vs Prix)', () => {
+            assert.ok(syniHtml.includes('Vans à chevaux : Recherches vs Prix'), 'Bouton raccourci Vans à chevaux requis');
+            assert.ok(syniHtml.includes('data-prompt="Quantité de recherche pour des remorques à cheval en relation avec les prix de celle-ci"'));
         });
     });
 
@@ -1198,6 +1204,25 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.ok(Array.isArray(result.recommendations) && result.recommendations.length > 0);
         });
 
+        it('analyzeCategoryDeepDive analyse fidèlement les vans à chevaux et identifie la pénurie par tranche', () => {
+            const deepDive = syniModule.analyzeCategoryDeepDive('cheval');
+            assert.equal(deepDive.categoryKey, 'cheval');
+            assert.ok(deepDive.categoryLabel.includes('Vans à chevaux'));
+            assert.ok(deepDive.totalSearches > 0, 'Doit avoir des requêtes de recherche analysées');
+            assert.ok(deepDive.avgCatalogPrice > 0, 'Prix catalogue moyen');
+            assert.ok(deepDive.avgSearchBudget > 0, 'Budget moyen locataire');
+            assert.ok(Array.isArray(deepDive.brackets), 'Doit découper en tranches de prix');
+            assert.equal(deepDive.brackets.length, 5, 'Doit compter 5 tranches de prix');
+
+            const bracket70 = deepDive.brackets.find(b => b.bracket === '70 - 89 CHF');
+            assert.ok(bracket70, 'Tranche 70-89 CHF requise');
+            assert.ok(bracket70.searchCount > 0, 'Demande significative');
+            assert.ok(bracket70.status.includes('PÉNURIE') || bracket70.status.includes('OFFRE'));
+
+            assert.ok(deepDive.shortageBracket, 'Doit cibler la tranche de pénurie maximale');
+            assert.ok(deepDive.strategicTakeaway.includes('Vans') || deepDive.strategicTakeaway.includes('vans') || deepDive.strategicTakeaway.includes('Équestre') || deepDive.strategicTakeaway.includes('équestre'));
+        });
+
         it('computeSupplyDemandBalance calcule la saturation territoriale suisse', () => {
             const balance = syniModule.computeSupplyDemandBalance();
             assert.ok(Array.isArray(balance.cantons));
@@ -1223,6 +1248,29 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
     });
 
     describe('20. Syni Copilot : Traitement du Langage Naturel & Génération Modulaire', () => {
+        it('processCopilotPrompt gère le prompt spécifique sur la quantité de recherche pour des remorques à cheval en relation avec les prix', () => {
+            const prompt = "la quantité de recherche pour des remorques à cheval en relation avec les prix de celle-ci";
+            const res = syniModule.processCopilotPrompt(prompt);
+
+            assert.ok(res.responseText.includes('Vans à chevaux') || res.responseText.includes('équestres'));
+            assert.ok(res.responseText.includes('requêtes de recherche'));
+            assert.ok(res.responseText.includes('Budget Locataire vs Offre Réelle') || res.responseText.includes('catalogue'));
+            assert.ok(res.responseText.includes('Pénurie Critique') || res.responseText.includes('tension'));
+
+            assert.ok(res.widget, 'Un widget dynamique doit être retourné');
+            assert.equal(res.widget.type, 'chart_and_table');
+            assert.equal(res.widget.chartType, 'bar');
+            assert.ok(res.widget.badge.includes('Deep-Dive'));
+            assert.ok(Array.isArray(res.widget.chartData.labels));
+            assert.equal(res.widget.chartData.labels.length, 5, 'Doit afficher les 5 tranches de prix');
+            assert.equal(res.widget.chartData.datasets.length, 2, 'Doit comparer Demande (Recherches) et Offre (Flotte)');
+            assert.equal(res.widget.chartData.datasets[0].label, 'Demande Locataires (Nb Requêtes)');
+            assert.equal(res.widget.chartData.datasets[1].label, 'Offre Catalogue Renger (Flotte)');
+            assert.ok(Array.isArray(res.widget.tableData));
+            assert.equal(res.widget.tableData.length, 5);
+            assert.ok(res.widget.summaryText);
+        });
+
         it('processCopilotPrompt gère la demande de croisement filtres x prix', () => {
             const res = syniModule.processCopilotPrompt("Peux-tu croiser les données des filtres de recherche avec le prix des remorques pour voir l'évolution ?");
             assert.ok(res.responseText.includes('filtres de recherche'));
