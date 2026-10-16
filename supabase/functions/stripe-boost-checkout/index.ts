@@ -63,6 +63,11 @@ serve(async (req) => {
         const amount = isWeek ? 990 : 590;
         const planName = isWeek ? "Boost 7 jours" : "Boost Week-end";
 
+        const rawOrigin = (req.headers.get("origin") || "http://localhost:3000").replace(/\/+$/, "");
+        const safeOrigin = (!rawOrigin || rawOrigin === "null" || /^(renger|capacitor):\/\//i.test(rawOrigin) || /^https?:\/\/localhost$/i.test(rawOrigin))
+            ? "https://renger.ch"
+            : rawOrigin;
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
             mode: "payment",
@@ -79,8 +84,8 @@ serve(async (req) => {
                     quantity: 1,
                 },
             ],
-            success_url: `${req.headers.get("origin") || "http://localhost:3000"}?boost_success=true`,
-            cancel_url: `${req.headers.get("origin") || "http://localhost:3000"}?boost_canceled=true`,
+            success_url: `${safeOrigin}?boost_success=true`,
+            cancel_url: `${safeOrigin}?boost_canceled=true`,
             metadata: {
                 trailer_id,
                 plan,

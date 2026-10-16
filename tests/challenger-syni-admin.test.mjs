@@ -342,6 +342,9 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.ok(sql.includes('is_admin boolean'), 'supabase_migrations.sql doit comporter is_admin boolean');
             assert.ok(sql.includes('enism2007@hotmail.com'), 'Attribution initiale pour enism2007@hotmail.com');
             assert.ok(sql.includes('protect_is_admin'), 'Trigger protect_is_admin requis pour empêcher l\'auto-promotion');
+            assert.ok(sql.includes('NEW.is_pro IS DISTINCT FROM OLD.is_pro'), 'Trigger protect_is_admin doit protéger is_pro contre l\'auto-promotion');
+            assert.ok(sql.includes('NEW.stripe_customer_id IS DISTINCT FROM OLD.stripe_customer_id'), 'Trigger protect_is_admin doit protéger stripe_customer_id');
+            assert.ok(sql.includes('NEW.stripe_subscription_id IS DISTINCT FROM OLD.stripe_subscription_id'), 'Trigger protect_is_admin doit protéger stripe_subscription_id');
         });
     });
 

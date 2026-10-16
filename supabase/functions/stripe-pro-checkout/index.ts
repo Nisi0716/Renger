@@ -64,6 +64,11 @@ serve(async (req) => {
             ? { customer: profile.stripe_customer_id } 
             : (user.email ? { customer_email: user.email } : {});
 
+        const rawOrigin = (req.headers.get("origin") || "http://localhost:3000").replace(/\/+$/, "");
+        const safeOrigin = (!rawOrigin || rawOrigin === "null" || /^(renger|capacitor):\/\//i.test(rawOrigin) || /^https?:\/\/localhost$/i.test(rawOrigin))
+            ? "https://renger.ch"
+            : rawOrigin;
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
             mode: "subscription",
@@ -82,8 +87,8 @@ serve(async (req) => {
                     quantity: 1,
                 },
             ],
-            success_url: `${req.headers.get("origin") || "http://localhost:3000"}?pro_success=true`,
-            cancel_url: `${req.headers.get("origin") || "http://localhost:3000"}?pro_canceled=true`,
+            success_url: `${safeOrigin}?pro_success=true`,
+            cancel_url: `${safeOrigin}?pro_canceled=true`,
             metadata: {
                 user_id: user.id,
                 type: "pro_subscription"

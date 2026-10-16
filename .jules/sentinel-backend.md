@@ -1,5 +1,16 @@
 # Sentinel-Backend Journal
 
+## 2026-04-17 - Client-Side Privilege Escalation on Profiles Table via Unprotected PRO and Stripe Fields
+
+**Vulnerability:**
+While `profiles` table had an UPDATE policy restricting updates to record owners (`auth.uid() = id`) and a trigger (`protect_is_admin`) preventing `is_admin` escalation, sensitive financial and subscription columns (`is_pro`, `stripe_customer_id`, `stripe_subscription_id`) were omitted from trigger checks. Any authenticated user could send a client-side UPDATE query to set `is_pro = true` for free, skipping the 39 CHF/month Stripe PRO subscription fee and taking 100% of payout earnings (0% platform commission instead of 20%), or modify Stripe Customer IDs.
+
+**Learning:**
+Relying solely on `auth.uid() = id` for table UPDATE policies allows users to modify any column on their record. When a table stores both user-editable fields (e.g. name, avatar, IBAN) and backend-managed privileged fields (`is_pro`, `is_admin`, `stripe_customer_id`), an explicit trigger or column-level security check must protect all backend-managed fields from direct client updates.
+
+**Prevention:**
+Always restrict modifications of sensitive financial, subscription, or role columns (`is_pro`, `is_admin`, `stripe_customer_id`, `stripe_subscription_id`) to `service_role` or authorized supreme administrators in `BEFORE UPDATE` database triggers.
+
 ## 2026-04-02 - Overly Permissive Row-Level Security Insert Policies on Impressions and Clicks Tables
 
 **Vulnerability:**

@@ -87,11 +87,14 @@ serve(async (req) => {
 
         let origin = "https://renger.ch";
         const headerOrigin = req.headers.get("origin") || req.headers.get("referer");
-        if (headerOrigin) {
+        if (headerOrigin && headerOrigin !== "null" && !/^(renger|capacitor):\/\//i.test(headerOrigin)) {
             try {
-                origin = new URL(headerOrigin).origin;
+                const parsedOrigin = new URL(headerOrigin).origin;
+                if (parsedOrigin && parsedOrigin !== "null" && !/^https?:\/\/localhost$/i.test(parsedOrigin)) {
+                    origin = parsedOrigin;
+                }
             } catch (_) {
-                origin = headerOrigin.replace(/\/+$/, "");
+                origin = "https://renger.ch";
             }
         }
 

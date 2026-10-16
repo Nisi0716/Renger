@@ -733,7 +733,40 @@ Toute IA manipulant les prix ou le flux Stripe **doit appliquer scrupuleusement 
   - **Suite Automatisée & Couverture** :
     - Ajout de la Suite 22 dans `tests/challenger-syni-admin.test.mjs` (18 tests complets couvrant calculs, filtres, modale et Edge Functions).
     - **100% de réussite** : 414 tests des 8 paliers du runner + 392 tests challengers. Total de **806 tests automatisés validés à 100%**.
+- [x] **Application Mobile Native Renger — App Store (iOS) & Google Play (Android) (`/Users/enismedjiti/Documents/Renger/App` - 16 Octobre 2026) :**
+  - **Isolation & Outillage Autonome (`App/`)** :
+    - Sous-dossier dédié `/Users/enismedjiti/Documents/Renger/App` (aucune pollution du dossier `Site web/`).
+    - Environnement Node.js LTS (`v22.23.2`), `npm` (`10.9.8`) et `npx` autonomes installés dans `App/bin/` et reliés dans `~/.local/bin`.
+    - Identifiant officiel : `ch.renger.app` | Nom public : `Renger` (Sous-titre : *Location de remorques en Suisse*).
+  - **Moteur de Synchronisation & Conformité Store (`App/sync-app.js`)** :
+    - Mode Local Hybrid Bundle (`App/www/`) embarquant HTML/CSS/JS localement pour un démarrage instantané sans écran blanc (conforme Apple Guideline 4.2).
+    - Filtrage strict excluant `syni.html`, `js/syni.js`, `google-site-verification-template.html`, `sitemap.xml` et `robots.txt` de `App/www/`, `App/ios/` et `App/android/`.
+    - Injection automatique de `viewport-fit=cover`, adaptation de la CSP pour les schémas `capacitor://localhost` / `renger://localhost` / `https://localhost`, règles CSS Safe Area (`env(safe-area-inset-top)`, `env(safe-area-inset-bottom)`) et chargement de `js/mobile-bridge.js`.
+  - **Pont Natif Capacitor & UX Mobile (`App/src/mobile-bridge.js` -> `App/www/js/mobile-bridge.js`)** :
+    - **Bottom Tab Bar à 4 onglets** : `Explorer` (`#mobile-nav-explore`), `Mes réservations` (`#mobile-nav-bookings`), `Messages` (`#mobile-nav-messages` avec tiroir natif de conversations en direct `#renger-mobile-messages-sheet` et résolution asynchrone de session Supabase) et `Profil` (`#mobile-nav-settings`), avec masquage automatique sur le HUD plein écran `#inspection-page`.
+    - **Caméra & GPS Haute Précision (`@capacitor/camera`, `@capacitor/geolocation`)** : intégration directe avec `triggerFallbackCamera` et `takeGuidedInspectionPhoto` pour l'état des lieux contradictoire photo 4/4 certifié (CO art. 257a), avec conversion `dataUrlToJpegFile` garantissant les Magic Bytes JPEG (`0xFF 0xD8 0xFF`).
+    - **Retours Haptiques (`@capacitor/haptics`)** : vibrations subtiles sur les onglets, boutons, déclencheur photo et notifications toast.
+    - **Paiements 100% Stripe (`@capacitor/browser`)** : câblage automatique de `openStripeCheckout` dans `App/www/js/booking.js` et `App/www/js/core.js` (ouverture Safari View Controller / Chrome Custom Tabs pour Apple Pay / Google Pay), normalisation des origines Capacitor (`getPublicAppOrigin()` et Edge Functions `stripe-*`), et vérification automatique de `pending_booking_id` au retour (`handleStripeBrowserReturn`).
+    - **Notifications Push (`@capacitor/push-notifications`)** : gestion des permissions, enregistrement du token APNs/FCM et routage des alertes de messages et réservations.
+  - **Projets Natifs iOS (`App/ios/`) & Android (`App/android/`) & Assets (`App/assets-generator.js`)** :
+    - Projet Xcode complet (`App/ios/App/App.xcworkspace`, `Podfile`, `Info.plist` avec `NSCameraUsageDescription`, `NSLocationWhenInUseUsageDescription`, `NSPhotoLibraryUsageDescription`, `ITSAppUsesNonExemptEncryption`).
+    - Projet Android Studio / Gradle complet (`App/android/`, `AndroidManifest.xml` avec `CAMERA`, `ACCESS_FINE_LOCATION`, `VIBRATE`, `POST_NOTIFICATIONS`).
+    - Génération automatisée via `sips` des icônes App Store (`1024x1024` RGB sans canal alpha), Google Play (`512x512`), mipmaps adaptatifs Android et Splash Screens Dark Stone (`#1c1917`).
+  - **Tests Automatisés & Non-Régression** :
+    - Suite dédiée `App/tests/mobile-app.test.js` (23 tests unitaires et d'intégration) + `tests/challenger-mobile-app.test.mjs` (9 tests challengers).
+  - [x] **Sécurisation Anti-Escalade RLS `profiles` (Sentinel PR #8 - 16 Octobre 2026) :**
+  - **Diagnostic & Vulnérabilité** : La politique `FOR UPDATE` sur la table `profiles` autorisait les utilisateurs authentifiés (`auth.uid() = id`) à modifier l'ensemble de leurs colonnes. Les colonnes financières et d'abonnement (`is_pro`, `stripe_customer_id`, `stripe_subscription_id`) n'étaient pas protégées au niveau de la base de données. N'importe quel client pouvait s'auto-promouvoir `is_pro = true` pour 0 CHF (contournement de l'abonnement Stripe à 39 CHF/mois) et s'octroyer 100% de ses gains locatifs (0% de commission au lieu de 20%).
+  - **Résolution Zéro-Confiance en BDD** :
+    - Amélioration de la fonction trigger `protect_is_admin()` sur `public.profiles` pour interdire et rétablir automatiquement la valeur `OLD` si un utilisateur non-admin ou non-`service_role` tente d'altérer `is_pro`, `stripe_customer_id` ou `stripe_subscription_id`.
+    - Seuls le `service_role` (nos Edge Functions et Webhooks Stripe) et l'administrateur suprême (`enism2007@hotmail.com` / `einsm2007@gmail.com`) sont autorisés à modifier ces attributs.
+    - Déploiement et exécution immédiate sur la base de données Supabase Cloud (`cwifrzajxrcpnqceyxnj`) via `supabase db query --linked`.
+    - Migration sauvegardée dans `supabase/migrations/20260417000000_fix_profiles_pro_rls.sql` et `supabase_migrations.sql`.
+    - Journal de sécurité synchronisé dans `.jules/sentinel-backend.md`.
+    - Suite de tests `tests/challenger-syni-admin.test.mjs` enrichie et validée à 100%.
 
 ### ⏳ Prochaines Évolutions Prioritaires
+- [ ] Ouvrir `App/ios/App/App.xcworkspace` dans Xcode pour signer avec le compte Apple Developer (`ch.renger.app`) et publier sur TestFlight / App Store Connect.
+- [ ] Générer le bundle signé `.aab` depuis `App/android/` dans Android Studio pour publication sur la Google Play Console.
 - [ ] Optimiser le chargement mobile des images d'annonces (format WebP automatique).
 - [ ] Déployer la fonction `stripe-portal` sur Supabase Cloud et renseigner `SYNI_MASTER_KEY` dans les secrets Supabase.
+

@@ -182,9 +182,11 @@ serve(async (req) => {
       throw new Error("Erreur réservation BDD : " + (bookingError?.message || 'Inconnue'))
     }
 
-    // URLs de redirection
+    // URLs de redirection (supporte les origines Capacitor iOS renger:// / capacitor:// et Android https://localhost)
     const rawOrigin = req.headers.get('origin') || req.headers.get('referer') || 'https://renger.ch'
-    const origin = rawOrigin.replace(/\/+$/, '')
+    const cleanedOrigin = rawOrigin.replace(/\/+$/, '')
+    const isCapacitorOrigin = !cleanedOrigin || cleanedOrigin === 'null' || /^(renger|capacitor):\/\//i.test(cleanedOrigin) || /^https?:\/\/localhost$/i.test(cleanedOrigin)
+    const origin = isCapacitorOrigin ? 'https://renger.ch' : cleanedOrigin
     const successUrl = `${origin}?payment=success&booking_id=${booking.id}`
     const cancelUrl = `${origin}?payment=cancel&booking_id=${booking.id}`
 
