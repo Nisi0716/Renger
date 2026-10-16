@@ -80,11 +80,24 @@ async function openTrailerDetail(trailer) {
             const schemaData = JSON.parse(schemaScript.textContent);
             schemaData.name = trailer.title;
             schemaData.description = trailer.description || `Location de ${trailer.title}`;
-            if (schemaData.offers) {
-                schemaData.offers.price = trailer.price;
+            if (!schemaData.offers) {
+                schemaData.offers = { "@type": "Offer", "priceCurrency": "CHF", "availability": "https://schema.org/InStock" };
             }
+            if (trailer.price) {
+                schemaData.offers.price = trailer.price.toString();
+            }
+            schemaData.offers.url = window.location.href;
             if (trailer.image_url) {
                 schemaData.image = trailer.image_url;
+            }
+            if (trailer.rating_avg && trailer.rating_count) {
+                schemaData.aggregateRating = {
+                    "@type": "AggregateRating",
+                    "ratingValue": Number(trailer.rating_avg).toFixed(1),
+                    "reviewCount": trailer.rating_count.toString(),
+                    "bestRating": "5",
+                    "worstRating": "1"
+                };
             }
             schemaScript.textContent = JSON.stringify(schemaData);
         } catch (e) {
