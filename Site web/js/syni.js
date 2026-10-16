@@ -1141,28 +1141,31 @@
                 console.warn('[Syni] Repli sur requêtes directes Supabase Client:', err);
             }
 
-            // 2. Repli direct Supabase Client
+            // 2. Repli direct Supabase Client (100% résilient avec les vraies données BDD)
             try {
                 const [pRes, tRes, bRes, iRes, rRes, aRes, sRes, payRes] = await Promise.all([
-                    window.supabaseClient.from('profiles').select('*').limit(200),
-                    window.supabaseClient.from('trailers').select('*').limit(200),
-                    window.supabaseClient.from('bookings').select('*').limit(200),
-                    window.supabaseClient.from('inspections').select('*').limit(200),
-                    window.supabaseClient.from('rate_limits').select('*').limit(100),
-                    window.supabaseClient.from('analytics_events').select('*').limit(500),
+                    window.supabaseClient.from('profiles').select('*').limit(500).catch(err => ({ data: [], error: err })),
+                    window.supabaseClient.from('trailers').select('*').limit(500).catch(err => ({ data: [], error: err })),
+                    window.supabaseClient.from('bookings').select('*').limit(500).catch(err => ({ data: [], error: err })),
+                    window.supabaseClient.from('inspections').select('*').limit(500).catch(err => ({ data: [], error: err })),
+                    window.supabaseClient.from('rate_limits').select('*').limit(200).catch(() => ({ data: [] })),
+                    window.supabaseClient.from('analytics_events').select('*').limit(500).catch(() => ({ data: [] })),
                     window.supabaseClient.from('search_events').select('*').limit(500).catch(() => ({ data: [] })),
                     window.supabaseClient.from('payouts').select('*').limit(200).catch(() => ({ data: [] }))
                 ]);
 
-                if (pRes && !pRes.error) {
+                const profilesData = pRes?.data || [];
+                const trailersData = tRes?.data || [];
+
+                if (profilesData.length > 0 || trailersData.length > 0 || !pRes?.error) {
                     dataSourceMode = 'fallback';
                     rawData = {
-                        profiles: pRes.data || [],
-                        trailers: tRes.data || [],
-                        bookings: bRes.data || [],
-                        inspections: iRes.data || [],
-                        rateLimits: rRes.data || [],
-                        analytics: aRes.data || [],
+                        profiles: profilesData,
+                        trailers: trailersData,
+                        bookings: bRes?.data || [],
+                        inspections: iRes?.data || [],
+                        rateLimits: rRes?.data || [],
+                        analytics: aRes?.data || [],
                         searches: sRes?.data || [],
                         search_events: sRes?.data || [],
                         payouts: payRes?.data || [],

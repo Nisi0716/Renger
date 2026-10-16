@@ -69,13 +69,13 @@ function getRengerIcon(name, customClass = '') {
 // DICTIONNAIRE CANONIQUE DES INFOBULLES RENGER
 // ==========================================
 const RengerTooltipDictionary = {
-    'caution-non-debitee': "Caution non débitée : simple empreinte bancaire Stripe sécurisée. Aucun prélèvement immédiat n'est effectué sur votre carte bancaire.",
+    'caution-non-debitee': "Caution non débitée : simple empreinte bancaire sécurisée. Aucun prélèvement immédiat n'est effectué sur votre carte bancaire.",
     'permis-b-be': "Permis B vs BE : le permis B voiture standard suffit pour les remorques ≤ 750 kg ou ensembles ≤ 3'500 kg. Au-delà, le permis BE est requis.",
     'ptac': "PTAC (Poids Total Autorisé en Charge) : poids maximum légal cumulé de la remorque et de sa charge utile selon la législation routière suisse.",
     'renger-pro': "Abonnement Renger PRO : conservez 100% de vos revenus locatifs (0% de commission plateforme), remorques illimitées et accès au cockpit Renger Analytics PRO.",
     'boosts': "Boost d'annonce : propulsez votre remorque en tête de liste et sur la carte interactive pendant le week-end ou 7 jours pour maximiser vos réservations.",
     'etat-lieux-certifie': "État des lieux photo certifié (CO art. 257a) : 4 photos obligatoires avec horodatage suisse et coordonnées GPS infalsifiables protégeant locataire et propriétaire.",
-    'stripe-connect': "Virements Stripe Connect : vos gains nets de location sont transférés automatiquement et de façon sécurisée vers votre compte bancaire suisse.",
+    'stripe-connect': "Virements bancaires : vos gains nets de location sont transférés automatiquement et de façon sécurisée vers votre compte bancaire suisse.",
     'blocage-dates': "Blocage de dates : réservez facilement votre remorque pour votre usage personnel ou pour sa maintenance sans frais."
 };
 
@@ -1172,8 +1172,8 @@ const ONBOARDING_TRACKS = {
                 icon: "card",
                 title: "2. Réservation & caution non débitée",
                 tooltipKey: "caution-non-debitee",
-                description: "Réservez vos dates en toute sérénité. Votre paiement est sécurisé par Stripe. La caution légale (de 200 à 400 CHF selon le gabarit de la remorque) fait l'objet d'une simple empreinte bancaire non débitée : aucun centime n'est prélevé de votre compte bancaire.",
-                tip: "<strong>Zéro avance :</strong> L'empreinte bancaire Stripe est libérée automatiquement après restitution conforme de la remorque."
+                description: "Réservez vos dates en toute sérénité avec paiement sécurisé. La caution (200 à 400 CHF selon le gabarit) fait l'objet d'une simple empreinte bancaire non débitée : aucun centime n'est prélevé de votre compte bancaire.",
+                tip: "<strong>Zéro avance :</strong> L'empreinte bancaire est libérée automatiquement après restitution conforme de la remorque."
             },
             {
                 number: 3,
@@ -1200,10 +1200,10 @@ const ONBOARDING_TRACKS = {
             {
                 number: 2,
                 icon: "card",
-                title: "2. Liaison bancaire Stripe Connect pour les virements",
+                title: "2. Configuration de vos virements bancaires",
                 tooltipKey: "stripe-connect",
-                description: "Renseignez votre IBAN suisse dans vos Paramètres grâce à notre intégration Stripe Connect certifiée. À chaque location réalisée, vos gains (80% net, ou 100% avec Renger PRO) sont transférés automatiquement sur votre compte bancaire sans aucune démarche manuelle.",
-                tip: "<strong>Virements 100% automatisés :</strong> Stripe gère la conformité bancaire et effectue vos virements directement."
+                description: "Renseignez votre IBAN suisse dans vos Paramètres. À chaque location réalisée, vos gains (80% net, ou 100% avec Renger PRO) sont transférés automatiquement sur votre compte bancaire sans aucune démarche manuelle.",
+                tip: "<strong>Virements 100% automatisés :</strong> Vos gains sont versés directement sur votre compte bancaire suisse."
             },
             {
                 number: 3,
@@ -1299,7 +1299,7 @@ function renderOnboardingStep() {
                                 <h4 class="font-extrabold text-stone-900 dark:text-white group-hover:text-terracotta-500 transition-colors">Je loue ma remorque (Propriétaire)</h4>
                                 <span class="text-terracotta-500 font-bold text-lg group-hover:translate-x-1 transition-transform">→</span>
                             </div>
-                            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">Publication d'annonce en 2 min, liaison bancaire Stripe Connect pour les virements et 0% de commission avec le mode PRO.</p>
+                            <p class="text-xs text-stone-500 dark:text-stone-400 mt-1">Publication d'annonce en 2 min, virements bancaires automatiques et 0% de commission avec le mode PRO.</p>
                         </div>
                     </div>
                 </button>

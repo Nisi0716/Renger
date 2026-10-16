@@ -164,7 +164,7 @@ const translations = {
         btn_buyer: "Je cherche une remorque", btn_seller: "Je loue ma remorque", back: "← Retour",
         cat_utility: "Utilitaire", cat_horse: "Chevaux", cat_car: "Voiture", recommended: "Recommandées autour de Lausanne",
         trailer_title: "Remorque fermée 750kg", per_day: "/ j", see_details: "Voir les détails",
-        socket: "Prise", payload: "Charge Utile", pay_btn: "Payer 70 CHF (Stripe)", photo_btn: "Lancer l'état des lieux",
+        socket: "Prise", payload: "Charge Utile", pay_btn: "Payer 70 CHF", photo_btn: "Lancer l'état des lieux",
         publish_title: "Louer ma remorque", publish_subtitle: "Gagnez de l'argent en toute sécurité avec votre équipement.",
         import_title: "Vous avez déjà une annonce ?", import_desc: "Collez le lien de votre annonce Anibis, Tutti ou Leboncoin. Nous créerons votre profil Renger à votre place !",
         or_manual: "OU CRÉER MANUELLEMENT", form_title: "Titre de l'annonce", price_label: "Prix / Jour (CHF)", payload_input: "Charge Utile (kg)",
@@ -179,7 +179,7 @@ const translations = {
         btn_buyer: "I'm looking for a trailer", btn_seller: "I rent out my trailer", back: "← Back",
         cat_utility: "Utility", cat_horse: "Horses", cat_car: "Car", recommended: "Recommended around Lausanne",
         trailer_title: "Closed trailer 750kg", per_day: "/ day", see_details: "See details",
-        socket: "Socket", payload: "Payload", pay_btn: "Pay 70 CHF (Stripe)", photo_btn: "Start inspection",
+        socket: "Socket", payload: "Payload", pay_btn: "Pay 70 CHF", photo_btn: "Start inspection",
         publish_title: "Rent out my trailer", publish_subtitle: "Earn money safely with your equipment.",
         import_title: "Already have a listing?", import_desc: "Paste your Anibis or Leboncoin link. We'll create your profile for you!",
         or_manual: "OR CREATE MANUALLY", form_title: "Listing Title", price_label: "Price / Day (CHF)", payload_input: "Payload (kg)",
@@ -194,7 +194,7 @@ const translations = {
         btn_buyer: "Ich suche einen Anhänger", btn_seller: "Ich vermiete meinen Anhänger", back: "← Zurück",
         cat_utility: "Nutzfahrzeug", cat_horse: "Pferde", cat_car: "Auto", recommended: "Empfohlen rund um Lausanne",
         trailer_title: "Geschlossener Anhänger 750kg", per_day: "/ Tag", see_details: "Details ansehen",
-        socket: "Stecker", payload: "Nutzlast", pay_btn: "70 CHF bezahlen (Stripe)", photo_btn: "Zustandsprotokoll starten",
+        socket: "Stecker", payload: "Nutzlast", pay_btn: "70 CHF bezahlen", photo_btn: "Zustandsprotokoll starten",
         publish_title: "Meinen Anhänger vermieten", publish_subtitle: "Verdienen Sie sicher Geld mit Ihrer Ausrüstung.",
         import_title: "Haben Sie bereits eine Anzeige?", import_desc: "Fügen Sie Ihren Anibis- oder Tutti-Link ein. Wir erstellen Ihr Profil für Sie!",
         or_manual: "ODER MANUELL ERSTELLEN", form_title: "Anzeigentitel", price_label: "Preis / Tag (CHF)", payload_input: "Nutzlast (kg)",
@@ -1334,7 +1334,7 @@ let isSettingUpStripe = false;
 async function setupStripePayouts() {
     if (!currentUser || isSettingUpStripe) return;
     isSettingUpStripe = true;
-    showToast("Génération du lien sécurisé Stripe...", "info");
+    showToast("Génération du lien sécurisé...", "info");
 
     const btn = document.getElementById('settings-stripe-btn');
     const btnText = document.getElementById('settings-stripe-btn-text');
@@ -1343,7 +1343,7 @@ async function setupStripePayouts() {
         btn.disabled = true;
         btn.style.opacity = '0.7';
     }
-    if (btnText) btnText.textContent = "Connexion sécurisée à Stripe...";
+    if (btnText) btnText.textContent = "Connexion sécurisée en cours...";
     
     try {
         // Récupérer le stripe_account_id actuel si déjà enregistré
@@ -1367,7 +1367,7 @@ async function setupStripePayouts() {
         if (data.url) {
             window.location.href = data.url; 
         } else {
-            showToast("Erreur Stripe : " + (data.error || "Lien de configuration introuvable"), "error");
+            showToast("Erreur de configuration : " + (data.error || "Lien introuvable"), "error");
             if (btn) {
                 btn.disabled = false;
                 btn.style.opacity = '1';
@@ -1375,7 +1375,7 @@ async function setupStripePayouts() {
             if (btnText) btnText.textContent = originalText;
         }
     } catch (err) {
-        showToast("Erreur Stripe : " + err.message, "error");
+        showToast("Erreur de configuration : " + err.message, "error");
         if (btn) {
             btn.disabled = false;
             btn.style.opacity = '1';

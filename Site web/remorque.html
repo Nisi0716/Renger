@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Louer une Remorque en Suisse | Fiche &amp; Réservation - Renger</title>
-    <meta name="description" content="Réservez cette remorque en Suisse au meilleur tarif journalier en CHF. État des lieux photo certifié CO 253 et caution Stripe non débitée sur Renger.">
+    <meta name="description" content="Réservez cette remorque en Suisse au meilleur tarif journalier en CHF. État des lieux photo certifié CO 253 et caution non débitée sur Renger.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://renger.ch/remorque.html">
     
@@ -270,9 +270,9 @@
                         <div>
                             <span class="font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
                                 <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg> Caution de garantie
-                                <span class="renger-info-tooltip inline-flex items-center ml-1 text-emerald-600 dark:text-emerald-400 cursor-help" data-tooltip="Caution non débitée : simple empreinte bancaire Stripe sécurisée. Aucun prélèvement immédiat n'est effectué sur votre carte bancaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
+                                <span class="renger-info-tooltip inline-flex items-center ml-1 text-emerald-600 dark:text-emerald-400 cursor-help" data-tooltip="Caution non débitée : simple empreinte bancaire. Aucun prélèvement immédiat n'est effectué sur votre carte bancaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                             </span>
-                            <span class="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium block">Empreinte bancaire Stripe</span>
+                            <span class="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium block">Empreinte bancaire (0 CHF débité)</span>
                         </div>
                         <div class="text-right">
                             <span id="caution-amount" class="font-bold text-emerald-950 dark:text-emerald-200">200 CHF</span>
@@ -518,7 +518,7 @@
                 <img id="confirm-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" alt="Remorque" class="w-full h-full object-cover">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
                 <div class="absolute top-3.5 left-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-semibold">
-                    <svg class="w-3.5 h-3.5 text-white/90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> <span>Paiement sécurisé Stripe</span>
+                    <svg class="w-3.5 h-3.5 text-white/90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> <span>Paiement 100% sécurisé</span>
                 </div>
                 <button onclick="closeBookingConfirmModal()" class="absolute top-3.5 right-4 bg-white/20 backdrop-blur-sm text-white rounded-full w-8 h-8 flex items-center justify-center text-xl font-bold hover:bg-white/40 transition cursor-pointer">&times;</button>
                 <div class="absolute bottom-3 left-4 right-4 text-white">
@@ -562,9 +562,9 @@
                         <div>
                             <div class="flex items-center gap-1.5">
                                 <span class="font-semibold text-stone-800 dark:text-stone-200">Caution de garantie</span>
-                                <span class="renger-info-tooltip inline-flex items-center cursor-pointer text-stone-400 hover:text-stone-600" onclick="openCautionInfoModal()" data-tooltip="Caution non débitée : simple empreinte bancaire Stripe sécurisée. Aucun prélèvement immédiat n'est effectué sur votre carte bancaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
+                                <span class="renger-info-tooltip inline-flex items-center cursor-pointer text-stone-400 hover:text-stone-600" onclick="openCautionInfoModal()" data-tooltip="Caution non débitée : simple empreinte bancaire. Aucun prélèvement immédiat n'est effectué sur votre carte bancaire."><svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0-4h.01"/></svg></span>
                             </div>
-                            <span class="block text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Empreinte bancaire Stripe</span>
+                            <span class="block text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Empreinte bancaire (0 CHF débité)</span>
                         </div>
                         <div class="text-right">
                             <span id="confirm-caution-price" class="font-bold text-stone-900 dark:text-white"></span>
@@ -597,7 +597,7 @@
                             <ul class="space-y-1 text-emerald-800 dark:text-emerald-300 text-[11px] leading-relaxed">
                                 <li class="flex items-start gap-1.5">
                                     <span class="text-emerald-600 font-bold">•</span>
-                                    <span><strong>Simple empreinte bancaire :</strong> Stripe effectue une pré-autorisation temporaire. Votre solde disponible reste intact.</span>
+                                    <span><strong>Simple empreinte bancaire :</strong> Une pré-autorisation temporaire est enregistrée. Votre solde disponible reste intact.</span>
                                 </li>
                                 <li class="flex items-start gap-1.5">
                                     <span class="text-emerald-600 font-bold">•</span>
@@ -618,7 +618,7 @@
                         Annuler
                     </button>
                     <button type="button" onclick="processBooking()" class="w-2/3 bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-3 rounded-2xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 text-sm cursor-pointer">
-                        <span>Payer <span id="confirm-pay-amount"></span> CHF sur Stripe →</span>
+                        <span>Confirmer et régler <span id="confirm-pay-amount"></span> CHF →</span>
                     </button>
                 </div>
 
@@ -656,7 +656,7 @@
                         <p class="font-bold text-emerald-900 dark:text-emerald-200 text-xs uppercase tracking-wide">Règle essentielle</p>
                         <p class="text-xs font-bold text-emerald-800 dark:text-emerald-300 mt-0.5">Votre compte bancaire N'EST PAS débité.</p>
                         <p class="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 leading-relaxed">
-                            La caution n'est pas un prélèvement. Il s'agit d'une simple <strong>autorisation temporaire</strong> (empreinte) enregistrée via Stripe.
+                            La caution n'est pas un prélèvement. Il s'agit d'une simple <strong>autorisation temporaire</strong> (empreinte) non débitée.
                         </p>
                     </div>
                 </div>
@@ -782,7 +782,7 @@
                     </div>
                     <p id="chat-owner-unlock-hint" class="text-[11px] text-amber-600 dark:text-amber-400 italic flex items-center gap-1">
                         <svg class="w-3.5 h-3.5 inline flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                        <span>4 photos requises pour déverrouiller vos fonds Stripe (80%).</span>
+                        <span>4 photos requises pour déverrouiller vos fonds locatifs.</span>
                     </p>
                 </div>
 

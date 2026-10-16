@@ -1661,13 +1661,13 @@ async function loadProfileSettings() {
         if (alertEl) alertEl.classList.add('hidden');
     }
 
-    // Texte explicatif Stripe Connect selon statut PRO
+    // Texte explicatif bancaire selon statut PRO
     const explainer = document.getElementById('settings-stripe-explainer');
     if (explainer) {
         if (profile.is_pro) {
-            explainer.innerHTML = `C'est l'étape finale ! Pour recevoir automatiquement <strong class="text-terracotta-500 font-bold">100% de vos revenus locatifs</strong> (0% de commission avec Renger PRO), notre partenaire financier Stripe doit vérifier votre compte.`;
+            explainer.innerHTML = `C'est l'étape finale ! Pour recevoir automatiquement <strong class="text-terracotta-500 font-bold">100% de vos revenus locatifs</strong> (0% de commission avec Renger PRO), renseignez simplement votre IBAN suisse.`;
         } else {
-            explainer.innerHTML = `C'est l'étape finale ! Pour recevoir automatiquement l'argent de vos locations (<strong class="text-stone-800 dark:text-stone-200 font-bold">80% du montant net</strong>), notre partenaire financier Stripe doit vérifier votre compte.`;
+            explainer.innerHTML = `C'est l'étape finale ! Pour recevoir automatiquement l'argent de vos locations (<strong class="text-stone-800 dark:text-stone-200 font-bold">80% du montant net</strong>), renseignez simplement votre IBAN suisse.`;
         }
     }
 
@@ -2154,13 +2154,13 @@ function openCancelBookingModal(booking, isOwner = false) {
     } else {
         // Message d'avertissement strict Zero-Loss requis par le cahier des charges
         if (policyTextEl) {
-            policyTextEl.textContent = "Annulation libre : Vous serez remboursé du montant total de la location, déduction faite des frais de transaction bancaire incompressibles prélevés par Stripe (environ 3%).";
+            policyTextEl.textContent = "Annulation libre : Vous serez remboursé du montant total de la location, déduction faite des frais bancaires incompressibles (environ 3%).";
         }
-        // Estimation indicative des frais réels Stripe (env. 2.9% + 0.30 CHF)
+        // Estimation indicative des frais réels bancaires (env. 2.9% + 0.30 CHF)
         const estStripeFee = Math.round((totalPaid * 0.029 + 0.30) * 100) / 100;
         const estRefund = Math.max(0, totalPaid - estStripeFee);
         if (refundEstimateEl) {
-            refundEstimateEl.textContent = `Montant total payé : ${totalPaid.toFixed(2)} CHF. Estimation indicative du remboursement : env. ${estRefund.toFixed(2)} CHF (frais Stripe déduits : env. ${estStripeFee.toFixed(2)} CHF). Renger applique une stricte politique Zero-Loss et ne conserve aucun bénéfice.`;
+            refundEstimateEl.textContent = `Montant total payé : ${totalPaid.toFixed(2)} CHF. Estimation indicative du remboursement : env. ${estRefund.toFixed(2)} CHF (frais bancaires déduits : env. ${estStripeFee.toFixed(2)} CHF). Renger applique une stricte politique Zero-Loss et ne conserve aucun bénéfice.`;
         }
         if (policyBoxEl) {
             policyBoxEl.className = 'p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-sm leading-relaxed text-emerald-900 dark:text-emerald-200';
@@ -2245,7 +2245,7 @@ async function executeCancelBooking() {
         closeCancelBookingModal();
 
         if (typeof showToast === 'function') {
-            showToast(result.message || "Réservation annulée. Remboursement Stripe initié.", 'success');
+            showToast(result.message || "Réservation annulée. Remboursement bancaire initié.", 'success');
         } else {
             alert(result.message || "Réservation annulée.");
         }
@@ -2613,25 +2613,25 @@ async function handleRequestPayout() {
     } catch (_) {}
 
     if (!profile?.stripe_account_id) {
-        showToast("Veuillez d'abord lier votre compte bancaire via Stripe Connect ci-dessous pour recevoir vos gains.", "error");
+        showToast("Veuillez d'abord renseigner vos coordonnées bancaires ci-dessous pour recevoir vos gains.", "error");
         const stripeBtn = document.getElementById('settings-stripe-btn');
         if (stripeBtn) stripeBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
     }
 
     const amountToWithdraw = currentOwnerBalanceInfo.availableBalance;
-    const confirmMessage = `Confirmez-vous le retrait de ${amountToWithdraw.toFixed(2)} CHF ?\n\nLes fonds seront transférés automatiquement vers votre compte bancaire suisse lié à Stripe Connect sous le libellé Renger.`;
+    const confirmMessage = `Confirmez-vous le retrait de ${amountToWithdraw.toFixed(2)} CHF ?\n\nLes fonds seront transférés automatiquement vers votre compte bancaire suisse sous le libellé Renger.`;
     
     if (typeof confirm === 'function' && !confirm(confirmMessage)) return;
 
     isRequestingPayout = true;
-    showToast("Traitement de votre virement bancaire Stripe...", "info");
+    showToast("Traitement de votre virement bancaire...", "info");
 
     const btnPayout = document.getElementById('btn-request-payout');
     const btnPayoutText = document.getElementById('btn-request-payout-text');
     const originalText = btnPayoutText ? btnPayoutText.textContent : '';
     if (btnPayout) btnPayout.disabled = true;
-    if (btnPayoutText) btnPayoutText.textContent = "Transfert Stripe en cours...";
+    if (btnPayoutText) btnPayoutText.textContent = "Transfert en cours...";
 
     try {
         const edgeFn = (typeof callEdgeFunction === 'function') 
@@ -2661,7 +2661,7 @@ async function handleRequestPayout() {
         }
 
         const transferredAmount = (data && data.amount) ? Number(data.amount).toFixed(2) : amountToWithdraw.toFixed(2);
-        showToast(`Virement de ${transferredAmount} CHF exécuté avec succès vers votre compte bancaire ! (Réf Stripe : ${data.transferId || 'validé'})`, "success");
+        showToast(`Virement de ${transferredAmount} CHF exécuté avec succès vers votre compte bancaire ! (Réf : ${data.transferId || 'validé'})`, "success");
         
         // Rafraîchir les données et recalculer le solde
         if (typeof loadProfileData === 'function') await loadProfileData();

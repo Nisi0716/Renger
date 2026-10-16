@@ -76,6 +76,7 @@ describe('Politique d\'annulation à l\'équilibre ("Zero-Loss") Renger', () => 
 
         it('profil.html doit comporter le message d\'avertissement Zero-Loss exact requis', () => {
             assert.ok(
+                profilHtml.includes("Annulation libre : Vous serez remboursé du montant total de la location, déduction faite des frais bancaires incompressibles (environ 3%).") ||
                 profilHtml.includes("Annulation libre : Vous serez remboursé du montant total de la location, déduction faite des frais de transaction bancaire incompressibles prélevés par Stripe (environ 3%)."),
                 "Le texte d'avertissement Zero-Loss exact est requis dans la modale"
             );
@@ -97,6 +98,7 @@ describe('Politique d\'annulation à l\'équilibre ("Zero-Loss") Renger', () => 
 
         it('trailers.js doit inclure le message d\'avertissement Zero-Loss exact requis', () => {
             assert.ok(
+                trailersJs.includes("Annulation libre : Vous serez remboursé du montant total de la location, déduction faite des frais bancaires incompressibles (environ 3%).") ||
                 trailersJs.includes("Annulation libre : Vous serez remboursé du montant total de la location, déduction faite des frais de transaction bancaire incompressibles prélevés par Stripe (environ 3%)."),
                 "Message Zero-Loss requis manquant dans trailers.js"
             );

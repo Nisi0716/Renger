@@ -536,7 +536,7 @@ async function processBooking() {
 
     closeBookingConfirmModal();
     if (window.showStripeLoading) window.showStripeLoading();
-    showToast("Création de votre réservation sécurisée via Stripe...", "info");
+    showToast("Création de votre réservation sécurisée...", "info");
 
     try {
         const cautionAmount = getTrailerCaution(currentTrailer);
@@ -555,7 +555,7 @@ async function processBooking() {
             window.location.href = stripeData.url; 
         } else {
             if (window.hideStripeLoading) window.hideStripeLoading();
-            showToast("Erreur Stripe : " + (stripeData.error || stripeData.message || "Lien de paiement introuvable."), "error");
+            showToast("Erreur de paiement : " + (stripeData.error || stripeData.message || "Lien de paiement introuvable."), "error");
         }
     } catch (err) {
         if (window.hideStripeLoading) window.hideStripeLoading();
@@ -710,7 +710,7 @@ async function handleSubscribePro(plan = 'monthly') {
         }
 
         if (window.showStripeLoading) window.showStripeLoading();
-        showToast("Redirection vers Stripe...", "info");
+        showToast("Redirection vers le paiement sécurisé...", "info");
         const { data, error } = await supabaseClient.functions.invoke('stripe-pro-checkout', {
             body: { user_id: currentUser.id, plan: plan }
         });
@@ -948,7 +948,7 @@ window.showStripeLoading = function() {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4h16v2a6 6 0 01-6 6v0a6 6 0 016 6v2H4v-2a6 6 0 016-6v0a6 6 0 01-6-6V4z" />
                 </svg>
                 <h3 class="text-xl font-bold text-stone-800 dark:text-white mb-2">Connexion sécurisée</h3>
-                <p class="text-sm text-stone-500 dark:text-stone-400">Génération du lien Stripe en cours...</p>
+                <p class="text-sm text-stone-500 dark:text-stone-400">Paiement sécurisé en cours de chargement...</p>
             </div>
         `;
         document.body.appendChild(loader);

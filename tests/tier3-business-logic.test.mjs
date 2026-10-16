@@ -636,7 +636,7 @@ describe('Tier 3: Stripe Customer Portal & Subscription Lifecycle Contracts', ()
         assert.ok(code.includes('B vs BE'), 'parcours locataire doit mentionner permis B vs BE');
         assert.ok(code.includes('caution non débitée') || code.includes('non débitée'), 'parcours locataire doit mentionner caution non débitée');
         assert.ok(code.includes('géolocalisé'), 'parcours locataire doit mentionner état des lieux géolocalisé');
-        assert.ok(code.includes('Stripe Connect'), 'parcours propriétaire doit mentionner Stripe Connect');
+        assert.ok(code.includes('Stripe Connect') || code.includes('virements bancaires') || code.includes('compte bancaire'), 'parcours propriétaire doit mentionner les virements bancaires');
         assert.ok(code.includes('0% de commission') || code.includes('0% commission'), 'parcours propriétaire doit mentionner 0% de commission PRO');
     });
 
