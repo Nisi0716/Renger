@@ -334,7 +334,7 @@ function updateUserMenu(user) {
                             user.user_metadata?.name || 
                             (user.email ? user.email.split('@')[0] : 'Utilisateur');
 
-        const isSupremeAdmin = (user.email === 'enism2007@hotmail.com') || 
+        const isSupremeAdmin = (user.email === 'enism2007@hotmail.com' || user.email === 'einsm2007@gmail.com') || 
                                (user.is_admin === true) || 
                                (user.user_metadata?.is_admin === true) || 
                                (typeof window !== 'undefined' && window.__rengerIsAdmin === true);
@@ -1058,7 +1058,7 @@ function initMaintenanceMode() {
             isAdmin = true;
         }
         if (typeof currentUser !== 'undefined' && currentUser) {
-            if (currentUser.email === 'enism2007@hotmail.com' || currentUser.is_admin === true || currentUser.user_metadata?.is_admin === true) {
+            if (currentUser.email === 'enism2007@hotmail.com' || currentUser.email === 'einsm2007@gmail.com' || currentUser.is_admin === true || currentUser.user_metadata?.is_admin === true) {
                 isAdmin = true;
             }
         }

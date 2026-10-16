@@ -23,6 +23,23 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
             assert.equal(syniModule.checkSupremeAdminAccess(user, profile), true);
         });
 
+        it('checkSupremeAdminAccess doit autoriser einsm2007@gmail.com', () => {
+            const user = { email: 'einsm2007@gmail.com' };
+            const profile = { email: 'einsm2007@gmail.com', is_admin: false };
+            assert.equal(syniModule.checkSupremeAdminAccess(user, profile), true);
+            assert.ok(syniModule.isSupremeAdminEmail('einsm2007@gmail.com'));
+            assert.ok(syniModule.isSupremeAdminEmail('enism2007@hotmail.com'));
+        });
+
+        it('getEmptySeedData doit fournir une structure avec 0 fausse donnée', () => {
+            const empty = syniModule.getEmptySeedData();
+            assert.equal(empty.profiles.length, 0);
+            assert.equal(empty.trailers.length, 0);
+            assert.equal(empty.bookings.length, 0);
+            assert.equal(empty.payouts.length, 0);
+            assert.equal(empty.inspections.length, 0);
+        });
+
         it('checkSupremeAdminAccess doit autoriser un compte avec profiles.is_admin = true', () => {
             const user = { email: 'autre.admin@renger.ch', is_admin: false };
             const profile = { email: 'autre.admin@renger.ch', is_admin: true };

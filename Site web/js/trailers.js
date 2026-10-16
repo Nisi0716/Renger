@@ -1686,8 +1686,8 @@ async function loadProfileSettings() {
 
     // Statut Syni Administrateur Suprême (visible UNIQUEMENT pour enism2007@hotmail.com ou is_admin = true)
     const syniCard = document.getElementById('settings-syni-card');
-    const isSupremeAdmin = (currentUser && currentUser.email === 'enism2007@hotmail.com') ||
-                           (profile && profile.is_admin === true) ||
+    const isSupremeAdmin = (currentUser && (currentUser.email === 'enism2007@hotmail.com' || currentUser.email === 'einsm2007@gmail.com')) ||
+                           (profile && (profile.is_admin === true || profile.email === 'enism2007@hotmail.com' || profile.email === 'einsm2007@gmail.com')) ||
                            (currentUser && (currentUser.is_admin === true || currentUser.user_metadata?.is_admin === true));
     if (syniCard) {
         if (isSupremeAdmin) {

@@ -727,7 +727,7 @@ async function checkUser() {
     currentUser = session?.user || null;
     
     if (currentUser) {
-        if (currentUser.email === 'enism2007@hotmail.com' || currentUser.is_admin === true || currentUser.user_metadata?.is_admin === true) {
+        if (currentUser.email === 'enism2007@hotmail.com' || currentUser.email === 'einsm2007@gmail.com' || currentUser.is_admin === true || currentUser.user_metadata?.is_admin === true) {
             window.__rengerIsAdmin = true;
         } else {
             supabaseClient.from('profiles').select('is_admin').eq('id', currentUser.id).maybeSingle().then(({ data }) => {

@@ -4,15 +4,43 @@ ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false;
 
 CREATE INDEX IF NOT EXISTS idx_profiles_is_admin ON profiles(is_admin);
 
--- Attribution automatique du statut administrateur suprême pour le compte officiel
-UPDATE profiles SET is_admin = true WHERE email = 'enism2007@hotmail.com';
+-- Attribution automatique du statut administrateur suprême pour les comptes officiels
+UPDATE profiles SET is_admin = true WHERE email IN ('enism2007@hotmail.com', 'einsm2007@gmail.com');
+
+-- Fonction de contrôle d'accès administrateur suprême réutilisable
+CREATE OR REPLACE FUNCTION public.is_syni_admin()
+RETURNS boolean AS $$
+BEGIN
+    RETURN (
+        auth.jwt() ->> 'email' IN ('enism2007@hotmail.com', 'einsm2007@gmail.com')
+        OR current_user = 'service_role'
+        OR EXISTS (
+            SELECT 1 FROM public.profiles 
+            WHERE id = auth.uid() AND is_admin = true
+        )
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Policy pour permettre aux admins de lire toutes les réservations
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'bookings' AND policyname = 'Admin can view all bookings'
+    ) THEN
+        CREATE POLICY "Admin can view all bookings" ON public.bookings
+        FOR SELECT TO authenticated
+        USING (public.is_syni_admin());
+    END IF;
+END $$;
 
 -- Protection Zéro-Confiance : Empêcher l'escalade de privilège par modification directe du client
 CREATE OR REPLACE FUNCTION protect_is_admin()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.is_admin IS DISTINCT FROM OLD.is_admin THEN
-        IF auth.jwt() ->> 'email' <> 'enism2007@hotmail.com' AND current_user <> 'service_role' THEN
+        IF auth.jwt() ->> 'email' NOT IN ('enism2007@hotmail.com', 'einsm2007@gmail.com') AND current_user <> 'service_role' THEN
             NEW.is_admin = OLD.is_admin;
         END IF;
     END IF;

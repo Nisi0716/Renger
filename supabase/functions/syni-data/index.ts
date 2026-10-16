@@ -67,17 +67,23 @@ serve(async (req) => {
       })
     }
 
-    // 2. Contrôle d'accès Administrateur Suprême (enism2007@hotmail.com ou profiles.is_admin = true)
-    let isSupremeAdmin = (user.email === 'enism2007@hotmail.com')
+    // 2. Contrôle d'accès Administrateur Suprême (enism2007@hotmail.com, einsm2007@gmail.com ou profiles.is_admin = true)
+    const adminEmails = ['enism2007@hotmail.com', 'einsm2007@gmail.com']
+    let isSupremeAdmin = adminEmails.includes(user.email || '') ||
+      user.user_metadata?.is_admin === true ||
+      user.is_admin === true
+
     if (!isSupremeAdmin) {
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .maybeSingle()
-      if (profile && profile.is_admin === true) {
-        isSupremeAdmin = true
-      }
+      try {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (profile && (profile.is_admin === true || adminEmails.includes(profile.email || ''))) {
+          isSupremeAdmin = true
+        }
+      } catch (_) {}
     }
 
     if (!isSupremeAdmin) {
@@ -128,7 +134,7 @@ serve(async (req) => {
       .insert([{ user_id: user.id, action: 'syni_data_request' }])
       .catch(() => null)
 
-    // 5. Agrégation centralisée de toutes les données du site via service_role
+    // 5. Agrégation centralisée de toutes les données réelles du site via service_role
     const [
       profilesRes,
       trailersRes,
@@ -153,7 +159,23 @@ serve(async (req) => {
       supabaseAdmin.from('payouts').select('*').order('created_at', { ascending: false }),
     ])
 
-    const profiles = profilesRes.data || []
+    // Récupération des emails réels des utilisateurs depuis auth.users
+    const authUsersMap: Record<string, string> = {}
+    try {
+      const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      if (authData && authData.users) {
+        authData.users.forEach((u: any) => {
+          if (u.id && u.email) authUsersMap[u.id] = u.email
+        })
+      }
+    } catch (_authErr) {
+      console.warn("Lecture auth.users non bloquante:", _authErr)
+    }
+
+    const profiles = (profilesRes.data || []).map((p: any) => ({
+      ...p,
+      email: p.email || authUsersMap[p.id] || ''
+    }))
     const trailers = trailersRes.data || []
     const bookings = bookingsRes.data || []
     const inspections = inspectionsRes.data || []

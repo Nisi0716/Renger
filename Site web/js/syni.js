@@ -19,6 +19,7 @@
     // ==========================================
     // CONSTANTES & CONFIGURATION
     // ==========================================
+    const SUPREME_ADMIN_EMAILS = ['enism2007@hotmail.com', 'einsm2007@gmail.com'];
     const SUPREME_ADMIN_EMAIL = 'enism2007@hotmail.com';
     const SYNI_MASTER_KEY_DEFAULT = 'RengerSyni2026!';
     const SESSION_UNLOCKED_KEY = 'renger_syni_unlocked';
@@ -81,12 +82,21 @@
     // ==========================================
 
     /**
+     * Vérifie si une adresse email fait partie des administrateurs suprêmes
+     */
+    function isSupremeAdminEmail(email) {
+        if (!email || typeof email !== 'string') return false;
+        const lower = email.trim().toLowerCase();
+        return SUPREME_ADMIN_EMAILS.includes(lower);
+    }
+
+    /**
      * Vérifie si un utilisateur dispose des droits Administrateur Suprême
      */
     function checkSupremeAdminAccess(user, profile) {
         if (!user && !profile) return false;
-        if (user && user.email === SUPREME_ADMIN_EMAIL) return true;
-        if (profile && profile.email === SUPREME_ADMIN_EMAIL) return true;
+        if (user && isSupremeAdminEmail(user.email)) return true;
+        if (profile && isSupremeAdminEmail(profile.email)) return true;
         if (user && user.is_admin === true) return true;
         if (user && user.user_metadata && user.user_metadata.is_admin === true) return true;
         if (profile && profile.is_admin === true) return true;
@@ -975,10 +985,38 @@
     // CHARGEMENT DES DONNÉES & MODE DE REPLI
     // ==========================================
 
+    const isNodeTestEnv = (typeof process !== 'undefined' && process.versions && !!process.versions.node);
+
     /**
-     * Génère un jeu de données de repli réaliste reflétant la flotte Renger
+     * Structure de données réelle vide (Zéro fausse donnée)
      */
-    function getFallbackSeedData() {
+    function getEmptySeedData() {
+        return {
+            profiles: [],
+            trailers: [],
+            bookings: [],
+            payouts: [],
+            inspections: [],
+            rateLimits: [],
+            analytics: [],
+            impressions: [],
+            clicks: [],
+            searches: [],
+            search_events: []
+        };
+    }
+
+    /**
+     * Fournit un jeu de données de test en Node.js, ou une structure vide en environnement navigateur
+     */
+    function getFallbackSeedData(allowFixtures = false) {
+        // En mode navigateur : ZÉRO fausse donnée simulée.
+        // Seules les données réelles issues de Supabase sont autorisées.
+        if (!isNodeTestEnv && !allowFixtures) {
+            return getEmptySeedData();
+        }
+
+        // Fixtures réservées EXCLUSIVEMENT aux tests automatisés Node.js
         return {
             profiles: [
                 { id: 'usr-admin-1', email: 'enism2007@hotmail.com', username: 'enis_admin', is_admin: true, is_pro: true, is_deleted: false, created_at: '2026-01-01T08:00:00Z', stripe_customer_id: 'cus_syni_admin' },
@@ -1056,13 +1094,13 @@
     }
 
     /**
-     * Charge les données de Syni depuis l'Edge Function ou active le repli direct Supabase / Seed
+     * Charge les données réelles de Syni depuis l'Edge Function ou le client direct Supabase
      */
     async function fetchSyniData(options = {}) {
         const passphrase = options.passphrase || getStoredPassphrase();
         const timeRange = options.timeRange || currentTimeRange;
 
-        // 1. Tentative d'appel vers l'Edge Function Deno syni-data
+        // 1. Mode Navigateur Client : Chargement 100% réel depuis Supabase
         if (typeof window !== 'undefined' && window.supabaseClient) {
             try {
                 const { data: { session } } = await window.supabaseClient.auth.getSession();
@@ -1100,7 +1138,7 @@
                 if (err.message && (err.message.includes('Accès non autorisé') || err.message.includes('Passphrase'))) {
                     throw err;
                 }
-                // Sinon, repli fluide vers les requêtes directes Supabase
+                console.warn('[Syni] Repli sur requêtes directes Supabase Client:', err);
             }
 
             // 2. Repli direct Supabase Client
@@ -1116,7 +1154,7 @@
                     window.supabaseClient.from('payouts').select('*').limit(200).catch(() => ({ data: [] }))
                 ]);
 
-                if (pRes.data && pRes.data.length > 0) {
+                if (pRes && !pRes.error) {
                     dataSourceMode = 'fallback';
                     rawData = {
                         profiles: pRes.data || [],
@@ -1134,16 +1172,22 @@
                     computedMetrics = computeSyniMetrics(rawData, timeRange);
                     return { source: 'fallback', metrics: computedMetrics, data: rawData };
                 }
-            } catch {
-                // Poursuite vers le seed offline
+            } catch (err) {
+                console.error('[Syni] Erreur directe Supabase:', err);
             }
+
+            // En mode navigateur : JAMAIS de fausses données de seed injectées.
+            dataSourceMode = 'error';
+            rawData = getEmptySeedData();
+            computedMetrics = computeSyniMetrics(rawData, timeRange);
+            return { source: 'error', metrics: computedMetrics, data: rawData };
         }
 
-        // 3. Repli de sécurité / Développement offline
-        dataSourceMode = 'offline';
-        rawData = getFallbackSeedData();
+        // 3. Environnement de tests Node.js
+        dataSourceMode = 'test';
+        rawData = options.seedData || getFallbackSeedData(true);
         computedMetrics = computeSyniMetrics(rawData, timeRange);
-        return { source: 'offline', metrics: computedMetrics, data: rawData };
+        return { source: 'test', metrics: computedMetrics, data: rawData };
     }
 
     // ==========================================
@@ -1371,8 +1415,11 @@
             } else if (dataSourceMode === 'fallback') {
                 badgeSource.textContent = 'Mode Direct Supabase (Edge Fallback)';
                 badgeSource.className = 'bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs px-2.5 py-1 rounded-full font-mono';
+            } else if (dataSourceMode === 'error') {
+                badgeSource.textContent = 'Erreur Chargement Données';
+                badgeSource.className = 'bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-2.5 py-1 rounded-full font-mono';
             } else {
-                badgeSource.textContent = 'Mode Sécurisé Local (Hors-ligne)';
+                badgeSource.textContent = 'Mode Sécurisé Test (Environnement Headless)';
                 badgeSource.className = 'bg-stone-700 text-stone-300 border border-stone-600 text-xs px-2.5 py-1 rounded-full font-mono';
             }
         }
@@ -1791,6 +1838,17 @@
             }
             return true;
         });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-8 text-center text-stone-500 font-mono text-xs">
+                        Aucun utilisateur enregistré dans la base de données
+                    </td>
+                </tr>
+            `;
+            return;
+        }
 
         tbody.innerHTML = filtered.map(u => {
             let balanceBadge = '<span class="text-stone-500 font-mono">—</span>';
@@ -2227,6 +2285,17 @@
             return true;
         });
 
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="py-8 text-center text-stone-500 font-mono text-xs">
+                        Aucune réservation enregistrée dans la base de données
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
         tbody.innerHTML = filtered.map(b => {
             const fin = b.financials || {};
             let statusBadge = '<span class="bg-stone-700 text-stone-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">En attente</span>';
@@ -2407,6 +2476,17 @@
             }
             return true;
         });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="py-8 text-center text-stone-500 font-mono text-xs">
+                        Aucune remorque enregistrée dans la base de données
+                    </td>
+                </tr>
+            `;
+            return;
+        }
 
         tbody.innerHTML = filtered.map(t => {
             const hasBoost = t.boost_end_date && new Date(t.boost_end_date) > now;
@@ -2895,7 +2975,16 @@
         if (!tbody || !computedMetrics) return;
 
         const inspections = computedMetrics.inspections.list || [];
-        tbody.innerHTML = inspections.map(i => `
+        if (inspections.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="py-8 text-center text-stone-500 font-mono text-xs">
+                        Aucun état des lieux enregistré dans la base de données
+                    </td>
+                </tr>
+            `;
+        } else {
+            tbody.innerHTML = inspections.map(i => `
             <tr class="border-b border-stone-800 hover:bg-stone-800/40 transition">
                 <td class="py-3 px-4 text-xs font-mono text-stone-300 font-bold">${escapeHtml(i.booking_id || i.trailer_id || '—')}</td>
                 <td class="py-3 px-4 text-xs">
@@ -2915,6 +3004,7 @@
                 </td>
             </tr>
         `).join('');
+        }
 
         // Alertes de clôtures sans retour
         const alertsEl = document.getElementById('syni-inspection-alerts');
@@ -2946,6 +3036,17 @@
 
         const rateLimits = computedMetrics.security.list || [];
         if (badge) badge.textContent = `${rateLimits.length} logs`;
+
+        if (rateLimits.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="py-8 text-center text-stone-500 font-mono text-xs">
+                        Aucun événement de sécurité consigné
+                    </td>
+                </tr>
+            `;
+            return;
+        }
 
         tbody.innerHTML = rateLimits.map(r => {
             const isAlert = r.action === 'blocked' || r.action.includes('abuse') || r.action.includes('failed');
@@ -3512,7 +3613,7 @@
         const met = metrics || computedMetrics || computeSyniMetrics(rawData || getFallbackSeedData());
         const target = Number(targetArr) > 0 ? Number(targetArr) : 100000;
 
-        const currentMonthlyNet = met?.bookings?.platformNetRevenue || 350;
+        const currentMonthlyNet = Number(met?.bookings?.platformNetRevenue) || 0;
         const currentArr = Math.round(currentMonthlyNet * 12);
         const progressPct = Math.min(100, Math.round((currentArr / target) * 1000) / 10);
         const gapArr = Math.max(0, target - currentArr);
@@ -6480,13 +6581,17 @@
         // CSV Exports
         generateUsersCsv,
         generateBookingsCsv,
-        // Cycle de vie UI
+        // Cycle de vie UI & Données
         switchSyniModule,
         fetchSyniData,
+        getFallbackSeedData,
+        getEmptySeedData,
         initSyni,
         // Constantes
         MIN_PAYOUT_AMOUNT,
         SUPREME_ADMIN_EMAIL,
+        SUPREME_ADMIN_EMAILS,
+        isSupremeAdminEmail,
         SYNI_MASTER_KEY_DEFAULT,
         MODULES,
         PRIORITY_SWISS_KEYWORDS,
