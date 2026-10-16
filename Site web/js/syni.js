@@ -1630,10 +1630,15 @@
                 secondaryBtn.textContent = secondaryText;
                 secondaryBtn.className = `px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-lg active:scale-95 ${secondaryClass}`;
                 if (secondaryBtn.classList) secondaryBtn.classList.remove('hidden');
-                secondaryBtn.onclick = () => {
+                secondaryBtn.onclick = async () => {
                     const reason = (reasonInput?.value || '').trim();
                     closeActionModal();
-                    onSecondary(reason);
+                    try {
+                        await onSecondary(reason);
+                    } catch (err) {
+                        console.error('[Syni] Erreur action secondaire:', err);
+                        if (typeof showToast === 'function') showToast(err?.message || "Erreur lors de l'action", 'error');
+                    }
                 };
             } else {
                 if (secondaryBtn.classList) secondaryBtn.classList.add('hidden');
@@ -1642,22 +1647,31 @@
         }
 
         pendingAction = { actionType, targetType, targetId, onConfirm };
-        if (modal && modal.classList) modal.classList.remove('hidden');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if (modal.style) modal.style.display = 'flex';
+        }
 
         if (cancelBtn) {
             cancelBtn.onclick = closeActionModal;
         }
 
         if (confirmBtn) {
-            confirmBtn.onclick = () => {
+            confirmBtn.onclick = async () => {
                 const reason = (reasonInput?.value || '').trim();
                 const actionToRun = pendingAction;
                 closeActionModal();
-                if (actionToRun && typeof actionToRun.onConfirm === 'function') {
-                    actionToRun.onConfirm(reason);
-                } else if (actionToRun) {
-                    const res = executeSupremeAction(actionToRun.actionType, actionToRun.targetType, actionToRun.targetId, reason);
-                    if (typeof showToast === 'function') showToast(res.message, 'success');
+                try {
+                    if (actionToRun && typeof actionToRun.onConfirm === 'function') {
+                        await actionToRun.onConfirm(reason);
+                    } else if (actionToRun) {
+                        const res = await executeSupremeAction(actionToRun.actionType, actionToRun.targetType, actionToRun.targetId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
+                    }
+                } catch (err) {
+                    console.error('[Syni] Erreur confirmation action:', err);
+                    if (typeof showToast === 'function') showToast(err?.message || "Erreur lors de l'action", 'error');
                 }
             };
         }
@@ -1678,7 +1692,11 @@
 
     function closeActionModal() {
         const modal = document.getElementById('syni-action-modal');
-        if (modal && modal.classList) modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (modal.style) modal.style.display = 'none';
+        }
         pendingAction = null;
     }
 
@@ -1757,8 +1775,14 @@
                 }
                 if (client) {
                     dbPromise = (async () => {
-                        const rpcRes = await safeQuery(client.rpc('syni_delete_user', { user_id_param: idStr, hard_delete: true }));
-                        if (rpcRes.error) {
+                        let rpcSuccess = false;
+                        if (typeof client.rpc === 'function') {
+                            const rpcRes = await safeQuery(client.rpc('syni_delete_user', { user_id_param: idStr, hard_delete: true }));
+                            if (!rpcRes.error && rpcRes.data && rpcRes.data.success) {
+                                rpcSuccess = true;
+                            }
+                        }
+                        if (!rpcSuccess) {
                             await safeQuery(client.from('trailers').delete().eq('owner_id', idStr));
                             await safeQuery(client.from('bookings').delete().eq('renter_id', idStr));
                             await safeQuery(client.from('profiles').delete().eq('id', idStr));
@@ -1772,8 +1796,14 @@
                 if (metricUser && metricUser !== user) { metricUser.is_deleted = true; metricUser.deleted_at = nowIso; }
                 if (client) {
                     dbPromise = (async () => {
-                        const rpcRes = await safeQuery(client.rpc('syni_delete_user', { user_id_param: idStr, hard_delete: false }));
-                        if (rpcRes.error) {
+                        let rpcSuccess = false;
+                        if (typeof client.rpc === 'function') {
+                            const rpcRes = await safeQuery(client.rpc('syni_delete_user', { user_id_param: idStr, hard_delete: false }));
+                            if (!rpcRes.error && rpcRes.data && rpcRes.data.success) {
+                                rpcSuccess = true;
+                            }
+                        }
+                        if (!rpcSuccess) {
                             await safeQuery(client.from('profiles').update({ is_deleted: true, deleted_at: nowIso }).eq('id', idStr));
                             await safeQuery(client.from('trailers').update({ is_deleted: true, is_active: false, deleted_at: nowIso }).eq('owner_id', idStr));
                         }
@@ -1785,8 +1815,14 @@
                 if (metricUser && metricUser !== user) { metricUser.is_deleted = false; delete metricUser.deleted_at; }
                 if (client) {
                     dbPromise = (async () => {
-                        const rpcRes = await safeQuery(client.rpc('syni_restore_user', { user_id_param: idStr }));
-                        if (rpcRes.error) {
+                        let rpcSuccess = false;
+                        if (typeof client.rpc === 'function') {
+                            const rpcRes = await safeQuery(client.rpc('syni_restore_user', { user_id_param: idStr }));
+                            if (!rpcRes.error && rpcRes.data && rpcRes.data.success) {
+                                rpcSuccess = true;
+                            }
+                        }
+                        if (!rpcSuccess) {
                             await safeQuery(client.from('profiles').update({ is_deleted: false, deleted_at: null }).eq('id', idStr));
                         }
                     })();
@@ -1825,11 +1861,31 @@
                 if (computedMetrics?.trailers?.list) {
                     computedMetrics.trailers.list = computedMetrics.trailers.list.filter(t => String(t.id) !== idStr);
                 }
+                if (rawData?.bookings) {
+                    rawData.bookings = rawData.bookings.filter(b => String(b.trailer_id) !== idStr);
+                }
+                if (computedMetrics?.bookings?.list) {
+                    computedMetrics.bookings.list = computedMetrics.bookings.list.filter(b => String(b.trailer_id) !== idStr);
+                }
+                if (rawData?.inspections) {
+                    rawData.inspections = rawData.inspections.filter(i => String(i.trailer_id) !== idStr);
+                }
+                if (computedMetrics?.inspections?.list) {
+                    computedMetrics.inspections.list = computedMetrics.inspections.list.filter(i => String(i.trailer_id) !== idStr);
+                }
                 if (client) {
                     dbPromise = (async () => {
-                        const rpcRes = await safeQuery(client.rpc('syni_delete_trailer', { trailer_id_param: Number(idStr), hard_delete: true }));
-                        if (rpcRes.error) {
+                        const numericId = Number(idStr);
+                        let rpcSuccess = false;
+                        if (!Number.isNaN(numericId) && typeof client.rpc === 'function') {
+                            const rpcRes = await safeQuery(client.rpc('syni_delete_trailer', { trailer_id_param: numericId, hard_delete: true }));
+                            if (!rpcRes.error && rpcRes.data && rpcRes.data.success) {
+                                rpcSuccess = true;
+                            }
+                        }
+                        if (!rpcSuccess) {
                             await safeQuery(client.from('bookings').delete().eq('trailer_id', idStr));
+                            await safeQuery(client.from('inspections').delete().eq('trailer_id', idStr));
                             await safeQuery(client.from('trailers').delete().eq('id', idStr));
                         }
                     })();
@@ -1841,8 +1897,15 @@
                 if (metricTrailer && metricTrailer !== trailer) { metricTrailer.is_deleted = true; metricTrailer.is_active = false; metricTrailer.deleted_at = nowIso; }
                 if (client) {
                     dbPromise = (async () => {
-                        const rpcRes = await safeQuery(client.rpc('syni_delete_trailer', { trailer_id_param: Number(idStr), hard_delete: false }));
-                        if (rpcRes.error) {
+                        const numericId = Number(idStr);
+                        let rpcSuccess = false;
+                        if (!Number.isNaN(numericId) && typeof client.rpc === 'function') {
+                            const rpcRes = await safeQuery(client.rpc('syni_delete_trailer', { trailer_id_param: numericId, hard_delete: false }));
+                            if (!rpcRes.error && rpcRes.data && rpcRes.data.success) {
+                                rpcSuccess = true;
+                            }
+                        }
+                        if (!rpcSuccess) {
                             await safeQuery(client.from('trailers').update({ is_deleted: true, is_active: false, deleted_at: nowIso }).eq('id', idStr));
                         }
                     })();
@@ -1853,8 +1916,15 @@
                 if (metricTrailer && metricTrailer !== trailer) { metricTrailer.is_deleted = false; metricTrailer.is_active = true; delete metricTrailer.deleted_at; }
                 if (client) {
                     dbPromise = (async () => {
-                        const rpcRes = await safeQuery(client.rpc('syni_restore_trailer', { trailer_id_param: Number(idStr) }));
-                        if (rpcRes.error) {
+                        const numericId = Number(idStr);
+                        let rpcSuccess = false;
+                        if (!Number.isNaN(numericId) && typeof client.rpc === 'function') {
+                            const rpcRes = await safeQuery(client.rpc('syni_restore_trailer', { trailer_id_param: numericId }));
+                            if (!rpcRes.error && rpcRes.data && rpcRes.data.success) {
+                                rpcSuccess = true;
+                            }
+                        }
+                        if (!rpcSuccess) {
                             await safeQuery(client.from('trailers').update({ is_deleted: false, is_active: true, deleted_at: null }).eq('id', idStr));
                         }
                     })();
@@ -2186,7 +2256,7 @@
                     },
                     onConfirm: async (reason) => {
                         const res = await executeSupremeAction('hard_delete', 'user', userId, reason);
-                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
             };
@@ -2209,7 +2279,7 @@
                     targetId: userId,
                     onConfirm: async (reason) => {
                         const res = await executeSupremeAction('hard_delete', 'user', userId, reason);
-                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
             };
@@ -2442,11 +2512,17 @@
         }
 
         modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        if (modal.style) modal.style.display = 'flex';
     }
 
     function closeUserDetailModal() {
         const modal = document.getElementById('syni-user-detail-modal');
-        if (modal) modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (modal.style) modal.style.display = 'none';
+        }
     }
 
     /**
@@ -2693,7 +2769,7 @@
                     },
                     onConfirm: async (reason) => {
                         const res = await executeSupremeAction('hard_delete', 'booking', bookingId, reason);
-                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
             };
@@ -2712,7 +2788,7 @@
                     targetId: bookingId,
                     onConfirm: async (reason) => {
                         const res = await executeSupremeAction('hard_delete', 'booking', bookingId, reason);
-                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
             };
@@ -2916,7 +2992,7 @@
                     },
                     onConfirm: async (reason) => {
                         const res = await executeSupremeAction('hard_delete', 'trailer', trailerId, reason);
-                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
             };
@@ -2939,7 +3015,7 @@
                     targetId: trailerId,
                     onConfirm: async (reason) => {
                         const res = await executeSupremeAction('hard_delete', 'trailer', trailerId, reason);
-                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                        if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
             };
@@ -3164,8 +3240,9 @@
                         targetType: entityType,
                         targetId: entityId,
                         onConfirm: async (reason) => {
+                            closeMasterEditor();
                             const res = await executeSupremeAction('hard_delete', entityType, entityId, reason);
-                            if (typeof showToast === 'function') showToast(res.message, 'error');
+                            if (typeof showToast === 'function') showToast(res.message, 'success');
                         }
                     });
                 };
@@ -3176,12 +3253,18 @@
         }
 
         modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        if (modal.style) modal.style.display = 'flex';
     }
 
     function closeMasterEditor() {
         if (typeof document === 'undefined') return;
         const modal = document.getElementById('syni-master-editor-modal');
-        if (modal) modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (modal.style) modal.style.display = 'none';
+        }
         pendingMasterEdit = null;
     }
 
@@ -3238,6 +3321,13 @@
                 if (tableName === 'profiles') {
                     delete insertPayload.email;
                 }
+                if (tableName === 'trailers') {
+                    delete insertPayload.caution;
+                    delete insertPayload.charge_utile;
+                    delete insertPayload.views;
+                    delete insertPayload.clicks;
+                    delete insertPayload.ctr;
+                }
                 dbPromise = safeQuery(client.from(tableName).insert([insertPayload]));
             }
 
@@ -3256,6 +3346,13 @@
                 const updatePayload = { ...formData };
                 if (tableName === 'profiles') {
                     delete updatePayload.email;
+                }
+                if (tableName === 'trailers') {
+                    delete updatePayload.caution;
+                    delete updatePayload.charge_utile;
+                    delete updatePayload.views;
+                    delete updatePayload.clicks;
+                    delete updatePayload.ctr;
                 }
                 dbPromise = safeQuery(client.from(tableName).update(updatePayload).eq('id', entityId));
             }
@@ -5884,6 +5981,8 @@
         const input = document.getElementById('command-palette-input');
         if (!palette) return;
         palette.classList.remove('hidden');
+        palette.classList.add('flex');
+        if (palette.style) palette.style.display = 'flex';
         selectedPaletteIdx = 0;
         if (input) {
             input.value = '';
@@ -5895,7 +5994,11 @@
     function closeCommandPalette() {
         if (typeof document === 'undefined') return;
         const palette = document.getElementById('syni-command-palette');
-        if (palette) palette.classList.add('hidden');
+        if (palette) {
+            palette.classList.add('hidden');
+            palette.classList.remove('flex');
+            if (palette.style) palette.style.display = 'none';
+        }
     }
 
     function searchCommandPalette(query = '') {
@@ -6812,11 +6915,17 @@
                 const cfg = getColabConfig();
                 if (colabEndpointInput) colabEndpointInput.value = cfg.endpointUrl || '';
                 colabModal.classList.remove('hidden');
+                colabModal.classList.add('flex');
+                if (colabModal.style) colabModal.style.display = 'flex';
             };
         }
 
         const closeColabModal = () => {
-            if (colabModal) colabModal.classList.add('hidden');
+            if (colabModal) {
+                colabModal.classList.add('hidden');
+                colabModal.classList.remove('flex');
+                if (colabModal.style) colabModal.style.display = 'none';
+            }
         };
         if (colabCloseBtn) colabCloseBtn.onclick = closeColabModal;
         if (colabCancelBtn) colabCancelBtn.onclick = closeColabModal;

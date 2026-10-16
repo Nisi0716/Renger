@@ -1841,5 +1841,188 @@ describe('Challenger Suite: Syni — Cockpit d\'Administration Suprême Renger',
         });
     });
 
+    describe('23. Résilience & Robustesse de la Suppression des Remorques & Modales Syni', () => {
+        it('syni.html contient le conteneur #toast-notification avec #toast-icon et #toast-message pour affichage non-bloquant', () => {
+            const syniHtml = fs.readFileSync(path.join(siteWebDir, 'syni.html'), 'utf8');
+            assert.ok(syniHtml.includes('id="toast-notification"'), '#toast-notification requis dans syni.html');
+            assert.ok(syniHtml.includes('id="toast-icon"'), '#toast-icon requis dans syni.html');
+            assert.ok(syniHtml.includes('id="toast-message"'), '#toast-message requis dans syni.html');
+            assert.ok(syniHtml.includes('z-[100]'), 'Toast z-index supérieur aux modales pour visibilité');
+        });
+
+        it('executeSupremeAction hard_delete sur remorque nettoie trailers, bookings orphelins et inspections en mémoire', async () => {
+            await syniModule.fetchSyniData();
+
+            // Créer une remorque avec réservation et inspection associées
+            const seed = syniModule.getFallbackSeedData();
+            const trailerId = '9991';
+            seed.trailers.push({ id: trailerId, title: 'Remorque Test Deletion', price: 65, is_deleted: false });
+            seed.bookings.push({ id: 'bkg-del-1', trailer_id: trailerId, total_price: 130, status: 'paye' });
+            seed.inspections.push({ id: 'insp-del-1', trailer_id: trailerId, step: 1, mode: 'departure' });
+
+            const res = syniModule.executeSupremeAction('hard_delete', 'trailer', trailerId, 'Suppression définitive test');
+            assert.equal(res.success, true);
+            assert.ok(res.message.includes('définitivement supprimée'));
+
+            // Vérifier purge mémoire
+            assert.equal(seed.trailers.some(t => String(t.id) === trailerId), false, 'Remorque retirée de rawData.trailers');
+            assert.equal(seed.bookings.some(b => String(b.trailer_id) === trailerId), false, 'Réservations orphelines retirées de rawData.bookings');
+            assert.equal(seed.inspections.some(i => String(i.trailer_id) === trailerId), false, 'Inspections associées retirées de rawData.inspections');
+        });
+
+        it('executeSupremeAction hard_delete sur remorque invoque la RPC syni_delete_trailer avec Number(id) et gère le repli table', async () => {
+            await syniModule.fetchSyniData();
+
+            let rpcCalledWith = null;
+            let bookingsDeletedForTrailer = null;
+            let trailersDeletedId = null;
+
+            const mockClient = {
+                rpc: async (fnName, params) => {
+                    if (fnName === 'syni_delete_trailer') {
+                        rpcCalledWith = params;
+                        return { data: { success: true }, error: null };
+                    }
+                    return { data: null, error: new Error('RPC unknown') };
+                },
+                from: (table) => ({
+                    delete: () => ({
+                        eq: async (col, val) => {
+                            if (table === 'bookings') bookingsDeletedForTrailer = val;
+                            if (table === 'trailers') trailersDeletedId = val;
+                            return { data: [], error: null };
+                        }
+                    })
+                })
+            };
+
+            const originalWindow = global.window;
+            global.window = { supabaseClient: mockClient };
+
+            try {
+                const res = syniModule.executeSupremeAction('hard_delete', 'trailer', '42', 'Suppression RPC');
+                assert.equal(res.success, true);
+                await res; // attendre dbPromise
+
+                assert.ok(rpcCalledWith, 'RPC appelée');
+                assert.equal(typeof rpcCalledWith.trailer_id_param, 'number', 'trailer_id_param converti en Number');
+                assert.equal(rpcCalledWith.trailer_id_param, 42);
+                assert.equal(rpcCalledWith.hard_delete, true);
+            } finally {
+                global.window = originalWindow;
+            }
+        });
+
+        it('openActionModal et closeActionModal gèrent rigoureusement display flex/none et les classes', () => {
+            const originalDoc = global.document;
+            let displayStyle = '';
+            let classes = new Set(['hidden']);
+
+            const modalEl = {
+                style: {
+                    get display() { return displayStyle; },
+                    set display(val) { displayStyle = val; }
+                },
+                classList: {
+                    contains: (cls) => classes.has(cls),
+                    add: (cls) => classes.add(cls),
+                    remove: (cls) => classes.delete(cls)
+                }
+            };
+
+            global.document = {
+                getElementById: (id) => {
+                    if (id === 'syni-action-modal') return modalEl;
+                    return null;
+                }
+            };
+
+            syniModule.openActionModal({
+                title: "Test Visibilité Modale",
+                message: "Test ouverture",
+                actionType: 'hard_delete',
+                targetType: 'trailer',
+                targetId: '1'
+            });
+
+            assert.equal(displayStyle, 'flex', 'display inline défini à flex');
+            assert.equal(classes.has('hidden'), false, 'classe hidden retirée');
+            assert.equal(classes.has('flex'), true, 'classe flex ajoutée');
+
+            syniModule.closeActionModal();
+
+            assert.equal(displayStyle, 'none', 'display inline réinitialisé à none');
+            assert.equal(classes.has('hidden'), true, 'classe hidden réappliquée');
+            assert.equal(classes.has('flex'), false, 'classe flex retirée');
+
+            global.document = originalDoc;
+        });
+
+        it('saveMasterEntity sur trailers supprime caution, charge_utile, views, clicks, ctr avant persistance Supabase', async () => {
+            await syniModule.fetchSyniData();
+
+            let capturedInsert = null;
+            let capturedUpdate = null;
+
+            const mockClient = {
+                from: (table) => ({
+                    insert: (records) => {
+                        if (table === 'trailers') capturedInsert = records[0];
+                        return Promise.resolve({ data: records, error: null });
+                    },
+                    update: (updates) => ({
+                        eq: (col, val) => {
+                            if (table === 'trailers') capturedUpdate = updates;
+                            return Promise.resolve({ data: updates, error: null });
+                        }
+                    })
+                })
+            };
+
+            const originalWindow = global.window;
+            global.window = { supabaseClient: mockClient };
+
+            try {
+                // 1. Test insertion
+                await syniModule.saveMasterEntity('trailer', 'new', {
+                    title: 'Remorque Inodore',
+                    price: 70,
+                    caution: 250,
+                    charge_utile: 850,
+                    views: 120,
+                    clicks: 15,
+                    ctr: 12.5
+                });
+
+                assert.ok(capturedInsert, 'Payload insert capturé');
+                assert.equal(capturedInsert.caution, undefined, 'caution non envoyé à Supabase (prévention 42703)');
+                assert.equal(capturedInsert.charge_utile, undefined, 'charge_utile non envoyé à Supabase (prévention 42703)');
+                assert.equal(capturedInsert.views, undefined, 'views non envoyé à Supabase');
+                assert.equal(capturedInsert.clicks, undefined, 'clicks non envoyé à Supabase');
+                assert.equal(capturedInsert.ctr, undefined, 'ctr non envoyé à Supabase');
+                assert.equal(capturedInsert.price, 70);
+
+                // 2. Test mise à jour
+                await syniModule.saveMasterEntity('trailer', '1', {
+                    title: 'Remorque Mise à jour',
+                    caution: 300,
+                    charge_utile: 900,
+                    views: 500,
+                    clicks: 40,
+                    ctr: 8.0
+                });
+
+                assert.ok(capturedUpdate, 'Payload update capturé');
+                assert.equal(capturedUpdate.caution, undefined, 'caution retiré de update');
+                assert.equal(capturedUpdate.charge_utile, undefined, 'charge_utile retiré de update');
+                assert.equal(capturedUpdate.views, undefined, 'views retiré de update');
+                assert.equal(capturedUpdate.clicks, undefined, 'clicks retiré de update');
+                assert.equal(capturedUpdate.ctr, undefined, 'ctr retiré de update');
+            } finally {
+                global.window = originalWindow;
+            }
+        });
+    });
+
 });
 

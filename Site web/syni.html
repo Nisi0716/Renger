@@ -41,6 +41,12 @@
 </head>
 <body class="bg-stone-950 text-stone-100 font-sans antialiased min-h-screen flex flex-col selection:bg-terracotta-500 selection:text-white">
 
+    <!-- NOTIFICATION TOAST UNIVERSELLE -->
+    <div id="toast-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 -translate-y-24 opacity-0 transition-all duration-500 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-bold text-white pointer-events-none">
+        <span id="toast-icon" class="text-2xl"></span>
+        <span id="toast-message"></span>
+    </div>
+
     <!-- ECRAN DE GARDE ACCES REFUSE / NON CONNECTE (STEALTH 404) -->
     <div id="syni-auth-guard" class="hidden fixed inset-0 z-50 bg-stone-950 flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-8 text-center shadow-2xl space-y-4">
