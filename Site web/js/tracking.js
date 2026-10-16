@@ -92,12 +92,17 @@ async function startTracking() {
         sessionStorage.setItem('renger_session_id', sessionId);
     }
 
-    // Tracker la vue de page actuelle
+    // Tracker la vue de page actuelle (avec capture du referrer externe s'il existe)
     try {
         const userId = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : null;
+        let pageUrl = window.location.pathname + window.location.search;
+        if (document.referrer && !document.referrer.includes(window.location.hostname)) {
+            const sep = pageUrl.includes('?') ? '&' : '?';
+            pageUrl += sep + 'ref=' + encodeURIComponent(document.referrer.slice(0, 100));
+        }
         await supabaseClient.from('analytics_events').insert([{
             event_name: 'page_view',
-            page_url: window.location.pathname + window.location.search,
+            page_url: pageUrl,
             session_id: sessionId,
             user_id: userId
         }]);
