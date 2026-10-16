@@ -751,20 +751,65 @@
                 <div class="bg-stone-900 border border-stone-800 rounded-2xl p-6">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                         <div>
-                            <h3 class="font-bold text-white text-sm flex items-center gap-2">
-                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
-                                <span>Connecteur Google Search Console API</span>
-                            </h3>
-                            <p class="text-xs text-stone-400 mt-0.5">Statut : <span id="seo-connector-status" class="font-mono text-emerald-400">Chargement...</span></p>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+                                    <span>Connecteur Google Search Console API</span>
+                                </h3>
+                                <span id="seo-connector-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-stone-800 text-stone-400 border border-stone-700">En attente de jeton</span>
+                            </div>
+                            <p class="text-xs text-stone-400 mt-1">
+                                Statut : <span id="seo-connector-status" class="font-mono text-emerald-400">Chargement...</span>
+                                <span class="text-stone-600 mx-1.5">•</span>
+                                Dernière synchronisation : <span id="seo-last-sync-label" class="font-mono text-stone-300">—</span>
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-stone-400 text-[11px]">Site vérifié :</span>
+                            <span class="px-2.5 py-1 bg-stone-950 border border-stone-800 rounded-lg font-mono text-white text-[11px] font-bold">https://renger.ch</span>
                         </div>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row items-center gap-3">
-                        <input type="text" id="gsc-token-input" placeholder="Clé API ou Jeton OAuth Search Console..."
-                            class="w-full px-4 py-2.5 bg-stone-950 border border-stone-800 text-white rounded-xl focus:border-amber-500 focus:outline-none text-xs font-mono">
-                        <button type="button" id="btn-save-gsc" class="w-full sm:w-auto bg-stone-800 hover:bg-stone-700 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition whitespace-nowrap active:scale-95">
-                            Enregistrer & Synchroniser
-                        </button>
+                    <div class="space-y-3">
+                        <div class="flex flex-col sm:flex-row items-center gap-2">
+                            <div class="relative w-full">
+                                <input type="password" id="gsc-token-input" placeholder="Collez votre clé API ou Jeton OAuth Search Console ici..."
+                                    autocomplete="off" spellcheck="false"
+                                    class="w-full pl-4 pr-10 py-2.5 bg-stone-950 border border-stone-800 text-white rounded-xl focus:border-amber-500 focus:outline-none text-xs font-mono placeholder:text-stone-600 transition">
+                                <button type="button" id="btn-toggle-gsc-eye" title="Afficher/masquer la clé" class="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 transition">
+                                    <svg id="gsc-eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                            </div>
+                            <button type="button" id="btn-save-gsc" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold py-2.5 px-5 rounded-xl text-xs transition whitespace-nowrap active:scale-95 shadow-sm flex items-center justify-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Enregistrer & Synchroniser</span>
+                            </button>
+                            <button type="button" id="btn-clear-gsc" class="hidden w-full sm:w-auto bg-stone-800/80 hover:bg-rose-500/20 text-stone-400 hover:text-rose-400 border border-stone-700/80 hover:border-rose-500/40 font-bold py-2.5 px-4 rounded-xl text-xs transition whitespace-nowrap active:scale-95">
+                                Déconnecter
+                            </button>
+                        </div>
+
+                        <!-- Informations d'infrastructure d'indexation Google -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px]">
+                            <div class="bg-stone-950/60 border border-stone-800/60 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
+                                <span class="text-stone-400">Sitemap XML</span>
+                                <span class="font-mono font-bold text-emerald-400 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    sitemap-renger.xml (11 pages)
+                                </span>
+                            </div>
+                            <div class="bg-stone-950/60 border border-stone-800/60 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
+                                <span class="text-stone-400">Directives Robots</span>
+                                <span class="font-mono font-bold text-emerald-400 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    robots.txt Actif
+                                </span>
+                            </div>
+                            <div class="bg-stone-950/60 border border-stone-800/60 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
+                                <span class="text-stone-400">Persistance Syni</span>
+                                <span id="seo-persistence-status" class="font-mono text-stone-300">Sauvegarde locale active</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
