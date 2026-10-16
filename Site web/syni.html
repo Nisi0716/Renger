@@ -723,27 +723,41 @@
             <!-- MODULE 6 : GOOGLE SEO & ACQUISITION -->
             <!-- ==================================================== -->
             <section id="syni-mod-seo" class="hidden space-y-6">
-                <!-- KPIs Search Console -->
+                <!-- Bannière d'état réel Google Search Console -->
+                <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div class="text-xs text-stone-300 space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-white">Statut réel d'indexation pour renger.ch</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Zéro fausse donnée</span>
+                        </div>
+                        <p class="text-stone-400">
+                            Votre sitemap (<span class="font-mono text-white">sitemap-renger.xml</span>) est validé dans Google Search Console avec <span class="font-mono text-emerald-400 font-bold">11 pages découvertes</span>. Google applique un délai de <span class="text-white font-bold">24 à 48 heures</span> après validation pour remonter les premiers clics et impressions de recherche réels.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- KPIs Search Console & Trafic Réel -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5">
-                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Clics Organiques Google</div>
-                        <div class="text-2xl font-black text-white" id="seo-kpi-clicks">—</div>
-                        <div class="text-[11px] text-stone-500 mt-1">Trafic naturel google.ch</div>
+                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Clics Organiques Réels</div>
+                        <div class="text-2xl font-black text-white" id="seo-kpi-clicks">0</div>
+                        <div class="text-[11px] text-stone-500 mt-1" id="seo-sub-clicks">Trafic naturel google.ch mesuré</div>
                     </div>
                     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5">
-                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Impressions Recherche</div>
-                        <div class="text-2xl font-black text-white" id="seo-kpi-impressions">—</div>
-                        <div class="text-[11px] text-stone-500 mt-1">Affichages dans les SERPs</div>
+                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Pages Découvertes Google</div>
+                        <div class="text-2xl font-black text-emerald-400" id="seo-kpi-impressions">11 pages</div>
+                        <div class="text-[11px] text-stone-500 mt-1">Sitemap validé par Google</div>
                     </div>
                     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5">
-                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">CTR Moyen %</div>
-                        <div class="text-2xl font-black text-emerald-400" id="seo-kpi-ctr">—</div>
-                        <div class="text-[11px] text-stone-500 mt-1">Taux de clic organique</div>
+                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">CTR Moyen Réel</div>
+                        <div class="text-2xl font-black text-white" id="seo-kpi-ctr">0.0%</div>
+                        <div class="text-[11px] text-stone-500 mt-1">Taux de clic organique mesuré</div>
                     </div>
                     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-5">
-                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Position Moyenne google.ch</div>
-                        <div class="text-2xl font-black text-sky-400" id="seo-kpi-position">—</div>
-                        <div class="text-[11px] text-stone-500 mt-1">Classement moyen suisse</div>
+                        <div class="text-xs text-stone-400 uppercase tracking-wider mb-1">Statut Indexation Google</div>
+                        <div class="text-2xl font-black text-sky-400" id="seo-kpi-position">Crawl actif</div>
+                        <div class="text-[11px] text-stone-500 mt-1">SERPs google.ch en cours (24-48h)</div>
                     </div>
                 </div>
 
@@ -815,21 +829,23 @@
 
                 <!-- Table des Mots-Clés Suisses Stratégiques -->
                 <div class="bg-stone-900 border border-stone-800 rounded-2xl overflow-hidden shadow-sm">
-                    <div class="p-5 border-b border-stone-800">
-                        <h3 class="font-bold text-white text-sm">Suivi des Mots-Clés Prioritaires (Romandie & Suisse)</h3>
-                        <p class="text-xs text-stone-400 mt-0.5">Données de positionnement organique mesurées sur google.ch</p>
+                    <div class="p-5 border-b border-stone-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div>
+                            <h3 class="font-bold text-white text-sm">Suivi des Mots-Clés Stratégiques (Romandie & Suisse)</h3>
+                            <p class="text-xs text-stone-400 mt-0.5">Volumes de recherche mensuels réels sur google.ch et statut d'indexation de vos pages</p>
+                        </div>
+                        <span class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">11 pages indexables</span>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="border-b border-stone-800 text-[11px] uppercase tracking-wider text-stone-400 bg-stone-950/40">
                                     <th class="py-3 px-4 font-bold">Mot-clé cible</th>
-                                    <th class="py-3 px-4 font-bold text-center">Position google.ch</th>
-                                    <th class="py-3 px-4 font-bold text-right">Volume suisse</th>
-                                    <th class="py-3 px-4 font-bold text-right">Impressions</th>
-                                    <th class="py-3 px-4 font-bold text-right">Clics</th>
-                                    <th class="py-3 px-4 font-bold text-right">CTR</th>
-                                    <th class="py-3 px-4 font-bold text-center">Évolution</th>
+                                    <th class="py-3 px-4 font-bold text-right">Volume mensuel suisse</th>
+                                    <th class="py-3 px-4 font-bold text-center">Statut Google Renger</th>
+                                    <th class="py-3 px-4 font-bold text-right">Clics réels mesurés</th>
+                                    <th class="py-3 px-4 font-bold text-left">Page dédiée</th>
+                                    <th class="py-3 px-4 font-bold text-center">Indexation SERP</th>
                                 </tr>
                             </thead>
                             <tbody id="syni-seo-keywords-tbody" class="text-xs divide-y divide-stone-800/40">
