@@ -1,5 +1,16 @@
 # Sentinel-Backend Journal
 
+## 2026-04-18 - Missing Webhook Event Idempotency in Stripe Webhook Handler Causing Compounding Boost Durations
+
+**Vulnerability:**
+The `stripe-webhook` Edge Function processed `checkout.session.completed` events without verifying if the event (`event.id`) had already been processed. When Stripe retried delivering webhooks or when duplicate event payloads were received for trailer boost purchases (`metadata.type === 'boost'`), the handler repeatedly re-executed `startDate.setDate(startDate.getDate() + durationDays)` on the updated `boost_end_date`, exponentially/linearly compounding the boost duration for a single payment (e.g. 7 days becoming 14, 21, or 28 days), as well as triggering duplicate booking confirmation emails and profile subscription updates.
+
+**Learning:**
+Stripe webhooks do not guarantee at-most-once delivery and will retry unacknowledged requests. Without checking event IDs against a persisted idempotency table, state mutations (especially relative/additive mutations like extending dates) will execute multiple times on retries or duplicate deliveries.
+
+**Prevention:**
+Always store processed Stripe event IDs (`event.id`) in a dedicated `processed_webhook_events` table protected by RLS. Query this table at the start of the webhook handler and return an immediate 200 OK response if `event.id` is already recorded before executing any state-mutating side effects.
+
 ## 2026-04-17 - Client-Side Privilege Escalation on Profiles Table via Unprotected PRO and Stripe Fields
 
 **Vulnerability:**

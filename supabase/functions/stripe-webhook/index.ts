@@ -40,6 +40,23 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY') || '';
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // Contrôle d'Idempotence : Vérification si l'événement Stripe a déjà été traité
+  if (event?.id) {
+    const { data: existingEvent } = await supabase
+      .from('processed_webhook_events')
+      .select('id')
+      .eq('id', event.id)
+      .maybeSingle();
+
+    if (existingEvent) {
+      console.log(`Webhook event ${event.id} already processed. Skipping duplicate execution.`);
+      return new Response(JSON.stringify({ received: true, idempotent: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const metadata = session.metadata || {};
@@ -185,6 +202,17 @@ serve(async (req) => {
       } catch (err: any) {
         console.error(`Error processing customer.subscription.updated (active): ${err.message}`);
       }
+    }
+  }
+
+  // Enregistrement de l'événement pour garantir l'idempotence sur les réessais futurs
+  if (event?.id) {
+    try {
+      await supabase
+        .from('processed_webhook_events')
+        .insert([{ id: event.id, event_type: event.type }]);
+    } catch (dbErr: any) {
+      console.warn(`Idempotency log error for event ${event.id}:`, dbErr?.message);
     }
   }
 
