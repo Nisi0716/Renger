@@ -1169,7 +1169,7 @@
                     }
                 }
 
-                const [pRes, tRes, bRes, iRes, rRes, aRes, sRes, payRes] = await Promise.all([
+                const [pRes, tRes, bRes, iRes, rRes, aRes, sRes, payRes, emailsRes] = await Promise.all([
                     safeQuery(window.supabaseClient.from('profiles').select('*').limit(500)),
                     safeQuery(window.supabaseClient.from('trailers').select('*').limit(500)),
                     safeQuery(window.supabaseClient.from('bookings').select('*').limit(500)),
@@ -1177,11 +1177,45 @@
                     safeQuery(window.supabaseClient.from('rate_limits').select('*').limit(200)),
                     safeQuery(window.supabaseClient.from('analytics_events').select('*').limit(500)),
                     safeQuery(window.supabaseClient.from('search_events').select('*').limit(500)),
-                    safeQuery(window.supabaseClient.from('payouts').select('*').limit(200))
+                    safeQuery(window.supabaseClient.from('payouts').select('*').limit(200)),
+                    typeof window.supabaseClient.rpc === 'function'
+                        ? safeQuery(window.supabaseClient.rpc('syni_get_user_emails'))
+                        : Promise.resolve({ data: [] })
                 ]);
 
                 const profilesData = pRes?.data || [];
                 const trailersData = tRes?.data || [];
+                const emailsData = emailsRes?.data || [];
+
+                if (Array.isArray(emailsData) && emailsData.length > 0) {
+                    const emailsMap = new Map();
+                    emailsData.forEach(item => {
+                        if (item && item.id) {
+                            emailsMap.set(String(item.id), item);
+                        }
+                    });
+                    profilesData.forEach(p => {
+                        const emailInfo = emailsMap.get(String(p.id));
+                        if (emailInfo) {
+                            if (!p.email && emailInfo.email) p.email = emailInfo.email;
+                            if (!p.last_sign_in_at && emailInfo.last_sign_in_at) p.last_sign_in_at = emailInfo.last_sign_in_at;
+                        }
+                    });
+                    emailsData.forEach(item => {
+                        if (item && item.id && !profilesData.some(p => String(p.id) === String(item.id))) {
+                            profilesData.push({
+                                id: item.id,
+                                email: item.email,
+                                username: item.email ? item.email.split('@')[0] : 'utilisateur',
+                                created_at: item.created_at || new Date().toISOString(),
+                                last_sign_in_at: item.last_sign_in_at,
+                                is_admin: false,
+                                is_pro: false,
+                                is_deleted: false
+                            });
+                        }
+                    });
+                }
 
                 if (profilesData.length > 0 || trailersData.length > 0 || !pRes?.error) {
                     dataSourceMode = 'fallback';
@@ -2210,39 +2244,82 @@
 
         // 1. Synthèse profil (username, email, rôle PRO/Standard, Stripe Connect ID, UUID)
         const profileEl = document.getElementById('user-detail-profile-summary');
-        if (profileEl) {
-            const isOwner = user.is_owner || (user.trailers_count > 0) || (user.associated_trailers && user.associated_trailers.length > 0);
-            const stripeConnectBadge = user.stripe_account_id 
-                ? `<span class="text-amber-400 font-bold">${escapeHtml(user.stripe_account_id)}</span>`
+        function renderUserProfileSummary(u) {
+            if (!profileEl) return;
+            const isOwner = u.is_owner || (u.trailers_count > 0) || (u.associated_trailers && u.associated_trailers.length > 0);
+            const stripeConnectBadge = u.stripe_account_id 
+                ? `<span class="text-amber-400 font-bold">${escapeHtml(u.stripe_account_id)}</span>`
                 : '<span class="text-stone-500 font-normal">Non configuré</span>';
-            const stripeCustomerLine = user.stripe_customer_id
-                ? `<div>Client Stripe: <span class="text-stone-300">${escapeHtml(user.stripe_customer_id)}</span></div>`
+            const stripeCustomerLine = u.stripe_customer_id
+                ? `<div>Client Stripe: <span class="text-stone-300">${escapeHtml(u.stripe_customer_id)}</span></div>`
+                : '';
+            const lastSignInLine = u.last_sign_in_at
+                ? `<div>Dernière connexion: <span class="text-stone-300">${new Date(u.last_sign_in_at).toLocaleDateString('fr-CH')}</span></div>`
                 : '';
 
             profileEl.innerHTML = `
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-2xl bg-stone-800 text-white font-bold flex items-center justify-center text-lg border border-stone-700">
-                            ${(user.username || user.email || 'U').charAt(0).toUpperCase()}
+                            ${(u.username || u.email || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div>
                             <div class="flex items-center gap-2">
-                                <h4 class="text-sm font-black text-white">@${escapeHtml(user.username || 'sans_nom')}</h4>
-                                ${user.is_pro ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">PRO (0% com)</span>' : '<span class="bg-stone-800 text-stone-300 border border-stone-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Standard (20% com)</span>'}
-                                ${user.is_admin ? '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Admin</span>' : ''}
+                                <h4 class="text-sm font-black text-white">@${escapeHtml(u.username || 'sans_nom')}</h4>
+                                ${u.is_pro ? '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">PRO (0% com)</span>' : '<span class="bg-stone-800 text-stone-300 border border-stone-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Standard (20% com)</span>'}
+                                ${u.is_admin ? '<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Admin</span>' : ''}
                                 ${!isOwner ? '<span class="bg-stone-800 text-stone-400 border border-stone-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Locataire</span>' : ''}
                             </div>
-                            <div class="text-xs text-stone-400 font-mono mt-0.5">${escapeHtml(user.email || '—')}</div>
+                            <div class="text-xs text-stone-400 font-mono mt-0.5 flex items-center gap-2 flex-wrap">
+                                <span>${escapeHtml(u.email || '—')}</span>
+                                ${u.email ? `
+                                    <button type="button" class="btn-copy-user-email text-[10px] px-1.5 py-0.5 rounded bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 transition active:scale-95" data-email="${escapeHtml(u.email)}" title="Copier l'adresse email">
+                                        Copier
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                     <div class="text-right text-[11px] text-stone-400 font-mono space-y-0.5">
-                        <div>UUID: <span class="text-stone-300">${escapeHtml(user.id)}</span></div>
+                        <div>Email: <span class="text-amber-300 font-bold select-all">${escapeHtml(u.email || '—')}</span></div>
+                        <div>UUID: <span class="text-stone-300 select-all">${escapeHtml(u.id)}</span></div>
                         <div>Stripe Connect: ${stripeConnectBadge}</div>
                         ${stripeCustomerLine}
-                        <div>Inscrit le: <span class="text-stone-300">${user.created_at ? new Date(user.created_at).toLocaleDateString('fr-CH') : '—'}</span></div>
+                        <div>Inscrit le: <span class="text-stone-300">${u.created_at ? new Date(u.created_at).toLocaleDateString('fr-CH') : '—'}</span></div>
+                        ${lastSignInLine}
                     </div>
                 </div>
             `;
+
+            if (typeof profileEl.querySelectorAll === 'function') {
+                profileEl.querySelectorAll('.btn-copy-user-email').forEach(btn => {
+                    btn.onclick = () => {
+                        const em = btn.getAttribute('data-email');
+                        if (em && typeof navigator !== 'undefined' && navigator.clipboard) {
+                            navigator.clipboard.writeText(em).then(() => {
+                                btn.textContent = 'Copié !';
+                                setTimeout(() => { btn.textContent = 'Copier'; }, 2000);
+                            }).catch(() => null);
+                        }
+                    };
+                });
+            }
+        }
+
+        renderUserProfileSummary(user);
+
+        // Si l'email n'était pas encore en cache, on tente une récupération asynchrone non-bloquante
+        if (!user.email && typeof window !== 'undefined' && window.supabaseClient && typeof window.supabaseClient.rpc === 'function') {
+            safeQuery(window.supabaseClient.rpc('syni_get_user_emails')).then(res => {
+                if (Array.isArray(res?.data)) {
+                    const found = res.data.find(r => String(r.id) === String(user.id));
+                    if (found && found.email) {
+                        user.email = found.email;
+                        if (found.last_sign_in_at) user.last_sign_in_at = found.last_sign_in_at;
+                        renderUserProfileSummary(user);
+                    }
+                }
+            }).catch(() => null);
         }
 
         // 2. Synthèse Financière (Total gains nets, total retiré, solde disponible, séquestre)

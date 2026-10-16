@@ -462,4 +462,36 @@ GRANT EXECUTE ON FUNCTION public.syni_delete_user(uuid, boolean) TO authenticate
 GRANT EXECUTE ON FUNCTION public.syni_restore_trailer(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.syni_restore_user(uuid) TO authenticated;
 
+-- ==========================================
+-- 18. LECTURE SÉCURISÉE DES EMAILS UTILISATEURS POUR L'ADMINISTRATION SYNI (ZERO-TRUST)
+-- ==========================================
+
+DROP FUNCTION IF EXISTS public.syni_get_user_emails();
+CREATE OR REPLACE FUNCTION public.syni_get_user_emails()
+RETURNS TABLE (
+    id uuid,
+    email text,
+    created_at timestamp with time zone,
+    last_sign_in_at timestamp with time zone
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+    IF NOT public.is_syni_admin() THEN
+        RAISE EXCEPTION 'Accès refusé. Action réservée aux administrateurs Syni.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        u.id, 
+        u.email::text,
+        u.created_at,
+        u.last_sign_in_at
+    FROM auth.users u;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.syni_get_user_emails() TO authenticated;
 
