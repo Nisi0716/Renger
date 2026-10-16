@@ -3657,11 +3657,11 @@
 
         // Table de correspondance des pages locales cibles et des zones suisses
         const keywordPages = {
-            'location remorque vaud': 'location-remorque-vaud.html',
+            'location remorque vaud': 'remorques.html?canton=Vaud',
             'remorque lausanne': 'index.html',
-            'location remorque geneve': 'location-remorque-geneve.html',
+            'location remorque geneve': 'remorques.html?canton=Genève',
             'location porte voiture suisse': 'remorques.html',
-            'location remorque valais': 'location-remorque-valais.html',
+            'location remorque valais': 'remorques.html?canton=Valais',
             'remorque porte moto fribourg': 'remorques.html',
             'location van chevaux romandie': 'remorques.html',
             'remorque plateau yverdon': 'remorques.html',

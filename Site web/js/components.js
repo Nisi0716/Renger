@@ -894,22 +894,12 @@ const RENGER_SEO_HUBS = [
 ];
 
 function injectSeoFooterLinks() {
-    if (typeof document === 'undefined' || typeof document.querySelector !== 'function' || typeof document.getElementById !== 'function') return;
-    const footer = document.querySelector('footer');
-    if (!footer || document.getElementById('footer-seo-hubs')) return;
-
-    const hubsContainer = document.createElement('div');
-    hubsContainer.id = 'footer-seo-hubs';
-    hubsContainer.className = 'w-full pt-4 mt-2 border-t border-stone-200/60 dark:border-stone-800/60 flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs text-stone-500 dark:text-stone-400';
-    hubsContainer.innerHTML = `
-        <span class="font-bold text-stone-600 dark:text-stone-300">Hubs régionaux :</span>
-        <a href="location-remorque-vaud.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Vaud</a>
-        <span class="text-stone-300 dark:text-stone-700">•</span>
-        <a href="location-remorque-geneve.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Genève</a>
-        <span class="text-stone-300 dark:text-stone-700">•</span>
-        <a href="location-remorque-valais.html" class="hover:text-terracotta-500 transition font-medium">Location Remorque Valais</a>
-    `;
-    footer.prepend(hubsContainer);
+    // Les hubs régionaux sont retirés de la navigation publique
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const existing = document.getElementById('footer-seo-hubs');
+    if (existing && existing.parentNode) {
+        existing.parentNode.removeChild(existing);
+    }
 }
 
 function initPageUIState() {

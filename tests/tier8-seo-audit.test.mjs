@@ -29,6 +29,7 @@ describe('Tier 8: Audit SEO, Sitemaps & Données Structurées Renger', () => {
             'https://renger.ch/location-remorque-vaud.html',
             'https://renger.ch/location-remorque-geneve.html',
             'https://renger.ch/location-remorque-valais.html',
+            'https://renger.ch/faq.html',
             'https://renger.ch/cgu.html',
             'https://renger.ch/mentions-legales.html',
             'https://renger.ch/politique-confidentialite.html'
@@ -180,6 +181,7 @@ describe('Tier 8: Audit SEO, Sitemaps & Données Structurées Renger', () => {
             'cgu.html',
             'mentions-legales.html',
             'politique-confidentialite.html',
+            'faq.html',
             'location-remorque-vaud.html',
             'location-remorque-geneve.html',
             'location-remorque-valais.html'
@@ -272,6 +274,7 @@ describe('Tier 8: Audit SEO, Sitemaps & Données Structurées Renger', () => {
             'cgu.html',
             'mentions-legales.html',
             'politique-confidentialite.html',
+            'faq.html',
             'location-remorque-vaud.html',
             'location-remorque-geneve.html',
             'location-remorque-valais.html'
@@ -366,7 +369,7 @@ describe('Tier 8: Audit SEO, Sitemaps & Données Structurées Renger', () => {
                         `Mot-clé "${kw}" manquant dans ${hub.file}`
                     );
                 }
-                assert.ok(content.includes('30 CHF'), `Tarif d'appel 30 CHF manquant dans ${hub.file}`);
+                assert.ok(!content.includes('30 CHF'), `Tarif 30 CHF doit être retiré de ${hub.file}`);
                 assert.ok(content.includes('remorques.html'), `Lien vers catalogue requis dans ${hub.file}`);
                 assert.ok(content.includes('mentions-legales.html'), `Lien mentions légales requis dans ${hub.file}`);
             });
@@ -379,7 +382,7 @@ describe('Tier 8: Audit SEO, Sitemaps & Données Structurées Renger', () => {
             assert.strictEqual(typeof componentsModule.injectSeoFooterLinks, 'function', 'injectSeoFooterLinks doit être une fonction');
         });
 
-        it('Toutes les pages publiques doivent contenir les liens vers les hubs régionaux dans leur footer ou structure', () => {
+        it('Toutes les pages publiques doivent avoir les liens vers les hubs régionaux retirés de leur vue publique', () => {
             const publicPages = [
                 'index.html',
                 'remorques.html',
@@ -395,16 +398,16 @@ describe('Tier 8: Audit SEO, Sitemaps & Données Structurées Renger', () => {
                 const filePath = path.join(siteWebDir, fileName);
                 const content = fs.readFileSync(filePath, 'utf8');
                 assert.ok(
-                    content.includes('location-remorque-vaud.html'),
-                    `${fileName} doit contenir le lien vers location-remorque-vaud.html`
+                    !content.includes('location-remorque-vaud.html'),
+                    `${fileName} ne doit pas contenir de lien public vers location-remorque-vaud.html`
                 );
                 assert.ok(
-                    content.includes('location-remorque-geneve.html'),
-                    `${fileName} doit contenir le lien vers location-remorque-geneve.html`
+                    !content.includes('location-remorque-geneve.html'),
+                    `${fileName} ne doit pas contenir de lien public vers location-remorque-geneve.html`
                 );
                 assert.ok(
-                    content.includes('location-remorque-valais.html'),
-                    `${fileName} doit contenir le lien vers location-remorque-valais.html`
+                    !content.includes('location-remorque-valais.html'),
+                    `${fileName} ne doit pas contenir de lien public vers location-remorque-valais.html`
                 );
             }
         });
