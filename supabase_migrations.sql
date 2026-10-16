@@ -572,3 +572,23 @@ CREATE POLICY "Admin can view clicks" ON public.clicks
   FOR SELECT TO authenticated
   USING (public.is_syni_admin());
 
+-- ==========================================
+-- 20. STRIPE WEBHOOK EVENT IDEMPOTENCY & ZERO TRUST POLICY
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.processed_webhook_events (
+    id text PRIMARY KEY, -- Stripe event.id (e.g. evt_1N...)
+    event_type text NOT NULL,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_processed_webhook_events_created_at ON public.processed_webhook_events(created_at DESC);
+
+ALTER TABLE public.processed_webhook_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Prevent direct client access to processed_webhook_events" ON public.processed_webhook_events;
+CREATE POLICY "Prevent direct client access to processed_webhook_events"
+ON public.processed_webhook_events
+FOR ALL
+TO authenticated
+USING (false)
+WITH CHECK (false);
