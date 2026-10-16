@@ -19,7 +19,7 @@
     // ==========================================
     // CONSTANTES & CONFIGURATION
     // ==========================================
-    const SUPREME_ADMIN_EMAILS = ['enism2007@hotmail.com', 'einsm2007@gmail.com'];
+    const SUPREME_ADMIN_EMAILS = ['enism2007@hotmail.com', 'einsm2007@gmail.com', 'renger.app@gmail.com'];
     const SUPREME_ADMIN_EMAIL = 'enism2007@hotmail.com';
     const SYNI_MASTER_KEY_DEFAULT = 'RengerSyni2026!';
     const SESSION_UNLOCKED_KEY = 'renger_syni_unlocked';
@@ -1105,14 +1105,16 @@
             try {
                 const { data: { session } } = await window.supabaseClient.auth.getSession();
                 if (session && session.access_token) {
-                    const supabaseUrl = window.supabaseClient.supabaseUrl || 'https://cwifrzajxrcpnqceyxnj.supabase.co';
+                    const supabaseUrl = window.supabaseClient.supabaseUrl || (typeof window !== 'undefined' && window.supabaseUrl) || 'https://cwifrzajxrcpnqceyxnj.supabase.co';
+                    const supabaseKey = (typeof window !== 'undefined' && window.supabaseKey) || 'sb_publishable_b8sieHW3SGLka8GSxRfr_w_eM3wtyYc';
                     const endpoint = `${supabaseUrl}/functions/v1/syni-data`;
 
                     const response = await fetch(endpoint, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${session.access_token}`
+                            'Authorization': `Bearer ${session.access_token}`,
+                            'apikey': supabaseKey
                         },
                         body: JSON.stringify({
                             masterKey: passphrase,
@@ -1130,12 +1132,15 @@
                         }
                     } else if (response.status === 401 || response.status === 403) {
                         const errJson = await response.json().catch(() => ({}));
-                        throw new Error(errJson.error || 'Accès non autorisé à Syni');
+                        if (errJson.error && errJson.error.includes('Passphrase')) {
+                            throw new Error(errJson.error);
+                        }
+                        console.warn('[Syni] Edge Function rejetée ou expirée, bascule vers requêtes directes:', errJson.error);
                     }
                 }
             } catch (err) {
-                // Si l'erreur est une interdiction explicite 401/403, on la propage
-                if (err.message && (err.message.includes('Accès non autorisé') || err.message.includes('Passphrase'))) {
+                // Si l'erreur est une mauvaise passphrase maîtresse, on la propage
+                if (err.message && err.message.includes('Passphrase')) {
                     throw err;
                 }
                 console.warn('[Syni] Repli sur requêtes directes Supabase Client:', err);
@@ -1143,15 +1148,24 @@
 
             // 2. Repli direct Supabase Client (100% résilient avec les vraies données BDD)
             try {
+                async function safeQuery(queryPromise) {
+                    try {
+                        const res = await queryPromise;
+                        return res || { data: [] };
+                    } catch (e) {
+                        return { data: [], error: e };
+                    }
+                }
+
                 const [pRes, tRes, bRes, iRes, rRes, aRes, sRes, payRes] = await Promise.all([
-                    window.supabaseClient.from('profiles').select('*').limit(500).catch(err => ({ data: [], error: err })),
-                    window.supabaseClient.from('trailers').select('*').limit(500).catch(err => ({ data: [], error: err })),
-                    window.supabaseClient.from('bookings').select('*').limit(500).catch(err => ({ data: [], error: err })),
-                    window.supabaseClient.from('inspections').select('*').limit(500).catch(err => ({ data: [], error: err })),
-                    window.supabaseClient.from('rate_limits').select('*').limit(200).catch(() => ({ data: [] })),
-                    window.supabaseClient.from('analytics_events').select('*').limit(500).catch(() => ({ data: [] })),
-                    window.supabaseClient.from('search_events').select('*').limit(500).catch(() => ({ data: [] })),
-                    window.supabaseClient.from('payouts').select('*').limit(200).catch(() => ({ data: [] }))
+                    safeQuery(window.supabaseClient.from('profiles').select('*').limit(500)),
+                    safeQuery(window.supabaseClient.from('trailers').select('*').limit(500)),
+                    safeQuery(window.supabaseClient.from('bookings').select('*').limit(500)),
+                    safeQuery(window.supabaseClient.from('inspections').select('*').limit(500)),
+                    safeQuery(window.supabaseClient.from('rate_limits').select('*').limit(200)),
+                    safeQuery(window.supabaseClient.from('analytics_events').select('*').limit(500)),
+                    safeQuery(window.supabaseClient.from('search_events').select('*').limit(500)),
+                    safeQuery(window.supabaseClient.from('payouts').select('*').limit(200))
                 ]);
 
                 const profilesData = pRes?.data || [];

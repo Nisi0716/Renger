@@ -67,8 +67,8 @@ serve(async (req) => {
       })
     }
 
-    // 2. Contrôle d'accès Administrateur Suprême (enism2007@hotmail.com, einsm2007@gmail.com ou profiles.is_admin = true)
-    const adminEmails = ['enism2007@hotmail.com', 'einsm2007@gmail.com']
+    // 2. Contrôle d'accès Administrateur Suprême (enism2007@hotmail.com, einsm2007@gmail.com, renger.app@gmail.com ou profiles.is_admin = true)
+    const adminEmails = ['enism2007@hotmail.com', 'einsm2007@gmail.com', 'renger.app@gmail.com']
     let isSupremeAdmin = adminEmails.includes(user.email || '') ||
       user.user_metadata?.is_admin === true ||
       user.is_admin === true
