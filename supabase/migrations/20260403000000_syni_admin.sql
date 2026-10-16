@@ -33,6 +33,35 @@ BEGIN
         FOR SELECT TO authenticated
         USING (public.is_syni_admin());
     END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'profiles' AND policyname = 'Admin can update all profiles'
+    ) THEN
+        CREATE POLICY "Admin can update all profiles" ON public.profiles
+        FOR UPDATE TO authenticated
+        USING (public.is_syni_admin())
+        WITH CHECK (public.is_syni_admin());
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'trailers' AND policyname = 'Admin can update all trailers'
+    ) THEN
+        CREATE POLICY "Admin can update all trailers" ON public.trailers
+        FOR UPDATE TO authenticated
+        USING (public.is_syni_admin())
+        WITH CHECK (public.is_syni_admin());
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'trailers' AND policyname = 'Admin can delete all trailers'
+    ) THEN
+        CREATE POLICY "Admin can delete all trailers" ON public.trailers
+        FOR DELETE TO authenticated
+        USING (public.is_syni_admin());
+    END IF;
 END $$;
 
 -- Protection Zéro-Confiance : Empêcher l'escalade de privilège par modification directe du client
