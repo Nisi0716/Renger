@@ -91,6 +91,18 @@
     }
 
     /**
+     * Enveloppe sécurisée pour requêtes Supabase / PostgREST (résilience anti-crash)
+     */
+    async function safeQuery(queryPromise) {
+        try {
+            const res = await queryPromise;
+            return res || { data: [] };
+        } catch (e) {
+            return { data: [], error: e };
+        }
+    }
+
+    /**
      * Vérifie si un utilisateur dispose des droits Administrateur Suprême
      */
     function checkSupremeAdminAccess(user, profile) {
@@ -1552,13 +1564,26 @@
     // ==========================================
     let pendingAction = null;
 
-    function openActionModal({ title, message, actionType, targetType, targetId, onConfirm }) {
+    function openActionModal({ 
+        title, 
+        message, 
+        actionType, 
+        targetType, 
+        targetId, 
+        confirmText = "Confirmer l'action",
+        confirmClass = "bg-terracotta-500 hover:bg-terracotta-600 text-white",
+        secondaryText = null,
+        secondaryClass = "bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/30",
+        onSecondary = null,
+        onConfirm 
+    }) {
         const modal = document.getElementById('syni-action-modal');
         const titleEl = document.getElementById('syni-action-title');
         const msgEl = document.getElementById('syni-action-message');
         const reasonInput = document.getElementById('syni-action-reason');
         const cancelBtn = document.getElementById('syni-action-cancel');
         const confirmBtn = document.getElementById('syni-action-confirm');
+        const secondaryBtn = document.getElementById('syni-action-secondary');
 
         if (!modal) {
             if (onConfirm) onConfirm('');
@@ -1569,8 +1594,29 @@
         if (msgEl) msgEl.textContent = message || "Êtes-vous sûr de vouloir exécuter cette action ?";
         if (reasonInput) reasonInput.value = '';
 
+        if (confirmBtn) {
+            confirmBtn.textContent = confirmText;
+            confirmBtn.className = `px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-lg active:scale-95 ${confirmClass}`;
+        }
+
+        if (secondaryBtn) {
+            if (secondaryText && typeof onSecondary === 'function') {
+                secondaryBtn.textContent = secondaryText;
+                secondaryBtn.className = `px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-lg active:scale-95 ${secondaryClass}`;
+                if (secondaryBtn.classList) secondaryBtn.classList.remove('hidden');
+                secondaryBtn.onclick = () => {
+                    const reason = (reasonInput?.value || '').trim();
+                    closeActionModal();
+                    onSecondary(reason);
+                };
+            } else {
+                if (secondaryBtn.classList) secondaryBtn.classList.add('hidden');
+                secondaryBtn.onclick = null;
+            }
+        }
+
         pendingAction = { actionType, targetType, targetId, onConfirm };
-        modal.classList.remove('hidden');
+        if (modal && modal.classList) modal.classList.remove('hidden');
 
         if (cancelBtn) {
             cancelBtn.onclick = closeActionModal;
@@ -1606,7 +1652,7 @@
 
     function closeActionModal() {
         const modal = document.getElementById('syni-action-modal');
-        if (modal) modal.classList.add('hidden');
+        if (modal && modal.classList) modal.classList.add('hidden');
         pendingAction = null;
     }
 
@@ -1669,25 +1715,55 @@
         let successMessage = "Action exécutée avec succès";
         const client = (typeof window !== 'undefined' && window.supabaseClient)
             || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+        let dbPromise = Promise.resolve();
 
         if (targetType === 'user') {
             const user = (rawData?.profiles?.find(p => String(p.id) === idStr))
                 || (computedMetrics?.users?.list?.find(u => String(u.id) === idStr));
             const metricUser = computedMetrics?.users?.list?.find(u => String(u.id) === idStr);
 
-            if (actionType === 'soft_delete') {
+            if (actionType === 'hard_delete') {
+                if (rawData?.profiles) {
+                    rawData.profiles = rawData.profiles.filter(p => String(p.id) !== idStr);
+                }
+                if (computedMetrics?.users?.list) {
+                    computedMetrics.users.list = computedMetrics.users.list.filter(u => String(u.id) !== idStr);
+                }
+                if (client) {
+                    dbPromise = (async () => {
+                        const rpcRes = await safeQuery(client.rpc('syni_delete_user', { user_id_param: idStr, hard_delete: true }));
+                        if (rpcRes.error) {
+                            await safeQuery(client.from('trailers').delete().eq('owner_id', idStr));
+                            await safeQuery(client.from('bookings').delete().eq('renter_id', idStr));
+                            await safeQuery(client.from('profiles').delete().eq('id', idStr));
+                        }
+                    })();
+                }
+                successMessage = `Compte utilisateur @${user?.username || idStr} définitivement supprimé de la base de données`;
+            } else if (actionType === 'soft_delete') {
                 const nowIso = new Date().toISOString();
                 if (user) { user.is_deleted = true; user.deleted_at = nowIso; }
                 if (metricUser && metricUser !== user) { metricUser.is_deleted = true; metricUser.deleted_at = nowIso; }
                 if (client) {
-                    client.from('profiles').update({ is_deleted: true, deleted_at: nowIso }).eq('id', idStr).catch(() => null);
+                    dbPromise = (async () => {
+                        const rpcRes = await safeQuery(client.rpc('syni_delete_user', { user_id_param: idStr, hard_delete: false }));
+                        if (rpcRes.error) {
+                            await safeQuery(client.from('profiles').update({ is_deleted: true, deleted_at: nowIso }).eq('id', idStr));
+                            await safeQuery(client.from('trailers').update({ is_deleted: true, is_active: false, deleted_at: nowIso }).eq('owner_id', idStr));
+                        }
+                    })();
                 }
                 successMessage = `Compte utilisateur @${user?.username || idStr} placé dans la corbeille (Soft-delete CO art. 958f)`;
             } else if (actionType === 'restore') {
                 if (user) { user.is_deleted = false; delete user.deleted_at; }
                 if (metricUser && metricUser !== user) { metricUser.is_deleted = false; delete metricUser.deleted_at; }
                 if (client) {
-                    client.from('profiles').update({ is_deleted: false, deleted_at: null }).eq('id', idStr).catch(() => null);
+                    dbPromise = (async () => {
+                        const rpcRes = await safeQuery(client.rpc('syni_restore_user', { user_id_param: idStr }));
+                        if (rpcRes.error) {
+                            await safeQuery(client.from('profiles').update({ is_deleted: false, deleted_at: null }).eq('id', idStr));
+                        }
+                    })();
                 }
                 successMessage = `Compte utilisateur @${user?.username || idStr} restauré avec succès`;
             } else if (actionType === 'toggle_pro') {
@@ -1695,7 +1771,7 @@
                 if (user) user.is_pro = newPro;
                 if (metricUser && metricUser !== user) metricUser.is_pro = newPro;
                 if (client) {
-                    client.from('profiles').update({ is_pro: newPro }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('profiles').update({ is_pro: newPro }).eq('id', idStr));
                 }
                 successMessage = newPro 
                     ? `Utilisateur @${user?.username || idStr} promu PRO (0% commission)` 
@@ -1705,7 +1781,7 @@
                 if (user) user.is_banned = newBanned;
                 if (metricUser && metricUser !== user) metricUser.is_banned = newBanned;
                 if (client) {
-                    client.from('profiles').update({ is_banned: newBanned }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('profiles').update({ is_banned: newBanned }).eq('id', idStr));
                 }
                 successMessage = newBanned 
                     ? `Utilisateur @${user?.username || idStr} banni de la plateforme` 
@@ -1716,19 +1792,46 @@
                 || (computedMetrics?.trailers?.list?.find(t => String(t.id) === idStr));
             const metricTrailer = computedMetrics?.trailers?.list?.find(t => String(t.id) === idStr);
 
-            if (actionType === 'soft_delete') {
+            if (actionType === 'hard_delete') {
+                if (rawData?.trailers) {
+                    rawData.trailers = rawData.trailers.filter(t => String(t.id) !== idStr);
+                }
+                if (computedMetrics?.trailers?.list) {
+                    computedMetrics.trailers.list = computedMetrics.trailers.list.filter(t => String(t.id) !== idStr);
+                }
+                if (client) {
+                    dbPromise = (async () => {
+                        const rpcRes = await safeQuery(client.rpc('syni_delete_trailer', { trailer_id_param: Number(idStr), hard_delete: true }));
+                        if (rpcRes.error) {
+                            await safeQuery(client.from('bookings').delete().eq('trailer_id', idStr));
+                            await safeQuery(client.from('trailers').delete().eq('id', idStr));
+                        }
+                    })();
+                }
+                successMessage = `Remorque #${idStr} définitivement supprimée de la base de données`;
+            } else if (actionType === 'soft_delete') {
                 const nowIso = new Date().toISOString();
                 if (trailer) { trailer.is_deleted = true; trailer.is_active = false; trailer.deleted_at = nowIso; }
                 if (metricTrailer && metricTrailer !== trailer) { metricTrailer.is_deleted = true; metricTrailer.is_active = false; metricTrailer.deleted_at = nowIso; }
                 if (client) {
-                    client.from('trailers').update({ is_deleted: true, is_active: false, deleted_at: nowIso }).eq('id', idStr).catch(() => null);
+                    dbPromise = (async () => {
+                        const rpcRes = await safeQuery(client.rpc('syni_delete_trailer', { trailer_id_param: Number(idStr), hard_delete: false }));
+                        if (rpcRes.error) {
+                            await safeQuery(client.from('trailers').update({ is_deleted: true, is_active: false, deleted_at: nowIso }).eq('id', idStr));
+                        }
+                    })();
                 }
                 successMessage = `Remorque #${idStr} placée dans la corbeille (masquage public immédiat)`;
             } else if (actionType === 'restore') {
                 if (trailer) { trailer.is_deleted = false; trailer.is_active = true; delete trailer.deleted_at; }
                 if (metricTrailer && metricTrailer !== trailer) { metricTrailer.is_deleted = false; metricTrailer.is_active = true; delete metricTrailer.deleted_at; }
                 if (client) {
-                    client.from('trailers').update({ is_deleted: false, is_active: true, deleted_at: null }).eq('id', idStr).catch(() => null);
+                    dbPromise = (async () => {
+                        const rpcRes = await safeQuery(client.rpc('syni_restore_trailer', { trailer_id_param: Number(idStr) }));
+                        if (rpcRes.error) {
+                            await safeQuery(client.from('trailers').update({ is_deleted: false, is_active: true, deleted_at: null }).eq('id', idStr));
+                        }
+                    })();
                 }
                 successMessage = `Remorque #${idStr} restaurée depuis la corbeille`;
             } else if (actionType === 'toggle_active') {
@@ -1736,7 +1839,7 @@
                 if (trailer) trailer.is_active = newActive;
                 if (metricTrailer && metricTrailer !== trailer) metricTrailer.is_active = newActive;
                 if (client) {
-                    client.from('trailers').update({ is_active: newActive }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('trailers').update({ is_active: newActive }).eq('id', idStr));
                 }
                 successMessage = newActive ? `Remorque #${idStr} réactivée` : `Remorque #${idStr} masquée du catalogue`;
             } else if (actionType === 'boost_7d') {
@@ -1750,7 +1853,7 @@
                     metricTrailer.boost_type = 'week';
                 }
                 if (client) {
-                    client.from('trailers').update({ boost_end_date: boostEnd, boost_type: 'week' }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('trailers').update({ boost_end_date: boostEnd, boost_type: 'week' }).eq('id', idStr));
                 }
                 successMessage = `Boost de visibilité 7 jours offert sur la remorque #${idStr}`;
             }
@@ -1759,19 +1862,30 @@
                 || (computedMetrics?.bookings?.list?.find(b => String(b.id) === idStr));
             const metricBooking = computedMetrics?.bookings?.list?.find(b => String(b.id) === idStr);
 
-            if (actionType === 'soft_delete') {
+            if (actionType === 'hard_delete') {
+                if (rawData?.bookings) {
+                    rawData.bookings = rawData.bookings.filter(b => String(b.id) !== idStr);
+                }
+                if (computedMetrics?.bookings?.list) {
+                    computedMetrics.bookings.list = computedMetrics.bookings.list.filter(b => String(b.id) !== idStr);
+                }
+                if (client) {
+                    dbPromise = safeQuery(client.from('bookings').delete().eq('id', idStr));
+                }
+                successMessage = `Réservation #${idStr} définitivement supprimée de la base de données`;
+            } else if (actionType === 'soft_delete') {
                 const nowIso = new Date().toISOString();
                 if (booking) { booking.is_deleted = true; booking.deleted_at = nowIso; }
                 if (metricBooking && metricBooking !== booking) { metricBooking.is_deleted = true; metricBooking.deleted_at = nowIso; }
                 if (client) {
-                    client.from('bookings').update({ is_deleted: true, deleted_at: nowIso }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('bookings').update({ is_deleted: true, deleted_at: nowIso }).eq('id', idStr));
                 }
                 successMessage = `Réservation #${idStr} placée dans la corbeille (archivage CO art. 958f)`;
             } else if (actionType === 'restore') {
                 if (booking) { booking.is_deleted = false; delete booking.deleted_at; }
                 if (metricBooking && metricBooking !== booking) { metricBooking.is_deleted = false; delete metricBooking.deleted_at; }
                 if (client) {
-                    client.from('bookings').update({ is_deleted: false, deleted_at: null }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('bookings').update({ is_deleted: false, deleted_at: null }).eq('id', idStr));
                 }
                 successMessage = `Réservation #${idStr} restaurée depuis la corbeille`;
             } else if (actionType === 'release_caution') {
@@ -1784,7 +1898,7 @@
                     metricBooking.caution_released = true;
                 }
                 if (client) {
-                    client.from('bookings').update({ deposit_status: 'libere' }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('bookings').update({ deposit_status: 'libere' }).eq('id', idStr));
                 }
                 successMessage = `Empreinte Stripe de caution libérée pour la réservation #${idStr}`;
             } else if (actionType === 'capture_caution') {
@@ -1797,7 +1911,7 @@
                     metricBooking.caution_captured = true;
                 }
                 if (client) {
-                    client.from('bookings').update({ deposit_status: 'capture' }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('bookings').update({ deposit_status: 'capture' }).eq('id', idStr));
                 }
                 successMessage = `Caution capturée pour litige sur la réservation #${idStr}`;
             } else if (actionType === 'cancel_booking') {
@@ -1808,7 +1922,7 @@
                     metricBooking.status = 'annule';
                 }
                 if (client) {
-                    client.from('bookings').update({ status: 'annule' }).eq('id', idStr).catch(() => null);
+                    dbPromise = safeQuery(client.from('bookings').update({ status: 'annule' }).eq('id', idStr));
                 }
                 successMessage = `Réservation #${idStr} annulée administrativement`;
             }
@@ -1825,7 +1939,15 @@
             renderCurrentModule();
         }
 
-        return { success: true, message: successMessage, log: logEntry };
+        const result = { success: true, message: successMessage, log: logEntry };
+        result.then = function(onFulfilled, onRejected) {
+            return dbPromise.then(() => onFulfilled ? onFulfilled(result) : result, onRejected);
+        };
+        result.catch = function(onRejected) {
+            return dbPromise.catch(onRejected);
+        };
+
+        return result;
     }
 
     function renderUsersTable() {
@@ -1936,6 +2058,9 @@
                             <button type="button" class="btn-syni-user-restore px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40" data-user-id="${escapeHtml(u.id)}" title="Restaurer l'utilisateur">
                                 Restaurer
                             </button>
+                            <button type="button" class="btn-syni-user-hard-delete px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/40" data-user-id="${escapeHtml(u.id)}" title="Supprimer définitivement de la base de données">
+                                Suppr. définitive
+                            </button>
                         ` : `
                             <button type="button" class="btn-syni-user-pro px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${u.is_pro ? 'bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow'}" data-user-id="${escapeHtml(u.id)}" data-is-pro="${u.is_pro ? 'true' : 'false'}">
                                 ${u.is_pro ? 'Retirer PRO' : 'Passer PRO'}
@@ -1943,7 +2068,7 @@
                             <button type="button" class="btn-syni-user-ban px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${u.is_banned ? 'bg-stone-700 hover:bg-stone-600 text-stone-200' : 'bg-red-900/40 hover:bg-red-800/60 text-red-400 border border-red-800/40'}" data-user-id="${escapeHtml(u.id)}" data-is-banned="${u.is_banned ? 'true' : 'false'}">
                                 ${u.is_banned ? 'Débannir' : 'Bannir'}
                             </button>
-                            <button type="button" class="btn-syni-user-delete px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-user-id="${escapeHtml(u.id)}" title="Déplacer dans la corbeille (CO art. 958f)">
+                            <button type="button" class="btn-syni-user-delete px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-user-id="${escapeHtml(u.id)}" title="Supprimer ce compte">
                                 Supprimer
                             </button>
                         `}
@@ -1957,6 +2082,7 @@
     }
 
     function attachUsersTableActionListeners() {
+        if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
         document.querySelectorAll('.btn-syni-user-inspect').forEach(btn => {
             btn.onclick = () => {
                 const userId = btn.getAttribute('data-user-id');
@@ -1983,8 +2109,8 @@
                     actionType: 'toggle_pro',
                     targetType: 'user',
                     targetId: userId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('toggle_pro', 'user', userId, reason);
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('toggle_pro', 'user', userId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
@@ -2003,8 +2129,8 @@
                     actionType: 'toggle_ban',
                     targetType: 'user',
                     targetId: userId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('toggle_ban', 'user', userId, reason);
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('toggle_ban', 'user', userId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'warning');
                     }
                 });
@@ -2014,24 +2140,59 @@
         document.querySelectorAll('.btn-syni-user-delete').forEach(btn => {
             btn.onclick = () => {
                 const userId = btn.getAttribute('data-user-id');
+                const user = (rawData?.profiles?.find(p => String(p.id) === String(userId)))
+                    || (computedMetrics?.users?.list?.find(u => String(u.id) === String(userId)));
+                const username = user?.username || userId;
+
                 openActionModal({
-                    title: "Placer l'Utilisateur dans la Corbeille",
-                    message: "Voulez-vous supprimer ce compte utilisateur ? Il sera masqué immédiatement et conservé dans la corbeille conformément au droit comptable suisse (CO art. 958f).",
-                    actionType: 'soft_delete',
+                    title: `Supprimer le compte @${username}`,
+                    message: `Que souhaitez-vous faire pour le compte @${username} ? Vous pouvez le masquer dans la corbeille (réversible) ou le supprimer définitivement de la base de données Supabase (irréversible).`,
+                    confirmText: "Supprimer définitivement",
+                    confirmClass: "bg-red-600 hover:bg-red-500 text-white",
+                    secondaryText: "Mettre dans la corbeille",
+                    secondaryClass: "bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/30",
+                    actionType: 'hard_delete',
                     targetType: 'user',
                     targetId: userId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('soft_delete', 'user', userId, reason);
+                    onSecondary: async (reason) => {
+                        const res = await executeSupremeAction('soft_delete', 'user', userId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'warning');
+                    },
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('hard_delete', 'user', userId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-user-hard-delete').forEach(btn => {
+            btn.onclick = () => {
+                const userId = btn.getAttribute('data-user-id');
+                const user = (rawData?.profiles?.find(p => String(p.id) === String(userId)))
+                    || (computedMetrics?.users?.list?.find(u => String(u.id) === String(userId)));
+                const username = user?.username || userId;
+
+                openActionModal({
+                    title: `Suppression Définitive de @${username}`,
+                    message: `Attention : cette action effacera irrévocablement le compte @${username} de la base de données Supabase, ainsi que ses remorques et données liées.`,
+                    confirmText: "Supprimer définitivement",
+                    confirmClass: "bg-red-600 hover:bg-red-500 text-white",
+                    actionType: 'hard_delete',
+                    targetType: 'user',
+                    targetId: userId,
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('hard_delete', 'user', userId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'error');
                     }
                 });
             };
         });
 
         document.querySelectorAll('.btn-syni-user-restore').forEach(btn => {
-            btn.onclick = () => {
+            btn.onclick = async () => {
                 const userId = btn.getAttribute('data-user-id');
-                const res = executeSupremeAction('restore', 'user', userId, 'Restauration 1-clic depuis la corbeille');
+                const res = await executeSupremeAction('restore', 'user', userId, 'Restauration 1-clic depuis la corbeille');
                 if (typeof showToast === 'function') showToast(res.message, 'success');
             };
         });
@@ -2356,6 +2517,9 @@
                                 <button type="button" class="btn-syni-booking-restore px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40" data-booking-id="${escapeHtml(b.id)}" title="Restaurer la réservation">
                                     Restaurer
                                 </button>
+                                <button type="button" class="btn-syni-booking-hard-delete px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/40" data-booking-id="${escapeHtml(b.id)}" title="Supprimer définitivement de la base de données">
+                                    Suppr. définitive
+                                </button>
                             ` : `
                                 <button type="button" class="btn-syni-booking-release px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 ${depositReleased ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40'}" data-booking-id="${escapeHtml(b.id)}" ${depositReleased ? 'disabled' : ''} title="Libérer manuellement la caution">
                                     Libérer
@@ -2368,7 +2532,7 @@
                                         Annuler
                                     </button>
                                 ` : '<span class="text-[10px] text-stone-500 italic">Annulée</span>'}
-                                <button type="button" class="btn-syni-booking-delete px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-booking-id="${escapeHtml(b.id)}" title="Archiver dans la corbeille (CO art. 958f)">
+                                <button type="button" class="btn-syni-booking-delete px-2 py-1 text-[10px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-booking-id="${escapeHtml(b.id)}" title="Supprimer cette réservation">
                                     Supprimer
                                 </button>
                             `}
@@ -2382,6 +2546,7 @@
     }
 
     function attachBookingsTableActionListeners() {
+        if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
         document.querySelectorAll('.btn-syni-booking-edit').forEach(btn => {
             btn.onclick = () => {
                 const bookingId = btn.getAttribute('data-booking-id');
@@ -2398,8 +2563,8 @@
                     actionType: 'release_caution',
                     targetType: 'booking',
                     targetId: bookingId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('release_caution', 'booking', bookingId, reason);
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('release_caution', 'booking', bookingId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
@@ -2415,8 +2580,8 @@
                     actionType: 'capture_caution',
                     targetType: 'booking',
                     targetId: bookingId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('capture_caution', 'booking', bookingId, reason);
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('capture_caution', 'booking', bookingId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'warning');
                     }
                 });
@@ -2432,8 +2597,8 @@
                     actionType: 'cancel_booking',
                     targetType: 'booking',
                     targetId: bookingId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('cancel_booking', 'booking', bookingId, reason);
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('cancel_booking', 'booking', bookingId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'info');
                     }
                 });
@@ -2444,23 +2609,50 @@
             btn.onclick = () => {
                 const bookingId = btn.getAttribute('data-booking-id');
                 openActionModal({
-                    title: "Archiver la Réservation dans la Corbeille",
-                    message: "Voulez-vous archiver cette réservation ? Elle restera consultable dans la corbeille conformément à la conservation obligatoire (CO art. 958f).",
-                    actionType: 'soft_delete',
+                    title: `Supprimer la Réservation #${bookingId}`,
+                    message: `Que souhaitez-vous faire pour la réservation #${bookingId} ? Vous pouvez la masquer dans la corbeille (archivage CO art. 958f) ou la supprimer définitivement de la base de données.`,
+                    confirmText: "Supprimer définitivement",
+                    confirmClass: "bg-red-600 hover:bg-red-500 text-white",
+                    secondaryText: "Mettre dans la corbeille",
+                    secondaryClass: "bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/30",
+                    actionType: 'hard_delete',
                     targetType: 'booking',
                     targetId: bookingId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('soft_delete', 'booking', bookingId, reason);
+                    onSecondary: async (reason) => {
+                        const res = await executeSupremeAction('soft_delete', 'booking', bookingId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'warning');
+                    },
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('hard_delete', 'booking', bookingId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-booking-hard-delete').forEach(btn => {
+            btn.onclick = () => {
+                const bookingId = btn.getAttribute('data-booking-id');
+                openActionModal({
+                    title: `Suppression Définitive de la Réservation #${bookingId}`,
+                    message: `Attention : cette action supprimera définitivement la réservation #${bookingId} de la base de données Supabase.`,
+                    confirmText: "Supprimer définitivement",
+                    confirmClass: "bg-red-600 hover:bg-red-500 text-white",
+                    actionType: 'hard_delete',
+                    targetType: 'booking',
+                    targetId: bookingId,
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('hard_delete', 'booking', bookingId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'error');
                     }
                 });
             };
         });
 
         document.querySelectorAll('.btn-syni-booking-restore').forEach(btn => {
-            btn.onclick = () => {
+            btn.onclick = async () => {
                 const bookingId = btn.getAttribute('data-booking-id');
-                const res = executeSupremeAction('restore', 'booking', bookingId, 'Restauration 1-clic depuis la corbeille');
+                const res = await executeSupremeAction('restore', 'booking', bookingId, 'Restauration 1-clic depuis la corbeille');
                 if (typeof showToast === 'function') showToast(res.message, 'success');
             };
         });
@@ -2563,6 +2755,9 @@
                                 <button type="button" class="btn-syni-trailer-restore px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/40" data-trailer-id="${escapeHtml(t.id)}" title="Restaurer la remorque">
                                     Restaurer
                                 </button>
+                                <button type="button" class="btn-syni-trailer-hard-delete px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/40" data-trailer-id="${escapeHtml(t.id)}" title="Supprimer définitivement de la base de données">
+                                    Suppr. définitive
+                                </button>
                             ` : `
                                 <button type="button" class="btn-syni-trailer-toggle px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 ${isActive ? 'bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}" data-trailer-id="${escapeHtml(t.id)}" data-is-active="${isActive ? 'true' : 'false'}">
                                     ${isActive ? 'Masquer' : 'Activer'}
@@ -2570,7 +2765,7 @@
                                 <button type="button" class="btn-syni-trailer-boost px-2.5 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-amber-600 hover:bg-amber-500 text-white shadow" data-trailer-id="${escapeHtml(t.id)}">
                                     Boost 7j
                                 </button>
-                                <button type="button" class="btn-syni-trailer-delete px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-trailer-id="${escapeHtml(t.id)}" title="Déplacer dans la corbeille">
+                                <button type="button" class="btn-syni-trailer-delete px-2 py-1 text-[11px] font-bold rounded-lg transition active:scale-95 bg-stone-800 hover:bg-red-950/60 text-stone-400 hover:text-red-400 border border-stone-700" data-trailer-id="${escapeHtml(t.id)}" title="Supprimer cette remorque">
                                     Supprimer
                                 </button>
                             `}
@@ -2584,6 +2779,7 @@
     }
 
     function attachTrailersTableActionListeners() {
+        if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
         document.querySelectorAll('.btn-syni-trailer-edit').forEach(btn => {
             btn.onclick = () => {
                 const trailerId = btn.getAttribute('data-trailer-id');
@@ -2603,8 +2799,8 @@
                     actionType: 'toggle_active',
                     targetType: 'trailer',
                     targetId: trailerId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('toggle_active', 'trailer', trailerId, reason);
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('toggle_active', 'trailer', trailerId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
@@ -2620,8 +2816,8 @@
                     actionType: 'boost_7d',
                     targetType: 'trailer',
                     targetId: trailerId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('boost_7d', 'trailer', trailerId, reason);
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('boost_7d', 'trailer', trailerId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'success');
                     }
                 });
@@ -2631,24 +2827,59 @@
         document.querySelectorAll('.btn-syni-trailer-delete').forEach(btn => {
             btn.onclick = () => {
                 const trailerId = btn.getAttribute('data-trailer-id');
+                const trailer = (rawData?.trailers?.find(t => String(t.id) === String(trailerId)))
+                    || (computedMetrics?.trailers?.list?.find(t => String(t.id) === String(trailerId)));
+                const title = trailer?.title || `Remorque #${trailerId}`;
+
                 openActionModal({
-                    title: "Placer la Remorque dans la Corbeille",
-                    message: "Voulez-vous supprimer cette remorque ? Elle sera masquée immédiatement de la plateforme et conservée dans la corbeille.",
-                    actionType: 'soft_delete',
+                    title: `Supprimer l'annonce "${title}"`,
+                    message: `Que souhaitez-vous faire pour cette annonce ? Vous pouvez la masquer dans la corbeille (masquage public réversible) ou la supprimer définitivement de la base de données Supabase (irréversible).`,
+                    confirmText: "Supprimer définitivement",
+                    confirmClass: "bg-red-600 hover:bg-red-500 text-white",
+                    secondaryText: "Mettre dans la corbeille",
+                    secondaryClass: "bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/30",
+                    actionType: 'hard_delete',
                     targetType: 'trailer',
                     targetId: trailerId,
-                    onConfirm: (reason) => {
-                        const res = executeSupremeAction('soft_delete', 'trailer', trailerId, reason);
+                    onSecondary: async (reason) => {
+                        const res = await executeSupremeAction('soft_delete', 'trailer', trailerId, reason);
                         if (typeof showToast === 'function') showToast(res.message, 'warning');
+                    },
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('hard_delete', 'trailer', trailerId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'error');
+                    }
+                });
+            };
+        });
+
+        document.querySelectorAll('.btn-syni-trailer-hard-delete').forEach(btn => {
+            btn.onclick = () => {
+                const trailerId = btn.getAttribute('data-trailer-id');
+                const trailer = (rawData?.trailers?.find(t => String(t.id) === String(trailerId)))
+                    || (computedMetrics?.trailers?.list?.find(t => String(t.id) === String(trailerId)));
+                const title = trailer?.title || `Remorque #${trailerId}`;
+
+                openActionModal({
+                    title: `Suppression Définitive de l'annonce #${trailerId}`,
+                    message: `Attention : cette action supprimera définitivement "${title}" de la base de données Supabase avec ses avis et réservations associées.`,
+                    confirmText: "Supprimer définitivement",
+                    confirmClass: "bg-red-600 hover:bg-red-500 text-white",
+                    actionType: 'hard_delete',
+                    targetType: 'trailer',
+                    targetId: trailerId,
+                    onConfirm: async (reason) => {
+                        const res = await executeSupremeAction('hard_delete', 'trailer', trailerId, reason);
+                        if (typeof showToast === 'function') showToast(res.message, 'error');
                     }
                 });
             };
         });
 
         document.querySelectorAll('.btn-syni-trailer-restore').forEach(btn => {
-            btn.onclick = () => {
+            btn.onclick = async () => {
                 const trailerId = btn.getAttribute('data-trailer-id');
-                const res = executeSupremeAction('restore', 'trailer', trailerId, 'Restauration 1-clic depuis la corbeille');
+                const res = await executeSupremeAction('restore', 'trailer', trailerId, 'Restauration 1-clic depuis la corbeille');
                 if (typeof showToast === 'function') showToast(res.message, 'success');
             };
         });
@@ -2849,6 +3080,32 @@
             `;
         }
 
+        const deleteBtn = document.getElementById('master-editor-delete');
+        if (deleteBtn) {
+            if (!isNew && entityId) {
+                deleteBtn.classList.remove('hidden');
+                deleteBtn.onclick = () => {
+                    closeMasterEditor();
+                    openActionModal({
+                        title: `Suppression Définitive`,
+                        message: `Attention : voulez-vous supprimer définitivement ${typeLabel} #${entityId} de la base de données Supabase ? Cette opération est irréversible.`,
+                        confirmText: "Supprimer définitivement",
+                        confirmClass: "bg-red-600 hover:bg-red-500 text-white",
+                        actionType: 'hard_delete',
+                        targetType: entityType,
+                        targetId: entityId,
+                        onConfirm: async (reason) => {
+                            const res = await executeSupremeAction('hard_delete', entityType, entityId, reason);
+                            if (typeof showToast === 'function') showToast(res.message, 'error');
+                        }
+                    });
+                };
+            } else {
+                deleteBtn.classList.add('hidden');
+                deleteBtn.onclick = null;
+            }
+        }
+
         modal.classList.remove('hidden');
     }
 
@@ -2888,6 +3145,8 @@
         let resultEntity = null;
         let finalId = entityId;
 
+        let dbPromise = Promise.resolve();
+
         if (isNew) {
             if (entityType === 'user') {
                 finalId = formData.id || `usr-${Date.now().toString(36)}`;
@@ -2906,7 +3165,7 @@
             targetCollection.push(resultEntity);
 
             if (client) {
-                client.from(tableName).insert([resultEntity]).catch(() => null);
+                dbPromise = safeQuery(client.from(tableName).insert([resultEntity]));
             }
 
             recordAuditLog(`create_${entityType}`, entityType, String(finalId), reason || `Création directe Master Editor ${entityType}`);
@@ -2921,7 +3180,7 @@
             }
 
             if (client) {
-                client.from(tableName).update(formData).eq('id', entityId).catch(() => null);
+                dbPromise = safeQuery(client.from(tableName).update(formData).eq('id', entityId));
             }
 
             recordAuditLog(`edit_${entityType}`, entityType, String(entityId), reason || `Modification directe Master Editor ${entityType}`);
@@ -2932,12 +3191,20 @@
             renderCurrentModule();
         }
 
-        return {
+        const result = {
             success: true,
             id: finalId,
             entity: resultEntity,
             isNew
         };
+        result.then = function(onFulfilled, onRejected) {
+            return dbPromise.then(() => onFulfilled ? onFulfilled(result) : result, onRejected);
+        };
+        result.catch = function(onRejected) {
+            return dbPromise.catch(onRejected);
+        };
+
+        return result;
     }
 
     function handleMasterEditorFormSave() {
@@ -3028,7 +3295,7 @@
         if (alertsEl) {
             const count = computedMetrics.inspections.missingReturnCount;
             if (count > 0) {
-                alertsEl.classList.remove('hidden');
+                if (alertsEl.classList) alertsEl.classList.remove('hidden');
                 alertsEl.innerHTML = `
                     <div class="bg-red-500/10 border border-red-500/30 text-red-300 p-4 rounded-2xl flex items-center justify-between">
                         <div>
@@ -3039,7 +3306,7 @@
                     </div>
                 `;
             } else {
-                alertsEl.classList.add('hidden');
+                if (alertsEl.classList) alertsEl.classList.add('hidden');
             }
         }
 
@@ -3221,14 +3488,14 @@
         const bannerDismiss = document.getElementById('broadcast-banner-dismissible');
         const bannerStatusLabel = document.getElementById('broadcast-banner-status-label');
 
-        if (bannerCheck && !bannerCheck.dataset.initialized) {
+        if (bannerCheck && (!bannerCheck.dataset || !bannerCheck.dataset.initialized)) {
             bannerCheck.checked = !!bannerConfig.enabled;
             if (bannerType) bannerType.value = bannerConfig.type || 'info';
             if (bannerText) bannerText.value = bannerConfig.message || '';
             if (bannerLinkText) bannerLinkText.value = bannerConfig.linkText || '';
             if (bannerLinkUrl) bannerLinkUrl.value = bannerConfig.linkUrl || '';
             if (bannerDismiss) bannerDismiss.checked = bannerConfig.dismissible !== false;
-            bannerCheck.dataset.initialized = 'true';
+            if (bannerCheck.dataset) bannerCheck.dataset.initialized = 'true';
         }
 
         if (bannerStatusLabel) {
@@ -3245,10 +3512,10 @@
         const maintMsg = document.getElementById('maintenance-mode-message');
         const maintStatusLabel = document.getElementById('maintenance-mode-status-label');
 
-        if (maintCheck && !maintCheck.dataset.initialized) {
+        if (maintCheck && (!maintCheck.dataset || !maintCheck.dataset.initialized)) {
             maintCheck.checked = !!maintConfig.enabled;
             if (maintMsg) maintMsg.value = maintConfig.message || '';
-            maintCheck.dataset.initialized = 'true';
+            if (maintCheck.dataset) maintCheck.dataset.initialized = 'true';
         }
 
         if (maintStatusLabel) {

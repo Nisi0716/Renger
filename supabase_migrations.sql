@@ -339,4 +339,127 @@ DROP POLICY IF EXISTS "Admin can view all payouts" ON public.payouts;
 CREATE POLICY "Admin can view all payouts" ON public.payouts
     FOR SELECT TO authenticated USING (public.is_syni_admin());
 
+-- ==========================================
+-- 17. POLITIQUES DE SUPPRESSION & FONCTIONS SYNI ADMIN (ZERO-TRUST)
+-- ==========================================
+
+-- Autoriser la suppression des profils par les administrateurs Syni
+DROP POLICY IF EXISTS "Admin can delete all profiles" ON public.profiles;
+CREATE POLICY "Admin can delete all profiles" ON public.profiles 
+FOR DELETE TO authenticated USING (public.is_syni_admin());
+
+-- Permettre la suppression en cascade propre des réservations lors de la suppression définitive d'une remorque
+ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_trailer_id_fkey;
+ALTER TABLE public.bookings ADD CONSTRAINT bookings_trailer_id_fkey 
+  FOREIGN KEY (trailer_id) REFERENCES public.trailers(id) ON DELETE CASCADE;
+
+-- Mettre cancelled_by en SET NULL lors de la suppression d'un utilisateur
+ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_cancelled_by_fkey;
+ALTER TABLE public.bookings ADD CONSTRAINT bookings_cancelled_by_fkey 
+  FOREIGN KEY (cancelled_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+-- Fonctions RPC sécurisées pour suppression et restauration administratives
+CREATE OR REPLACE FUNCTION public.syni_delete_trailer(trailer_id_param bigint, hard_delete boolean DEFAULT false)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_result json;
+BEGIN
+    IF NOT public.is_syni_admin() THEN
+        RAISE EXCEPTION 'Accès refusé. Action réservée aux administrateurs Syni.';
+    END IF;
+
+    IF hard_delete THEN
+        DELETE FROM public.trailers WHERE id = trailer_id_param;
+        v_result := json_build_object('success', true, 'action', 'hard_delete', 'trailer_id', trailer_id_param);
+    ELSE
+        UPDATE public.trailers 
+        SET is_deleted = true, is_active = false, deleted_at = now() 
+        WHERE id = trailer_id_param;
+        v_result := json_build_object('success', true, 'action', 'soft_delete', 'trailer_id', trailer_id_param);
+    END IF;
+
+    RETURN v_result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.syni_delete_user(user_id_param uuid, hard_delete boolean DEFAULT false)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_result json;
+BEGIN
+    IF NOT public.is_syni_admin() THEN
+        RAISE EXCEPTION 'Accès refusé. Action réservée aux administrateurs Syni.';
+    END IF;
+
+    IF hard_delete THEN
+        DELETE FROM public.trailers WHERE owner_id = user_id_param;
+        DELETE FROM public.bookings WHERE renter_id = user_id_param;
+        DELETE FROM auth.users WHERE id = user_id_param;
+        DELETE FROM public.profiles WHERE id = user_id_param;
+        v_result := json_build_object('success', true, 'action', 'hard_delete', 'user_id', user_id_param);
+    ELSE
+        UPDATE public.profiles 
+        SET is_deleted = true, deleted_at = now() 
+        WHERE id = user_id_param;
+        UPDATE public.trailers 
+        SET is_deleted = true, is_active = false, deleted_at = now() 
+        WHERE owner_id = user_id_param;
+        v_result := json_build_object('success', true, 'action', 'soft_delete', 'user_id', user_id_param);
+    END IF;
+
+    RETURN v_result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.syni_restore_trailer(trailer_id_param bigint)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF NOT public.is_syni_admin() THEN
+        RAISE EXCEPTION 'Accès refusé. Action réservée aux administrateurs Syni.';
+    END IF;
+
+    UPDATE public.trailers 
+    SET is_deleted = false, is_active = true, deleted_at = NULL 
+    WHERE id = trailer_id_param;
+
+    RETURN json_build_object('success', true, 'action', 'restore', 'trailer_id', trailer_id_param);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.syni_restore_user(user_id_param uuid)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF NOT public.is_syni_admin() THEN
+        RAISE EXCEPTION 'Accès refusé. Action réservée aux administrateurs Syni.';
+    END IF;
+
+    UPDATE public.profiles 
+    SET is_deleted = false, deleted_at = NULL 
+    WHERE id = user_id_param;
+
+    UPDATE public.trailers 
+    SET is_deleted = false, is_active = true, deleted_at = NULL 
+    WHERE owner_id = user_id_param;
+
+    RETURN json_build_object('success', true, 'action', 'restore', 'user_id', user_id_param);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.syni_delete_trailer(bigint, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.syni_delete_user(uuid, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.syni_restore_trailer(bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.syni_restore_user(uuid) TO authenticated;
+
 

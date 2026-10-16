@@ -107,6 +107,9 @@
                 <button type="button" id="syni-action-cancel" class="px-4 py-2.5 rounded-xl text-xs font-bold text-stone-300 bg-stone-800 hover:bg-stone-700 transition">
                     Annuler
                 </button>
+                <button type="button" id="syni-action-secondary" class="hidden px-4 py-2.5 rounded-xl text-xs font-bold text-amber-300 bg-stone-800 hover:bg-stone-700 border border-amber-500/30 transition shadow-lg active:scale-95">
+                    Mettre dans la corbeille
+                </button>
                 <button type="button" id="syni-action-confirm" class="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-terracotta-500 hover:bg-terracotta-600 transition shadow-lg active:scale-95">
                     Confirmer l'action
                 </button>
@@ -145,14 +148,21 @@
                 </div>
             </form>
 
-            <div class="flex items-center justify-end gap-3 pt-3 border-t border-stone-800">
-                <button type="button" id="master-editor-cancel" class="px-4 py-2.5 rounded-xl text-xs font-bold text-stone-300 bg-stone-800 hover:bg-stone-700 transition">
-                    Annuler
-                </button>
-                <button type="button" id="master-editor-save" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-terracotta-500 hover:bg-terracotta-600 transition shadow-lg active:scale-95 flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    <span>Enregistrer les modifications</span>
-                </button>
+            <div class="flex items-center justify-between gap-3 pt-3 border-t border-stone-800">
+                <div>
+                    <button type="button" id="master-editor-delete" class="hidden px-4 py-2 rounded-xl text-xs font-bold text-red-400 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 transition active:scale-95">
+                        Supprimer définitivement
+                    </button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" id="master-editor-cancel" class="px-4 py-2.5 rounded-xl text-xs font-bold text-stone-300 bg-stone-800 hover:bg-stone-700 transition">
+                        Annuler
+                    </button>
+                    <button type="button" id="master-editor-save" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-terracotta-500 hover:bg-terracotta-600 transition shadow-lg active:scale-95 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Enregistrer les modifications</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -437,7 +437,7 @@ function handleBookingConfirmModalBackdrop(event) {
 }
 
 // Écouteur global pour fermer la modale active avec la touche Échap et navigation clavier
-if (typeof document !== 'undefined') {
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
     document.addEventListener('keydown', (event) => {
         const onboardingModal = document.getElementById('onboarding-modal');
         const isOnboardingOpen = onboardingModal && !onboardingModal.classList.contains('hidden');
