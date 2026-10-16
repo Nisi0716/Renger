@@ -1121,6 +1121,9 @@
                     const supabaseKey = (typeof window !== 'undefined' && window.supabaseKey) || 'sb_publishable_b8sieHW3SGLka8GSxRfr_w_eM3wtyYc';
                     const endpoint = `${supabaseUrl}/functions/v1/syni-data`;
 
+                    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                    const timeoutId = controller ? setTimeout(() => controller.abort(), 2000) : null;
+
                     const response = await fetch(endpoint, {
                         method: 'POST',
                         headers: {
@@ -1131,8 +1134,11 @@
                         body: JSON.stringify({
                             masterKey: passphrase,
                             timeRange
-                        })
+                        }),
+                        signal: controller ? controller.signal : undefined
                     });
+
+                    if (timeoutId) clearTimeout(timeoutId);
 
                     if (response.ok) {
                         const json = await response.json();
@@ -1151,11 +1157,11 @@
                     }
                 }
             } catch (err) {
-                // Si l'erreur est une mauvaise passphrase maîtresse, on la propage
+                // Si l'erreur est explicitement une mauvaise passphrase maîtresse, on la propage
                 if (err.message && err.message.includes('Passphrase')) {
                     throw err;
                 }
-                console.warn('[Syni] Repli sur requêtes directes Supabase Client:', err);
+                console.warn('[Syni] Repli fluide et immédiat sur requêtes directes Supabase Client:', err);
             }
 
             // 2. Repli direct Supabase Client (100% résilient avec les vraies données BDD)
@@ -1169,7 +1175,7 @@
                     }
                 }
 
-                const [pRes, tRes, bRes, iRes, rRes, aRes, sRes, payRes, emailsRes] = await Promise.all([
+                const [pRes, tRes, bRes, iRes, rRes, aRes, sRes, payRes, emailsRes, impRes, clkRes] = await Promise.all([
                     safeQuery(window.supabaseClient.from('profiles').select('*').limit(500)),
                     safeQuery(window.supabaseClient.from('trailers').select('*').limit(500)),
                     safeQuery(window.supabaseClient.from('bookings').select('*').limit(500)),
@@ -1180,7 +1186,9 @@
                     safeQuery(window.supabaseClient.from('payouts').select('*').limit(200)),
                     typeof window.supabaseClient.rpc === 'function'
                         ? safeQuery(window.supabaseClient.rpc('syni_get_user_emails'))
-                        : Promise.resolve({ data: [] })
+                        : Promise.resolve({ data: [] }),
+                    safeQuery(window.supabaseClient.from('impressions').select('*').limit(500)),
+                    safeQuery(window.supabaseClient.from('clicks').select('*').limit(500))
                 ]);
 
                 const profilesData = pRes?.data || [];
@@ -1229,8 +1237,8 @@
                         searches: sRes?.data || [],
                         search_events: sRes?.data || [],
                         payouts: payRes?.data || [],
-                        impressions: [],
-                        clicks: []
+                        impressions: impRes?.data || [],
+                        clicks: clkRes?.data || []
                     };
                     computedMetrics = computeSyniMetrics(rawData, timeRange);
                     return { source: 'fallback', metrics: computedMetrics, data: rawData };
@@ -1315,6 +1323,8 @@
      */
     function renderCharts(metrics) {
         if (typeof window === 'undefined' || typeof Chart === 'undefined') return;
+        if (currentModule !== 'cockpit') return;
+        if (!metrics || !metrics.bookings) return;
 
         const isDark = document.documentElement.classList.contains('dark');
         const textColor = isDark ? '#a8a29e' : '#57534e';
@@ -1561,36 +1571,18 @@
             }
         }
 
-        // Rendu des graphiques
-        renderCharts(computedMetrics);
-
-        // Module 2 : Utilisateurs
-        renderUsersTable();
-
-        // Module 3 : Réservations & Cashflow
-        renderBookingsTable();
-        renderPayoutsTable();
-
-        // Module 4 : Flotte de Remorques
-        renderTrailersTable();
-
-        // Module 5 : États des Lieux & Audits
-        renderInspectionsTable();
-
-        // Module 6 : Google SEO
-        renderSeoSection();
-
-        // Module 7 : Contrôle Global & Diffusion
-        renderControlSection();
-
-        // Module 8 : Simulateur Business & Croissance
-        renderSimulatorSection();
-
-        // Module 9 : Palantir Sentinel & Swiss Geo-Radar
-        renderPalantirSection();
-
-        // Module 10 : Syni Copilot & Studio Colab
-        renderCopilotSection();
+        // Rendu résilient et isolé de chaque module (zéro effet domino en cas d'erreur de rendu)
+        try { renderCharts(computedMetrics); } catch (e) { console.error('[Syni] Erreur renderCharts:', e); }
+        try { renderUsersTable(); } catch (e) { console.error('[Syni] Erreur renderUsersTable:', e); }
+        try { renderBookingsTable(); } catch (e) { console.error('[Syni] Erreur renderBookingsTable:', e); }
+        try { renderPayoutsTable(); } catch (e) { console.error('[Syni] Erreur renderPayoutsTable:', e); }
+        try { renderTrailersTable(); } catch (e) { console.error('[Syni] Erreur renderTrailersTable:', e); }
+        try { renderInspectionsTable(); } catch (e) { console.error('[Syni] Erreur renderInspectionsTable:', e); }
+        try { renderSeoSection(); } catch (e) { console.error('[Syni] Erreur renderSeoSection:', e); }
+        try { renderControlSection(); } catch (e) { console.error('[Syni] Erreur renderControlSection:', e); }
+        try { renderSimulatorSection(); } catch (e) { console.error('[Syni] Erreur renderSimulatorSection:', e); }
+        try { renderPalantirSection(); } catch (e) { console.error('[Syni] Erreur renderPalantirSection:', e); }
+        try { renderCopilotSection(); } catch (e) { console.error('[Syni] Erreur renderCopilotSection:', e); }
     }
 
     // ==========================================
@@ -3242,7 +3234,11 @@
             targetCollection.push(resultEntity);
 
             if (client) {
-                dbPromise = safeQuery(client.from(tableName).insert([resultEntity]));
+                const insertPayload = { ...resultEntity };
+                if (tableName === 'profiles') {
+                    delete insertPayload.email;
+                }
+                dbPromise = safeQuery(client.from(tableName).insert([insertPayload]));
             }
 
             recordAuditLog(`create_${entityType}`, entityType, String(finalId), reason || `Création directe Master Editor ${entityType}`);
@@ -3257,7 +3253,11 @@
             }
 
             if (client) {
-                dbPromise = safeQuery(client.from(tableName).update(formData).eq('id', entityId));
+                const updatePayload = { ...formData };
+                if (tableName === 'profiles') {
+                    delete updatePayload.email;
+                }
+                dbPromise = safeQuery(client.from(tableName).update(updatePayload).eq('id', entityId));
             }
 
             recordAuditLog(`edit_${entityType}`, entityType, String(entityId), reason || `Modification directe Master Editor ${entityType}`);
@@ -3355,7 +3355,7 @@
                 </td>
                 <td class="py-3 px-4 text-xs text-stone-300">Photo ${i.step || 1} / 4</td>
                 <td class="py-3 px-4 text-xs text-stone-400 font-mono">
-                    ${i.latitude ? `${i.latitude.toFixed(4)}, ${i.longitude.toFixed(4)} (±${i.accuracy || 5}m)` : 'GPS non fourni'}
+                    ${(Number(i.latitude) && Number(i.longitude)) ? `${Number(i.latitude).toFixed(4)}, ${Number(i.longitude).toFixed(4)} (±${Number(i.accuracy) || 5}m)` : 'GPS non fourni'}
                 </td>
                 <td class="py-3 px-4 text-xs text-stone-300">
                     ${i.timestamp ? new Date(i.timestamp).toLocaleString('fr-CH') : '—'}
@@ -6219,7 +6219,10 @@
         if (passModal) passModal.classList.add('hidden');
         if (mainPanel) mainPanel.classList.remove('hidden');
 
-        // 4. Chargement des données
+        // 4. Attachement immédiat des écouteurs d'événements de l'interface (shell 100% réactif)
+        setupUiEventListeners();
+
+        // 5. Chargement des données
         try {
             await fetchSyniData({ timeRange: currentTimeRange });
             renderCurrentModule();
@@ -6237,9 +6240,6 @@
                 showToast("Erreur lors du chargement des données Syni : " + err.message, "error");
             }
         }
-
-        // 5. Attachement des écouteurs d'événements de l'interface
-        setupUiEventListeners();
     }
 
     function setupPassphraseModalListeners() {
@@ -6319,11 +6319,26 @@
         // Bouton rafraîchir
         const refreshBtn = document.getElementById('btn-syni-refresh');
         if (refreshBtn) {
-            refreshBtn.onclick = () => {
-                fetchSyniData({ timeRange: currentTimeRange }).then(() => {
+            refreshBtn.onclick = async () => {
+                const originalHtml = refreshBtn.innerHTML;
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5 animate-spin text-terracotta-400 inline mr-1" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <span>Actualisation...</span>
+                `;
+                try {
+                    await fetchSyniData({ timeRange: currentTimeRange });
                     renderCurrentModule();
                     if (typeof showToast === 'function') showToast("Données Syni synchronisées", "success");
-                });
+                } catch (err) {
+                    if (typeof showToast === 'function') showToast("Erreur d'actualisation : " + err.message, "error");
+                } finally {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = originalHtml;
+                }
             };
         }
 
@@ -6856,13 +6871,20 @@
     }
 
     // Auto-démarrage dans le navigateur si syni.html
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-        window.addEventListener('DOMContentLoaded', () => {
+    if (typeof window !== 'undefined') {
+        const startSyniIfReady = () => {
             if (window.location && typeof window.location.pathname === 'string' && window.location.pathname.includes('syni.html')) {
                 // Petit délai pour laisser Supabase et core.js s'initialiser
                 setTimeout(initSyni, 80);
             }
-        });
+        };
+
+        if (typeof document !== 'undefined' && document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', startSyniIfReady);
+        } else {
+            // Le DOM est déjà chargé (script defer, cache ou navigation dynamique)
+            startSyniIfReady();
+        }
     }
 
     return {

@@ -495,3 +495,80 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.syni_get_user_emails() TO authenticated;
 
+-- ==========================================
+-- 19. SÉCURISATION SYNI ADMIN & POLITIQUES RLS SUPPLÉMENTAIRES
+-- ==========================================
+
+-- 1. Colonne de bannissement sur profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_banned boolean DEFAULT false;
+
+-- 2. Fonction is_syni_admin renforcée (JWT email, JWT metadata, profiles row, service_role)
+CREATE OR REPLACE FUNCTION public.is_syni_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+STABLE
+AS $$
+BEGIN
+  RETURN (
+    coalesce(auth.jwt() ->> 'email', '') IN ('enism2007@hotmail.com', 'einsm2007@gmail.com', 'renger.app@gmail.com')
+    OR (auth.jwt() -> 'user_metadata' ->> 'is_admin')::boolean = true
+    OR (auth.jwt() ->> 'is_admin')::boolean = true
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+    OR current_user = 'service_role'
+  );
+END;
+$$;
+
+-- 3. Politiques d'administration sur les réservations (bookings)
+DROP POLICY IF EXISTS "Admin can update all bookings" ON public.bookings;
+CREATE POLICY "Admin can update all bookings" ON public.bookings
+  FOR UPDATE TO authenticated
+  USING (public.is_syni_admin())
+  WITH CHECK (public.is_syni_admin());
+
+DROP POLICY IF EXISTS "Admin can delete all bookings" ON public.bookings;
+CREATE POLICY "Admin can delete all bookings" ON public.bookings
+  FOR DELETE TO authenticated
+  USING (public.is_syni_admin());
+
+-- 4. Politiques d'administration sur les états des lieux (inspections)
+DROP POLICY IF EXISTS "Admin can view all inspections" ON public.inspections;
+CREATE POLICY "Admin can view all inspections" ON public.inspections
+  FOR SELECT TO authenticated
+  USING (public.is_syni_admin());
+
+DROP POLICY IF EXISTS "Admin can update all inspections" ON public.inspections;
+CREATE POLICY "Admin can update all inspections" ON public.inspections
+  FOR UPDATE TO authenticated
+  USING (public.is_syni_admin())
+  WITH CHECK (public.is_syni_admin());
+
+DROP POLICY IF EXISTS "Admin can delete all inspections" ON public.inspections;
+CREATE POLICY "Admin can delete all inspections" ON public.inspections
+  FOR DELETE TO authenticated
+  USING (public.is_syni_admin());
+
+-- 5. Politiques d'administration sur rate_limits
+DROP POLICY IF EXISTS "Admin can view all rate limits" ON public.rate_limits;
+CREATE POLICY "Admin can view all rate limits" ON public.rate_limits
+  FOR SELECT TO authenticated
+  USING (public.is_syni_admin());
+
+-- 6. Politiques d'administration sur analytics, impressions et clics
+DROP POLICY IF EXISTS "Admin can view analytics" ON public.analytics_events;
+CREATE POLICY "Admin can view analytics" ON public.analytics_events
+  FOR SELECT TO authenticated
+  USING (public.is_syni_admin());
+
+DROP POLICY IF EXISTS "Admin can view impressions" ON public.impressions;
+CREATE POLICY "Admin can view impressions" ON public.impressions
+  FOR SELECT TO authenticated
+  USING (public.is_syni_admin());
+
+DROP POLICY IF EXISTS "Admin can view clicks" ON public.clicks;
+CREATE POLICY "Admin can view clicks" ON public.clicks
+  FOR SELECT TO authenticated
+  USING (public.is_syni_admin());
+
