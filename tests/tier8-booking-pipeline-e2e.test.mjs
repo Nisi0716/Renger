@@ -279,7 +279,7 @@ function createStripeCheckoutSimulator(dbState = {}) {
             };
         }
 
-        const { trailerId, startDate, endDate, cautionAmount } = body || {};
+        const { trailerId, startDate, endDate, cautionAmount, durationHours } = body || {};
 
         if (!trailerId || !startDate || !endDate) {
             return {
@@ -327,6 +327,28 @@ function createStripeCheckoutSimulator(dbState = {}) {
             };
         }
 
+        // Calculs financiers (Normalisation UTC minuit contre les décalages DST)
+        const startParts = String(startDate).split('T')[0].split('-').map(Number);
+        const endParts = String(endDate).split('T')[0].split('-').map(Number);
+        const utcStart = Date.UTC(startParts[0], startParts[1] - 1, startParts[2]);
+        const utcEnd = Date.UTC(endParts[0], endParts[1] - 1, endParts[2]);
+        const diffTime = Math.abs(utcEnd - utcStart);
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        const rawTiers = Array.isArray(trailer.pricing_tiers) ? trailer.pricing_tiers : [];
+        let validatedDurationHours = null;
+        if (durationHours !== undefined && durationHours !== null && durationHours !== '') {
+            const parsedHours = parseInt(String(durationHours), 10);
+            const matchingHourTier = rawTiers.find(t => (t.unit === 'hours' || t.unit === 'hour') && Number(t.duration) === parsedHours);
+            if (!Number.isFinite(parsedHours) || parsedHours <= 0 || diffDays !== 1 || !matchingHourTier) {
+                return {
+                    status: 400,
+                    body: { error: "Forfait horaire invalide ou indisponible pour cette remorque." }
+                };
+            }
+            validatedDurationHours = parsedHours;
+        }
+
         // Rate limiting (max 5 réservations en 10 minutes)
         const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
         const recentBookingsCount = bookings.filter(b => 
@@ -362,14 +384,30 @@ function createStripeCheckoutSimulator(dbState = {}) {
             };
         }
 
-        // Calculs financiers (Normalisation UTC minuit contre les décalages DST)
-        const startParts = String(startDate).split('T')[0].split('-').map(Number);
-        const endParts = String(endDate).split('T')[0].split('-').map(Number);
-        const utcStart = Date.UTC(startParts[0], startParts[1] - 1, startParts[2]);
-        const utcEnd = Date.UTC(endParts[0], endParts[1] - 1, endParts[2]);
-        const diffTime = Math.abs(utcEnd - utcStart);
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        const totalRentalPrice = diffDays * Number(trailer.price);
+        let totalRentalPrice = diffDays * Number(trailer.price);
+        if (validatedDurationHours) {
+            const ht = rawTiers.find(t => (t.unit === 'hours' || t.unit === 'hour') && Number(t.duration) === validatedDurationHours);
+            if (ht) totalRentalPrice = Number(ht.price);
+        } else if (rawTiers.some(t => (t.unit === 'days' || t.unit === 'day') && Number(t.duration) <= diffDays)) {
+            const dayTiers = [{ duration: 1, price: Number(trailer.price) }];
+            for (const t of rawTiers) {
+                if ((t.unit === 'days' || t.unit === 'day') && Number(t.duration) >= 1 && Number(t.duration) <= diffDays) {
+                    dayTiers.push({ duration: Number(t.duration), price: Number(t.price) });
+                }
+            }
+            const dp = new Array(diffDays + 1).fill(Infinity);
+            dp[0] = 0;
+            for (let d = 1; d <= diffDays; d++) {
+                for (const dt of dayTiers) {
+                    if (dt.duration <= d) {
+                        const cand = Math.round((dp[d - dt.duration] + dt.price) * 100) / 100;
+                        if (cand < dp[d]) dp[d] = cand;
+                    }
+                }
+            }
+            totalRentalPrice = dp[diffDays];
+        }
+
         const rawServiceFee = totalRentalPrice * 0.05;
         const serviceFee = Math.max(4.90, Math.round(rawServiceFee * 20) / 20);
         const totalPaidPrice = parseFloat((totalRentalPrice + serviceFee).toFixed(2));
@@ -388,10 +426,16 @@ function createStripeCheckoutSimulator(dbState = {}) {
             start_date: startDate,
             end_date: endDate,
             total_price: totalPaidPrice,
+            rental_price: totalRentalPrice,
+            ...(validatedDurationHours ? { duration_hours: validatedDurationHours } : {}),
             status: 'en_attente',
             created_at: new Date().toISOString()
         };
         bookings.push(newBooking);
+
+        const durationLabel = validatedDurationHours
+            ? `${validatedDurationHours}h`
+            : `${diffDays} jour${diffDays > 1 ? 's' : ''}`;
 
         // Session Stripe mockée avec les contrats stricts
         stripeSessionCreated = {
@@ -403,12 +447,12 @@ function createStripeCheckoutSimulator(dbState = {}) {
                     price_data: {
                         currency: 'chf',
                         product_data: {
-                            name: `Location : ${trailer.title} (${diffDays} jour${diffDays > 1 ? 's' : ''})`,
+                            name: `Location : ${trailer.title} (${durationLabel})`,
                             description: `Période du ${startDate} au ${endDate}`
                         },
                         unit_amount: Math.round(totalRentalPrice * 100)
                     },
-                    name: `Location : ${trailer.title} (${diffDays} jour${diffDays > 1 ? 's' : ''})`,
+                    name: `Location : ${trailer.title} (${durationLabel})`,
                     unit_amount: Math.round(totalRentalPrice * 100),
                     currency: 'chf',
                     quantity: 1
@@ -434,7 +478,8 @@ function createStripeCheckoutSimulator(dbState = {}) {
                     booking_id: newBooking.id,
                     rental_price: totalRentalPrice.toFixed(2),
                     service_fee: serviceFee.toFixed(2),
-                    caution_amount: caution.toString()
+                    caution_amount: caution.toString(),
+                    ...(validatedDurationHours ? { duration_hours: String(validatedDurationHours) } : {})
                 }
             },
             custom_text: {
@@ -1568,4 +1613,415 @@ describe('Tier 8: Banc de Test E2E Tunnel de Réservation & Stripe Checkout', ()
             assert.strictEqual(ctx.isProcessingBooking || ctx.window.isProcessingBooking, false, 'Verrou relâché après redirection');
         });
     });
+
+    // =========================================================================
+    // R5. Tarifs par Durée & Dégressifs (Heures, Jours, Programmation Dynamique & Zero-Trust)
+    // =========================================================================
+    describe('R5. Tarifs par Durée & Dégressifs (Heures, Jours, Programmation Dynamique & Zero-Trust)', () => {
+
+        it('R5-1: Sélection d\'un forfait horaire (12h = 20 CHF) sur 1 jour met à jour le devis, la modale et transmet durationHours à stripe-checkout', async () => {
+            const tieredTrailer = {
+                id: 't-tiered-1',
+                title: 'Remorque Utilitaire Genève',
+                price: 30,
+                pricing_tiers: [
+                    { unit: 'hours', duration: 12, price: 20 },
+                    { unit: 'days', duration: 2, price: 45 },
+                    { unit: 'days', duration: 7, price: 150 }
+                ],
+                payload: 500,
+                category: 'utilitaire',
+                owner_id: 'owner-ge'
+            };
+
+            let capturedPayload = null;
+            const { ctx, getEl, getFlatpickrConfig } = createBookingSandbox({
+                currentTrailer: tieredTrailer,
+                edgeFunctionMock: async (fnName, payload) => {
+                    capturedPayload = payload;
+                    return { url: 'https://checkout.stripe.com/c/pay/cs_test_12h', bookingId: 'bk-12h' };
+                }
+            });
+
+            await ctx.openTrailerDetail(tieredTrailer);
+
+            // Les paliers sont affichés sous le prix principal de la fiche détail
+            assert.ok(!getEl('detail-pricing-tiers').classList.contains('hidden'), 'La grille detail-pricing-tiers doit être visible');
+            assert.strictEqual(getEl('detail-pricing-tiers').children.length, 3);
+            assert.strictEqual(getEl('detail-pricing-tiers').children[0].textContent, '12h : 20 CHF');
+            assert.strictEqual(getEl('detail-pricing-tiers').children[1].textContent, '2 jours : 45 CHF');
+
+            // Sélection d'1 seule journée (2026-11-20 au 2026-11-20)
+            const fp = getFlatpickrConfig();
+            fp.onChange([new Date(2026, 10, 20), new Date(2026, 10, 20)]);
+
+            // Par défaut sur 1 jour : tarif journée complète (30 CHF), mais le sélecteur horaire est visible
+            assert.ok(!getEl('hourly-tier-selector').classList.contains('hidden'), 'Le sélecteur horaire doit être affiché sur 1 jour');
+            assert.strictEqual(getEl('total-rental-price').innerText, '30 CHF');
+
+            // Le locataire choisit le forfait 12h (20 CHF)
+            ctx.selectBookingHourlyTier(12);
+            assert.strictEqual(getEl('total-days').innerText, '1');
+            assert.strictEqual(getEl('total-rental-price').innerText, '20 CHF');
+            assert.strictEqual(getEl('booking-pricing-detail').textContent, 'Forfait 12h × 20 CHF');
+            assert.ok(!getEl('booking-pricing-detail').classList.contains('hidden'));
+            // Frais Renger sur 20 CHF : 5% = 1.00 -> plancher 4.90 CHF -> total 24.90 CHF
+            assert.strictEqual(getEl('service-fee-price').innerText, '4.90 CHF');
+            assert.strictEqual(getEl('total-price').innerText, '24.90 CHF');
+
+            // Ouverture de la modale de confirmation
+            ctx.submitBooking();
+            assert.strictEqual(getEl('confirm-days').textContent, '12h (1 jour)');
+            assert.strictEqual(getEl('confirm-rental-calc').textContent, 'Forfait 12h × 20 CHF');
+            assert.strictEqual(getEl('confirm-rental-price').textContent, '20 CHF');
+            assert.strictEqual(getEl('confirm-price').textContent, '24.90 CHF');
+
+            // Lancement de processBooking -> doit inclure durationHours: 12
+            await ctx.processBooking();
+            assert.ok(capturedPayload, 'Le payload stripe-checkout doit avoir été envoyé');
+            assert.strictEqual(capturedPayload.durationHours, 12);
+            assert.strictEqual(capturedPayload.trailerId, 't-tiered-1');
+        });
+
+        it('R5-2: Calcul automatique par programmation dynamique des tarifs dégressifs multi-jours (2j=45, 3j=75, 4j=90, 7j=150, 8j=180, 9j=195)', async () => {
+            const tieredTrailer = {
+                id: 't-tiered-dp',
+                title: 'Remorque DP',
+                price: 30,
+                pricing_tiers: [
+                    { unit: 'hours', duration: 12, price: 20 },
+                    { unit: 'days', duration: 2, price: 45 },
+                    { unit: 'days', duration: 7, price: 150 }
+                ],
+                payload: 500,
+                category: 'utilitaire',
+                owner_id: 'owner-dp'
+            };
+
+            const { ctx, getEl, getFlatpickrConfig } = createBookingSandbox({
+                currentTrailer: tieredTrailer
+            });
+
+            await ctx.openTrailerDetail(tieredTrailer);
+            const fp = getFlatpickrConfig();
+
+            // Vérification mathématique directe sur 1..9 jours
+            const expectedByDays = [
+                { days: 1, price: 30, custom: false },
+                { days: 2, price: 45, custom: true, labelIncludes: 'Forfait 2 jours (45 CHF)' },
+                { days: 3, price: 75, custom: true, labelIncludes: 'Forfait 2 jours (45 CHF) + 1 jour × 30 CHF' },
+                { days: 4, price: 90, custom: true, labelIncludes: '2 × forfait 2 jours (45 CHF)' },
+                { days: 5, price: 120, custom: true }, // 2*45 + 30 = 120
+                { days: 6, price: 135, custom: true }, // 3*45 = 135
+                { days: 7, price: 150, custom: true, labelIncludes: 'Forfait 7 jours (150 CHF)' },
+                { days: 8, price: 180, custom: true, labelIncludes: 'Forfait 7 jours (150 CHF) + 1 jour × 30 CHF' },
+                { days: 9, price: 195, custom: true, labelIncludes: 'Forfait 7 jours (150 CHF) + Forfait 2 jours (45 CHF)' }
+            ];
+
+            for (const c of expectedByDays) {
+                const res = ctx.calculateTieredRentalPrice(tieredTrailer, c.days, null);
+                assert.strictEqual(res.rentalPrice, c.price, `Pour ${c.days} jour(s), le prix attendu est ${c.price} CHF (obtenu: ${res.rentalPrice})`);
+                assert.strictEqual(res.hasCustomTierApplied, c.custom);
+                if (c.labelIncludes) {
+                    assert.strictEqual(res.label, c.labelIncludes);
+                }
+            }
+
+            // Simulation UI sur 3 jours (10 au 12 nov 2026) -> 45 + 30 = 75 CHF, sélecteur horaire masqué
+            fp.onChange([new Date(2026, 10, 10), new Date(2026, 10, 12)]);
+            assert.ok(getEl('hourly-tier-selector').classList.contains('hidden'), 'Le sélecteur horaire doit être masqué sur plusieurs jours');
+            assert.strictEqual(getEl('total-days').innerText, '3');
+            assert.strictEqual(getEl('total-rental-price').innerText, '75 CHF');
+            assert.strictEqual(getEl('booking-pricing-detail').textContent, 'Forfait 2 jours (45 CHF) + 1 jour × 30 CHF');
+            assert.strictEqual(getEl('service-fee-price').innerText, '4.90 CHF'); // 75 * 0.05 = 3.75 -> min 4.90
+            assert.strictEqual(getEl('total-price').innerText, '79.90 CHF');
+        });
+
+        it('R5-3: Zero-Trust stripe-checkout : recalcule les paliers horaires et multi-jours côté serveur et rejette (400) un durationHours invalide', async () => {
+            const tieredTrailer = {
+                id: 'trailer-zt-tiers',
+                title: 'Van Chevaux Dégressif',
+                price: 30,
+                pricing_tiers: [
+                    { unit: 'hours', duration: 12, price: 20 },
+                    { unit: 'days', duration: 2, price: 45 }
+                ],
+                category: 'utilitaire',
+                payload: 500,
+                owner_id: 'owner-zt'
+            };
+            const renter = { id: 'renter-zt-1', email: 'renter-zt@renger.ch' };
+            const sim = createStripeCheckoutSimulator({
+                trailers: new Map([[tieredTrailer.id, tieredTrailer]]),
+                users: new Map([['valid-token-renter-1', renter]])
+            });
+
+            // Cas 1 : Forfait 12h valide sur 1 jour (2026-12-05 au 2026-12-05) avec tentative de falsification client (price: 1)
+            const res12h = await sim.handleRequest({
+                authHeader: 'Bearer valid-token-renter-1',
+                body: {
+                    trailerId: 'trailer-zt-tiers',
+                    startDate: '2026-12-05',
+                    endDate: '2026-12-05',
+                    durationHours: 12,
+                    cautionAmount: 1,
+                    price: 1
+                }
+            });
+            assert.strictEqual(res12h.status, 200);
+            const bk12h = sim.getBookings().find(b => b.id === res12h.body.bookingId);
+            assert.strictEqual(bk12h.rental_price, 20);
+            assert.strictEqual(bk12h.duration_hours, 12);
+            assert.strictEqual(bk12h.total_price, 24.90); // 20 + 4.90
+            assert.strictEqual(sim.getLastStripeSession().line_items[0].unit_amount, 2000);
+
+            // Cas 2 : Location de 3 jours (2026-12-10 au 2026-12-12) -> 45 + 30 = 75 CHF + 4.90 CHF = 79.90 CHF
+            const res3d = await sim.handleRequest({
+                authHeader: 'Bearer valid-token-renter-1',
+                body: {
+                    trailerId: 'trailer-zt-tiers',
+                    startDate: '2026-12-10',
+                    endDate: '2026-12-12',
+                    cautionAmount: 200
+                }
+            });
+            assert.strictEqual(res3d.status, 200);
+            const bk3d = sim.getBookings().find(b => b.id === res3d.body.bookingId);
+            assert.strictEqual(bk3d.rental_price, 75);
+            assert.strictEqual(bk3d.total_price, 79.90);
+            assert.strictEqual(sim.getLastStripeSession().line_items[0].unit_amount, 7500);
+
+            // Cas 3 : Rejet 400 si durationHours est envoyé sur une réservation multi-jours
+            const resInvalidMulti = await sim.handleRequest({
+                authHeader: 'Bearer valid-token-renter-1',
+                body: {
+                    trailerId: 'trailer-zt-tiers',
+                    startDate: '2026-12-15',
+                    endDate: '2026-12-16',
+                    durationHours: 12,
+                    cautionAmount: 200
+                }
+            });
+            assert.strictEqual(resInvalidMulti.status, 400);
+
+            // Cas 4 : Rejet 400 si durationHours ne correspond à aucun palier configuré sur la remorque (ex: 6h)
+            const resInvalidHour = await sim.handleRequest({
+                authHeader: 'Bearer valid-token-renter-1',
+                body: {
+                    trailerId: 'trailer-zt-tiers',
+                    startDate: '2026-12-18',
+                    endDate: '2026-12-18',
+                    durationHours: 6,
+                    cautionAmount: 200
+                }
+            });
+            assert.strictEqual(resInvalidHour.status, 400);
+        });
+
+        it('R5-4: Contrat PDF (generateRentalContractPdf) et solde propriétaire (calculateOwnerBalance) respectent les tarifs dégressifs et horaires', async () => {
+            const contractsCode = fs.readFileSync(path.join(jsDir, 'contracts.js'), 'utf8');
+            const trailersCode = fs.readFileSync(path.join(jsDir, 'trailers.js'), 'utf8');
+
+            // 1. Vérification calculateOwnerBalance dans trailers.js
+            const trailersSandbox = {
+                window: {},
+                document: { addEventListener: () => {}, getElementById: () => null, querySelectorAll: () => [] },
+                console,
+                Date,
+                Math,
+                Number,
+                String,
+                Array,
+                Map,
+                Set,
+                Object,
+                parseInt,
+                parseFloat,
+                isNaN
+            };
+            vm.createContext(trailersSandbox);
+            vm.runInContext(trailersCode, trailersSandbox);
+
+            const sampleTrailer = {
+                id: 'tr-bal-1',
+                price: 30,
+                pricing_tiers: [
+                    { unit: 'hours', duration: 12, price: 20 },
+                    { unit: 'days', duration: 2, price: 45 }
+                ]
+            };
+
+            const bookings = [
+                // Location 1 : 3 jours avec palier 2j=45 + 1j=30 => 75 CHF brut => 60 CHF net (80%)
+                {
+                    id: 'b1',
+                    status: 'paye',
+                    start_date: '2026-05-01',
+                    end_date: '2026-05-03',
+                    total_price: 79.90,
+                    trailers: sampleTrailer
+                },
+                // Location 2 : forfait 12h = 20 CHF brut => 16 CHF net (80%)
+                {
+                    id: 'b2',
+                    status: 'paye',
+                    start_date: '2026-05-10',
+                    end_date: '2026-05-10',
+                    duration_hours: 12,
+                    rental_price: 20,
+                    total_price: 24.90,
+                    trailers: sampleTrailer
+                }
+            ];
+
+            const balStandard = trailersSandbox.window.calculateOwnerBalance(bookings, [], false, new Date('2026-06-01'));
+            assert.strictEqual(balStandard.totalNetEarnings, 76.00); // (75 + 20) * 0.80 = 76.00 CHF
+
+            const balPro = trailersSandbox.window.calculateOwnerBalance(bookings, [], true, new Date('2026-06-01'));
+            assert.strictEqual(balPro.totalNetEarnings, 95.00); // (75 + 20) * 1.00 = 95.00 CHF
+            assert.strictEqual(balPro.canWithdraw, true);
+
+            // 2. Vérification contrat PDF via RengerContracts
+            const contractsSandbox = { window: {}, self: {}, document: {}, console, Date, Math, Number, String, Array, Map, Object, parseInt, parseFloat, isNaN };
+            contractsSandbox.self = contractsSandbox.window;
+            vm.createContext(contractsSandbox);
+            vm.runInContext(contractsCode, contractsSandbox);
+            const RengerContracts = contractsSandbox.RengerContracts || contractsSandbox.window.RengerContracts;
+            assert.ok(RengerContracts && typeof RengerContracts.generateRentalContractPdf === 'function');
+
+            const pdfDoc = RengerContracts.generateRentalContractPdf(bookings[0]);
+            const allText = pdfDoc.records
+                .filter(op => op.op === 'text')
+                .map(op => String(op.text))
+                .join(' | ');
+            assert.ok(allText.includes('75.00 CHF'), 'Le PDF doit afficher le sous-total dégressif de 75.00 CHF');
+            assert.ok(allText.includes('Forfait 2 jours (45 CHF)'), 'Le PDF doit mentionner la formule dégressive appliquée');
+        });
+
+        it('R5-5: Normalisation des paliers propriétaire (normalizePricingTiers) et badge catalogue (getPricingTiersBadgeText)', () => {
+            const { ctx } = createBookingSandbox();
+
+            const normalized = JSON.parse(JSON.stringify(ctx.normalizePricingTiers([
+                { unit: 'days', duration: '7', price: '150' },
+                { unit: 'hours', duration: '12', price: '18' },
+                { unit: 'days', duration: '2', price: '45' },
+                { unit: 'hours', duration: '12', price: '25' }, // doublon 12h plus cher après -> garde le moins cher (18)
+                { unit: 'days', duration: '-1', price: '10' },  // invalide
+                { unit: 'days', duration: '3', price: '0' },    // invalide
+                { unit: 'hours', duration: '96', price: '40' }  // > 72h invalide
+            ])));
+
+            assert.strictEqual(normalized.length, 3);
+            assert.deepStrictEqual(normalized[0], { unit: 'hours', duration: 12, price: 18 });
+            assert.deepStrictEqual(normalized[1], { unit: 'days', duration: 2, price: 45 });
+            assert.deepStrictEqual(normalized[2], { unit: 'days', duration: 7, price: 150 });
+
+            assert.strictEqual(
+                ctx.getPricingTiersBadgeText({ price: 30, pricing_tiers: normalized }),
+                'Dès 18 CHF • Tarifs dégressifs'
+            );
+            assert.strictEqual(
+                ctx.getPricingTiersBadgeText({ price: 30, pricing_tiers: [{ unit: 'days', duration: 2, price: 45 }] }),
+                'Tarifs dégressifs'
+            );
+            assert.strictEqual(
+                ctx.getPricingTiersBadgeText({ price: 30, pricing_tiers: [] }),
+                ''
+            );
+        });
+
+        it('R5-6: Bascule calendrier 1 jour (12h) -> 3 jours -> 1 jour réinitialise selectedDurationHours', async () => {
+            const { ctx, getEl, getFlatpickrConfig } = createBookingSandbox();
+            const trailer = {
+                id: 'tr-switch-1',
+                owner_id: 'owner-switch',
+                title: 'Remorque Switch',
+                price: 30,
+                caution: 200,
+                category: 'utilitaire',
+                pricing_tiers: [
+                    { unit: 'hours', duration: 12, price: 20 },
+                    { unit: 'days', duration: 2, price: 45 }
+                ]
+            };
+
+            await ctx.openTrailerDetail(trailer);
+            const fpCfg = getFlatpickrConfig();
+            assert.ok(fpCfg && typeof fpCfg.onChange === 'function');
+
+            // 1. Sélection de 1 jour + formule 12h
+            const d1 = new Date(2026, 6, 10, 12, 0, 0);
+            fpCfg.onChange([d1, d1]);
+            ctx.selectBookingHourlyTier(12);
+            assert.strictEqual(ctx.window.selectedDurationHours, 12);
+            assert.strictEqual(getEl('total-rental-price').innerText, '20 CHF');
+
+            // 2. Passage à 3 jours -> selectedDurationHours remis à null et sélecteur horaire masqué
+            const d3 = new Date(2026, 6, 12, 12, 0, 0);
+            fpCfg.onChange([d1, d3]);
+            assert.strictEqual(ctx.window.selectedDurationHours, null);
+            assert.ok(getEl('hourly-tier-selector').classList.contains('hidden'));
+            assert.strictEqual(getEl('total-rental-price').innerText, '75 CHF');
+
+            // 3. Retour à 1 jour -> tarif journée complète (30 CHF) par défaut
+            fpCfg.onChange([d1, d1]);
+            assert.strictEqual(ctx.window.selectedDurationHours, null);
+            assert.ok(!getEl('hourly-tier-selector').classList.contains('hidden'));
+            assert.strictEqual(getEl('total-rental-price').innerText, '30 CHF');
+        });
+
+        it('R5-7: Cohérence des revenus dégressifs / horaires dans planning.js, stats.js, stripe-payout et email.ts', async () => {
+            const planningMod = await import(path.join(jsDir, 'planning.js'));
+            const RengerPlanning = planningMod.default || planningMod;
+            const statsMod = await import(path.join(jsDir, 'stats.js'));
+            const RengerStats = statsMod.default || statsMod;
+
+            const tieredBooking = {
+                start_date: '2026-06-01',
+                end_date: '2026-06-02', // 2 jours
+                total_price: 49.90,
+                trailers: {
+                    price: 30,
+                    pricing_tiers: [{ unit: 'days', duration: 2, price: 45 }]
+                }
+            };
+
+            const stdEarn = RengerPlanning.calculateBookingEarnings(tieredBooking, false);
+            assert.strictEqual(stdEarn.baseRental, 45);
+            assert.strictEqual(stdEarn.netEarnings, 36);
+
+            const proEarn = RengerPlanning.calculateBookingEarnings(tieredBooking, true);
+            assert.strictEqual(proEarn.baseRental, 45);
+            assert.strictEqual(proEarn.netEarnings, 45);
+
+            const dailyEff = RengerStats.getBookingDailyPrice(tieredBooking, '2026-06-01', '2026-06-02');
+            assert.strictEqual(dailyEff, 22.5); // 45 CHF / 2 jours
+
+            const hourlyBooking = {
+                start_date: '2026-06-05',
+                end_date: '2026-06-05',
+                duration_hours: 12,
+                total_price: 24.90,
+                trailers: {
+                    price: 30,
+                    pricing_tiers: [{ unit: 'hours', duration: 12, price: 20 }]
+                }
+            };
+            const hourlyEarn = RengerPlanning.calculateBookingEarnings(hourlyBooking, false);
+            assert.strictEqual(hourlyEarn.baseRental, 20);
+            assert.strictEqual(hourlyEarn.netEarnings, 16);
+            assert.strictEqual(RengerStats.getBookingDailyPrice(hourlyBooking, '2026-06-05', '2026-06-05'), 20);
+
+            const payoutSrc = fs.readFileSync(path.join(projectRoot, 'supabase/functions/stripe-payout/index.ts'), 'utf8');
+            assert.ok(payoutSrc.includes('calculateTieredRentalPrice(rec.trailers, days, rec.duration_hours)'));
+
+            const emailSrc = fs.readFileSync(path.join(projectRoot, 'supabase/functions/stripe-webhook/email.ts'), 'utf8');
+            assert.ok(emailSrc.includes('booking.rental_price'));
+            assert.ok(emailSrc.includes('pricing_tiers'));
+        });
+    });
 });
+
+
+
+

@@ -17,6 +17,141 @@ function formatSwissDate(dateStr: string): string {
   }
 }
 
+interface PricingTier {
+  unit: 'hours' | 'days'
+  duration: number
+  price: number
+}
+
+function normalizePricingTiers(rawTiers: unknown): PricingTier[] {
+  let parsed: unknown = rawTiers
+  if (typeof parsed === 'string') {
+    const trimmed = parsed.trim()
+    if (!trimmed) return []
+    try {
+      parsed = JSON.parse(trimmed)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(parsed)) return []
+
+  const dedupMap = new Map<string, PricingTier>()
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Record<string, unknown>
+    const rawUnit = String(rec.unit || '').toLowerCase().trim()
+    let unit: 'hours' | 'days' | null = null
+    if (['hour', 'hours', 'h', 'heure', 'heures'].includes(rawUnit)) {
+      unit = 'hours'
+    } else if (['day', 'days', 'j', 'jour', 'jours', 'd'].includes(rawUnit)) {
+      unit = 'days'
+    }
+    if (!unit) continue
+
+    const duration = parseInt(String(rec.duration ?? rec.value ?? rec.count ?? ''), 10)
+    const price = Math.round(Number(rec.price) * 100) / 100
+    if (!Number.isFinite(duration) || duration <= 0 || duration > 365) continue
+    if (unit === 'hours' && duration > 72) continue
+    if (!Number.isFinite(price) || price <= 0 || price > 50000) continue
+
+    const key = `${unit}:${duration}`
+    const existing = dedupMap.get(key)
+    if (!existing || price < existing.price) {
+      dedupMap.set(key, { unit, duration, price })
+    }
+  }
+
+  const result = Array.from(dedupMap.values())
+  result.sort((a, b) => {
+    if (a.unit !== b.unit) return a.unit === 'hours' ? -1 : 1
+    return a.duration - b.duration
+  })
+  return result
+}
+
+function calculateTieredRentalPrice(
+  trailer: { price?: number | string; pricing_tiers?: unknown },
+  diffDays: number,
+  durationHours?: number | null
+) {
+  const baseDailyPrice = Math.max(0, Number(trailer?.price) || 0)
+  const tiers = normalizePricingTiers(trailer?.pricing_tiers)
+  const safeDays = Math.max(1, Math.trunc(diffDays) || 1)
+  const requestedHours = durationHours !== null && durationHours !== undefined
+    ? parseInt(String(durationHours), 10)
+    : null
+
+  if (safeDays === 1 && requestedHours && requestedHours > 0) {
+    const hourTier = tiers.find(t => t.unit === 'hours' && t.duration === requestedHours)
+    if (hourTier) {
+      const p = Math.round(hourTier.price * 100) / 100
+      return {
+        rentalPrice: p,
+        mode: 'hours' as const,
+        durationHours: hourTier.duration,
+        durationDays: 1,
+        hasCustomTierApplied: true,
+        label: `Forfait ${hourTier.duration}h × ${hourTier.price} CHF`,
+      }
+    }
+  }
+
+  const dayTiersMap = new Map<number, number>()
+  dayTiersMap.set(1, baseDailyPrice)
+  for (const t of tiers) {
+    if (t.unit === 'days' && t.duration >= 1 && t.duration <= safeDays) {
+      const existing = dayTiersMap.get(t.duration)
+      if (existing === undefined || t.price < existing) {
+        dayTiersMap.set(t.duration, t.price)
+      }
+    }
+  }
+
+  const hasAnyMultiDayOrCustomDayTier = tiers.some(
+    t => t.unit === 'days' && t.duration <= safeDays && (t.duration > 1 || t.price !== baseDailyPrice)
+  )
+  if (!hasAnyMultiDayOrCustomDayTier) {
+    const linearTotal = Math.round(safeDays * baseDailyPrice * 100) / 100
+    return {
+      rentalPrice: linearTotal,
+      mode: 'days' as const,
+      durationHours: null,
+      durationDays: safeDays,
+      hasCustomTierApplied: false,
+      label: `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`,
+    }
+  }
+
+  const availableDayTiers = Array.from(dayTiersMap.entries())
+    .map(([duration, price]) => ({ duration, price }))
+    .sort((a, b) => b.duration - a.duration)
+
+  const dp = new Array<number>(safeDays + 1).fill(Infinity)
+  dp[0] = 0
+
+  for (let d = 1; d <= safeDays; d++) {
+    for (const tier of availableDayTiers) {
+      if (tier.duration <= d) {
+        const candidate = Math.round((dp[d - tier.duration] + tier.price) * 100) / 100
+        if (candidate < dp[d]) {
+          dp[d] = candidate
+        }
+      }
+    }
+  }
+
+  const bestPrice = Math.round(dp[safeDays] * 100) / 100
+  return {
+    rentalPrice: bestPrice,
+    mode: 'days' as const,
+    durationHours: null,
+    durationDays: safeDays,
+    hasCustomTierApplied: true,
+    label: `${safeDays} jour${safeDays > 1 ? 's' : ''}`,
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -57,7 +192,7 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}))
-    const { trailerId, startDate, endDate, cautionAmount } = body
+    const { trailerId, startDate, endDate, cautionAmount, durationHours } = body
 
     if (!trailerId || !startDate || !endDate) {
       return new Response(JSON.stringify({ error: "Paramètres de réservation manquants." }), {
@@ -66,7 +201,7 @@ serve(async (req) => {
       })
     }
 
-    // 2. Récupération de l'annonce remorque
+    // 2. Récupération de l'annonce remorque (Source de vérité Zero-Trust)
     const { data: trailer, error: trailerError } = await supabaseAdmin
       .from('trailers')
       .select('*')
@@ -116,6 +251,21 @@ serve(async (req) => {
     const utcEnd = Date.UTC(endParts[0], endParts[1] - 1, endParts[2])
     const diffTime = Math.abs(utcEnd - utcStart)
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1
+
+    // Validation stricte du forfait horaire si demandé par le client (Zero-Trust)
+    let validatedDurationHours: number | null = null
+    if (durationHours !== undefined && durationHours !== null && durationHours !== '') {
+      const parsedHours = parseInt(String(durationHours), 10)
+      const normalizedTiers = normalizePricingTiers(trailer.pricing_tiers)
+      const matchingHourTier = normalizedTiers.find(t => t.unit === 'hours' && t.duration === parsedHours)
+      if (!Number.isFinite(parsedHours) || parsedHours <= 0 || diffDays !== 1 || !matchingHourTier) {
+        return new Response(JSON.stringify({ error: "Forfait horaire invalide ou indisponible pour cette remorque." }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      validatedDurationHours = parsedHours
+    }
     
     // Rate Limiting (VULN-11) : max 5 réservations récentes dans les 10 dernières minutes
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -159,8 +309,9 @@ serve(async (req) => {
       });
     }
     
-    // Prix de base de la location
-    const totalRentalPrice = diffDays * Number(trailer.price)
+    // Calcul du prix de la location (avec paliers dégressifs ou horaires depuis la BDD)
+    const pricingCalc = calculateTieredRentalPrice(trailer, diffDays, validatedDurationHours)
+    const totalRentalPrice = pricingCalc.rentalPrice
 
     // Frais de traitement Renger acheteur : 5% avec minimum garanti de 4.90 CHF (arrondi suisse aux 5 centimes)
     const rawServiceFee = totalRentalPrice * 0.05
@@ -175,20 +326,39 @@ serve(async (req) => {
     const customCaution = Number(trailer.deposit_amount) > 0 ? Number(trailer.deposit_amount) : (Number(trailer.caution) > 0 ? Number(trailer.caution) : (Number(trailer.deposit) > 0 ? Number(trailer.deposit) : 0))
     const caution = customCaution > 0 ? customCaution : (isHeavy ? 400 : (isMedium ? 300 : 200))
 
-    // 4. Création de la réservation en statut 'en_attente'
-    const { data: booking, error: bookingError } = await supabaseAdmin
+    // 4. Création de la réservation en statut 'en_attente' (avec repli gracieux si colonnes rental_price/duration_hours absentes)
+    const baseBookingInsert: Record<string, unknown> = {
+      trailer_id: trailer.id,
+      renter_id: user.id,
+      owner_id: trailer.owner_id,
+      start_date: startDate,
+      end_date: endDate,
+      total_price: totalPaidPrice,
+      rental_price: totalRentalPrice,
+      ...(validatedDurationHours ? { duration_hours: validatedDurationHours } : {}),
+      status: 'en_attente'
+    }
+
+    let { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
-      .insert([{
-        trailer_id: trailer.id,
-        renter_id: user.id,
-        owner_id: trailer.owner_id,
-        start_date: startDate,
-        end_date: endDate,
-        total_price: totalPaidPrice,
-        status: 'en_attente'
-      }])
+      .insert([baseBookingInsert])
       .select()
       .single()
+
+    if (bookingError && bookingError.message) {
+      const errMsg = bookingError.message.toLowerCase()
+      if (errMsg.includes('rental_price') || errMsg.includes('duration_hours')) {
+        delete baseBookingInsert.rental_price
+        delete baseBookingInsert.duration_hours
+        const fallbackInsert = await supabaseAdmin
+          .from('bookings')
+          .insert([baseBookingInsert])
+          .select()
+          .single()
+        booking = fallbackInsert.data
+        bookingError = fallbackInsert.error
+      }
+    }
 
     if (bookingError || !booking) {
       throw new Error("Erreur réservation BDD : " + (bookingError?.message || 'Inconnue'))
@@ -208,7 +378,11 @@ serve(async (req) => {
       !trailer.image_url.includes('placehold.co') &&
       !trailer.image_url.endsWith('.svg')
 
-    // 5. Création de la session Stripe avec 3 lignes distinctes et transparentes
+    const durationLabel = pricingCalc.mode === 'hours'
+      ? `${pricingCalc.durationHours}h`
+      : `${diffDays} jour${diffDays > 1 ? 's' : ''}`
+
+    // 5. Création de la session Stripe avec 2 lignes de paiement + empreinte bancaire caution (0 CHF)
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
@@ -220,7 +394,7 @@ serve(async (req) => {
           price_data: {
             currency: 'chf',
             product_data: {
-              name: `Location : ${trailer.title} (${diffDays} jour${diffDays > 1 ? 's' : ''})`,
+              name: `Location : ${trailer.title} (${durationLabel})`,
               description: `Période du ${formatSwissDate(startDate)} au ${formatSwissDate(endDate)}`,
               ...(hasRealPhoto ? { images: [trailer.image_url] } : {}),
             },
@@ -255,6 +429,7 @@ serve(async (req) => {
         rental_price: totalRentalPrice.toFixed(2),
         service_fee: serviceFee.toFixed(2),
         caution_amount: caution.toString(),
+        ...(validatedDurationHours ? { duration_hours: String(validatedDurationHours) } : {}),
       },
       payment_intent_data: {
         setup_future_usage: 'off_session',
@@ -264,6 +439,7 @@ serve(async (req) => {
           rental_price: totalRentalPrice.toFixed(2),
           service_fee: serviceFee.toFixed(2),
           caution_amount: caution.toString(),
+          ...(validatedDurationHours ? { duration_hours: String(validatedDurationHours) } : {}),
         },
       },
       success_url: successUrl,

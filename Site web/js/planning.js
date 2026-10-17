@@ -97,6 +97,107 @@
         return Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
     }
 
+    function normalizePricingTiers(rawTiers) {
+        let parsed = rawTiers;
+        if (typeof parsed === 'string') {
+            const trimmed = parsed.trim();
+            if (!trimmed) return [];
+            try {
+                parsed = JSON.parse(trimmed);
+            } catch (e) {
+                return [];
+            }
+        }
+        if (!Array.isArray(parsed)) return [];
+
+        const dedupMap = new Map();
+        for (const item of parsed) {
+            if (!item || typeof item !== 'object') continue;
+            const rawUnit = String(item.unit || '').toLowerCase().trim();
+            let unit = null;
+            if (rawUnit === 'hour' || rawUnit === 'hours' || rawUnit === 'h' || rawUnit === 'heure' || rawUnit === 'heures') {
+                unit = 'hours';
+            } else if (rawUnit === 'day' || rawUnit === 'days' || rawUnit === 'j' || rawUnit === 'jour' || rawUnit === 'jours' || rawUnit === 'd') {
+                unit = 'days';
+            }
+            if (!unit) continue;
+
+            const duration = parseInt(item.duration ?? item.value ?? item.count, 10);
+            const price = Math.round(Number(item.price) * 100) / 100;
+            if (!Number.isFinite(duration) || duration <= 0 || duration > 365) continue;
+            if (unit === 'hours' && duration > 72) continue;
+            if (!Number.isFinite(price) || price <= 0 || price > 50000) continue;
+
+            const key = `${unit}:${duration}`;
+            const existing = dedupMap.get(key);
+            if (!existing || price < existing.price) {
+                dedupMap.set(key, { unit, duration, price });
+            }
+        }
+
+        const result = Array.from(dedupMap.values());
+        result.sort((a, b) => {
+            if (a.unit !== b.unit) return a.unit === 'hours' ? -1 : 1;
+            return a.duration - b.duration;
+        });
+        return result;
+    }
+
+    function calculateTieredRentalPrice(trailerOrBasePrice, diffDays = 1, durationHours = null) {
+        const isObj = trailerOrBasePrice && typeof trailerOrBasePrice === 'object';
+        const baseDailyPrice = Math.max(0, Number(isObj ? trailerOrBasePrice.price : trailerOrBasePrice) || 0);
+        const tiers = isObj ? normalizePricingTiers(trailerOrBasePrice.pricing_tiers) : [];
+        const safeDays = Math.max(1, parseInt(diffDays, 10) || 1);
+        const requestedHours = durationHours !== null && durationHours !== undefined && durationHours !== ''
+            ? parseInt(durationHours, 10)
+            : null;
+
+        if (safeDays === 1 && requestedHours && requestedHours > 0) {
+            const hourTier = tiers.find(t => t.unit === 'hours' && t.duration === requestedHours);
+            if (hourTier) {
+                return Math.round(hourTier.price * 100) / 100;
+            }
+        }
+
+        const dayTiersMap = new Map();
+        dayTiersMap.set(1, baseDailyPrice);
+        for (const t of tiers) {
+            if (t.unit === 'days' && t.duration >= 1 && t.duration <= safeDays) {
+                const existing = dayTiersMap.get(t.duration);
+                if (existing === undefined || t.price < existing) {
+                    dayTiersMap.set(t.duration, t.price);
+                }
+            }
+        }
+
+        const hasAnyMultiDayOrCustomDayTier = tiers.some(
+            t => t.unit === 'days' && t.duration <= safeDays && (t.duration > 1 || t.price !== baseDailyPrice)
+        );
+        if (!hasAnyMultiDayOrCustomDayTier) {
+            return Math.round(safeDays * baseDailyPrice * 100) / 100;
+        }
+
+        const availableDayTiers = Array.from(dayTiersMap.entries())
+            .map(([duration, price]) => ({ duration, price }))
+            .sort((a, b) => b.duration - a.duration);
+
+        const dp = new Array(safeDays + 1).fill(Infinity);
+        dp[0] = 0;
+
+        for (let d = 1; d <= safeDays; d++) {
+            for (const tier of availableDayTiers) {
+                if (tier.duration <= d) {
+                    const candidate = Math.round((dp[d - tier.duration] + tier.price) * 100) / 100;
+                    if (candidate < dp[d]) {
+                        dp[d] = candidate;
+                    }
+                }
+            }
+        }
+
+        return Math.round(dp[safeDays] * 100) / 100;
+    }
+
     /**
      * Calcule les gains nets du propriétaire selon son statut PRO ou Standard
      */
@@ -105,9 +206,14 @@
         const trailerPrice = (booking.trailers && booking.trailers.price)
             ? Number(booking.trailers.price)
             : 0;
-        const baseRental = trailerPrice > 0
-            ? (diffDays * trailerPrice)
-            : (Number(booking.total_price) || 0);
+        let baseRental = 0;
+        if (booking.rental_price != null && Number(booking.rental_price) > 0) {
+            baseRental = Number(booking.rental_price);
+        } else if (trailerPrice > 0) {
+            baseRental = calculateTieredRentalPrice(booking.trailers, diffDays, booking.duration_hours);
+        } else {
+            baseRental = Number(booking.total_price) || 0;
+        }
 
         if (isPro) {
             return {

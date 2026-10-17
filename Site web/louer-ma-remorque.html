@@ -274,6 +274,24 @@
                     </div>
                 </div>
 
+                <!-- Bloc optionnel : Tarifs dégressifs / par durée (Heures & Jours) -->
+                <div id="pricing-tiers-section" class="mb-5 p-4 rounded-2xl bg-stone-50/80 dark:bg-stone-900/60 border border-stone-200/80 dark:border-stone-700/80">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm font-bold text-stone-700 dark:text-stone-200">Tarifs dégressifs / par durée</label>
+                                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-stone-200/70 dark:bg-stone-800 text-stone-500 dark:text-stone-400">Optionnel</span>
+                            </div>
+                            <p class="text-[11px] text-stone-400 mt-0.5">Ajoutez librement vos paliers sur mesure (ex: 12 heures = 20 CHF, 2 jours = 45 CHF).</p>
+                        </div>
+                        <button type="button" id="add-pricing-tier-btn" onclick="addPricingTierRow()" class="text-xs font-bold text-terracotta-600 dark:text-terracotta-400 bg-terracotta-50 hover:bg-terracotta-100 dark:bg-stone-800 dark:hover:bg-stone-700 border border-terracotta-200 dark:border-stone-600 px-3 py-2 rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer active:scale-95">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            <span>+ Tarifs dégressifs / par durée</span>
+                        </button>
+                    </div>
+                    <div id="pricing-tiers-list" class="space-y-2.5 mt-3 empty:mt-0"></div>
+                </div>
+
                 <!-- Caractéristiques techniques : PTAC et Dimensions utiles (optionnels) -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                     <div>
@@ -814,6 +832,10 @@
                     if (lockEl) lockEl.checked = Boolean(trailer.has_hitch_lock);
                 }
 
+                if (trailer.pricing_tiers && typeof setPricingTiersInForm === 'function') {
+                    setPricingTiersInForm(trailer.pricing_tiers);
+                }
+
                 // Titre de la page et en-tête
                 document.title = "Mettre à jour l'annonce - Renger";
                 const pageHeading = document.querySelector('h2[data-i18n="publish_title"]') || document.querySelector('#seller-page h2');
@@ -865,7 +887,7 @@
                 const raw = localStorage.getItem('renger_pending_trailer');
                 if (!raw) return;
                 const draft = JSON.parse(raw);
-                if (draft && (draft.title || draft.location || draft.price || draft.license_plate)) {
+                if (draft && (draft.title || draft.location || draft.price || draft.license_plate || (Array.isArray(draft.pricing_tiers) && draft.pricing_tiers.length > 0))) {
                     // Pré-remplir les champs immédiatement conformément aux spécifications
                     restoreTrailerDraft(false);
                     const banner = document.getElementById('trailer-draft-banner');
@@ -927,6 +949,9 @@
                         cb.checked = draft.upsells.includes(cb.value);
                     });
                 }
+                if (draft.pricing_tiers && typeof setPricingTiersInForm === 'function') {
+                    setPricingTiersInForm(draft.pricing_tiers);
+                }
 
                 // Restauration des photos en attente si présentes dans sessionStorage
                 try {
@@ -975,6 +1000,7 @@
 
             const form = document.getElementById('add-trailer-form');
             if (form) form.reset();
+            if (typeof setPricingTiersInForm === 'function') setPricingTiersInForm([]);
 
             if (typeof pendingPhotos !== 'undefined' && Array.isArray(pendingPhotos)) {
                 pendingPhotos.forEach(p => {
@@ -999,7 +1025,7 @@
                 if (urlParams.get('edit')) return;
                 if (typeof getTrailerFormDraft === 'function') {
                     const draft = getTrailerFormDraft();
-                    if (draft && (draft.title || draft.location || draft.price || draft.license_plate)) {
+                    if (draft && (draft.title || draft.location || draft.price || draft.license_plate || (Array.isArray(draft.pricing_tiers) && draft.pricing_tiers.length > 0))) {
                         try {
                             localStorage.setItem('renger_pending_trailer', JSON.stringify(draft));
                         } catch (e) {}

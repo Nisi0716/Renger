@@ -556,8 +556,75 @@ export async function sendBookingConfirmationEmails({
     }
   }
 
-  // Calcul du gain net propriétaire (100% si PRO, 80% si standard)
-  const baseRental = diffDays * Number(trailer?.price || 0);
+  // Calcul du gain net propriétaire (100% si PRO, 80% si standard) en tenant compte des tarifs dégressifs / par durée
+  const resolveBaseRental = (): number => {
+    if (booking.rental_price != null && Number(booking.rental_price) > 0) {
+      return Number(booking.rental_price);
+    }
+    if (session?.metadata?.rental_price != null && Number(session.metadata.rental_price) > 0) {
+      return Number(session.metadata.rental_price);
+    }
+    const baseDailyPrice = Math.max(0, Number(trailer?.price) || 0);
+    let parsedTiers: any[] = [];
+    if (trailer?.pricing_tiers) {
+      if (typeof trailer.pricing_tiers === 'string') {
+        try { parsedTiers = JSON.parse(trailer.pricing_tiers); } catch { parsedTiers = []; }
+      } else if (Array.isArray(trailer.pricing_tiers)) {
+        parsedTiers = trailer.pricing_tiers;
+      }
+    }
+    const dedupMap = new Map<string, { unit: 'hours' | 'days'; duration: number; price: number }>();
+    for (const item of parsedTiers) {
+      if (!item || typeof item !== 'object') continue;
+      const rawUnit = String(item.unit || '').toLowerCase().trim();
+      const unit = ['hour', 'hours', 'h', 'heure', 'heures'].includes(rawUnit)
+        ? 'hours'
+        : (['day', 'days', 'j', 'jour', 'jours', 'd'].includes(rawUnit) ? 'days' : null);
+      if (!unit) continue;
+      const duration = parseInt(String(item.duration ?? item.value ?? item.count ?? ''), 10);
+      const price = Math.round(Number(item.price) * 100) / 100;
+      if (!Number.isFinite(duration) || duration <= 0 || duration > 365) continue;
+      if (unit === 'hours' && duration > 72) continue;
+      if (!Number.isFinite(price) || price <= 0 || price > 50000) continue;
+      const key = `${unit}:${duration}`;
+      const existing = dedupMap.get(key);
+      if (!existing || price < existing.price) {
+        dedupMap.set(key, { unit, duration, price });
+      }
+    }
+    const tiers = Array.from(dedupMap.values());
+    const rawHours = booking.duration_hours ?? session?.metadata?.duration_hours;
+    const requestedHours = rawHours !== null && rawHours !== undefined && rawHours !== ''
+      ? parseInt(String(rawHours), 10)
+      : null;
+    if (diffDays === 1 && requestedHours && requestedHours > 0) {
+      const hourTier = tiers.find(t => t.unit === 'hours' && t.duration === requestedHours);
+      if (hourTier) return hourTier.price;
+    }
+    const dayTiersMap = new Map<number, number>();
+    dayTiersMap.set(1, baseDailyPrice);
+    for (const t of tiers) {
+      if (t.unit === 'days' && t.duration >= 1 && t.duration <= diffDays) {
+        const existing = dayTiersMap.get(t.duration);
+        if (existing === undefined || t.price < existing) {
+          dayTiersMap.set(t.duration, t.price);
+        }
+      }
+    }
+    const availableDayTiers = Array.from(dayTiersMap.entries()).map(([duration, price]) => ({ duration, price }));
+    const dp = new Array<number>(diffDays + 1).fill(Infinity);
+    dp[0] = 0;
+    for (let d = 1; d <= diffDays; d++) {
+      for (const tier of availableDayTiers) {
+        if (tier.duration <= d) {
+          const cand = Math.round((dp[d - tier.duration] + tier.price) * 100) / 100;
+          if (cand < dp[d]) dp[d] = cand;
+        }
+      }
+    }
+    return Number.isFinite(dp[diffDays]) ? dp[diffDays] : (diffDays * baseDailyPrice);
+  };
+  const baseRental = resolveBaseRental();
   const netEarnings = ((isOwnerPro ? 1.0 : 0.8) * baseRental).toFixed(2);
 
   // 6. Envoi de l'e-mail au Locataire

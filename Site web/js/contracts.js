@@ -175,6 +175,177 @@
         return parseFloat(fee.toFixed(2));
     }
 
+    function normalizePricingTiers(rawTiers) {
+        let parsed = rawTiers;
+        if (typeof parsed === 'string') {
+            const trimmed = parsed.trim();
+            if (!trimmed) return [];
+            try {
+                parsed = JSON.parse(trimmed);
+            } catch (e) {
+                return [];
+            }
+        }
+        if (!Array.isArray(parsed)) return [];
+
+        const dedupMap = new Map();
+        for (const item of parsed) {
+            if (!item || typeof item !== 'object') continue;
+            const rawUnit = String(item.unit || '').toLowerCase().trim();
+            let unit = null;
+            if (rawUnit === 'hour' || rawUnit === 'hours' || rawUnit === 'h' || rawUnit === 'heure' || rawUnit === 'heures') {
+                unit = 'hours';
+            } else if (rawUnit === 'day' || rawUnit === 'days' || rawUnit === 'j' || rawUnit === 'jour' || rawUnit === 'jours' || rawUnit === 'd') {
+                unit = 'days';
+            }
+            if (!unit) continue;
+
+            const duration = parseInt(item.duration ?? item.value ?? item.count, 10);
+            const price = Math.round(Number(item.price) * 100) / 100;
+            if (!Number.isFinite(duration) || duration <= 0 || duration > 365) continue;
+            if (unit === 'hours' && duration > 72) continue;
+            if (!Number.isFinite(price) || price <= 0 || price > 50000) continue;
+
+            const key = `${unit}:${duration}`;
+            const existing = dedupMap.get(key);
+            if (!existing || price < existing.price) {
+                dedupMap.set(key, { unit, duration, price });
+            }
+        }
+
+        const result = Array.from(dedupMap.values());
+        result.sort((a, b) => {
+            if (a.unit !== b.unit) return a.unit === 'hours' ? -1 : 1;
+            return a.duration - b.duration;
+        });
+        return result;
+    }
+
+    function calculateTieredRentalPrice(trailerOrBasePrice, diffDays = 1, durationHours = null) {
+        const isObj = trailerOrBasePrice && typeof trailerOrBasePrice === 'object';
+        const baseDailyPrice = Math.max(0, Number(isObj ? trailerOrBasePrice.price : trailerOrBasePrice) || 0);
+        const tiers = isObj ? normalizePricingTiers(trailerOrBasePrice.pricing_tiers) : [];
+        const safeDays = Math.max(1, parseInt(diffDays, 10) || 1);
+        const requestedHours = durationHours !== null && durationHours !== undefined && durationHours !== ''
+            ? parseInt(durationHours, 10)
+            : null;
+
+        if (safeDays === 1 && requestedHours && requestedHours > 0) {
+            const hourTier = tiers.find(t => t.unit === 'hours' && t.duration === requestedHours);
+            if (hourTier) {
+                const p = Math.round(hourTier.price * 100) / 100;
+                return {
+                    rentalPrice: p,
+                    label: `Forfait ${hourTier.duration}h × ${hourTier.price} CHF`,
+                    shortLabel: `${hourTier.duration}h`,
+                    hasCustomTierApplied: true,
+                    mode: 'hours',
+                    durationHours: hourTier.duration,
+                    durationDays: 1,
+                    breakdown: [{ count: 1, unit: 'hours', duration: hourTier.duration, unitPrice: hourTier.price, subtotal: p }]
+                };
+            }
+        }
+
+        const dayTiersMap = new Map();
+        dayTiersMap.set(1, baseDailyPrice);
+        for (const t of tiers) {
+            if (t.unit === 'days' && t.duration >= 1 && t.duration <= safeDays) {
+                const existing = dayTiersMap.get(t.duration);
+                if (existing === undefined || t.price < existing) {
+                    dayTiersMap.set(t.duration, t.price);
+                }
+            }
+        }
+
+        const hasAnyMultiDayOrCustomDayTier = tiers.some(t => t.unit === 'days' && t.duration <= safeDays && (t.duration > 1 || t.price !== baseDailyPrice));
+        if (!hasAnyMultiDayOrCustomDayTier) {
+            const linearTotal = Math.round(safeDays * baseDailyPrice * 100) / 100;
+            return {
+                rentalPrice: linearTotal,
+                label: `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`,
+                shortLabel: `${safeDays} jour${safeDays > 1 ? 's' : ''}`,
+                hasCustomTierApplied: false,
+                mode: 'days',
+                durationHours: null,
+                durationDays: safeDays,
+                breakdown: [{ count: safeDays, unit: 'days', duration: 1, unitPrice: baseDailyPrice, subtotal: linearTotal }]
+            };
+        }
+
+        const availableDayTiers = Array.from(dayTiersMap.entries())
+            .map(([duration, price]) => ({ duration, price }))
+            .sort((a, b) => b.duration - a.duration);
+
+        const dp = new Array(safeDays + 1).fill(Infinity);
+        const choice = new Array(safeDays + 1).fill(null);
+        dp[0] = 0;
+
+        for (let d = 1; d <= safeDays; d++) {
+            for (const tier of availableDayTiers) {
+                if (tier.duration <= d) {
+                    const candidate = Math.round((dp[d - tier.duration] + tier.price) * 100) / 100;
+                    if (candidate < dp[d]) {
+                        dp[d] = candidate;
+                        choice[d] = tier;
+                    }
+                }
+            }
+        }
+
+        const countsByDuration = new Map();
+        let rem = safeDays;
+        while (rem > 0 && choice[rem]) {
+            const chosen = choice[rem];
+            countsByDuration.set(chosen.duration, {
+                tier: chosen,
+                count: (countsByDuration.get(chosen.duration)?.count || 0) + 1
+            });
+            rem -= chosen.duration;
+        }
+
+        const breakdown = Array.from(countsByDuration.values())
+            .sort((a, b) => b.tier.duration - a.tier.duration)
+            .map(({ tier, count }) => ({
+                count,
+                unit: 'days',
+                duration: tier.duration,
+                unitPrice: tier.price,
+                subtotal: Math.round(count * tier.price * 100) / 100
+            }));
+
+        const linearPrice = Math.round(safeDays * baseDailyPrice * 100) / 100;
+        const bestPrice = Math.round(dp[safeDays] * 100) / 100;
+        const usedNonLinear = breakdown.some(b => b.duration > 1 || b.unitPrice !== baseDailyPrice);
+
+        let label;
+        if (!usedNonLinear) {
+            label = `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`;
+        } else {
+            const parts = breakdown.map(b => {
+                if (b.duration === 1) {
+                    return `${b.count} jour${b.count > 1 ? 's' : ''} × ${b.unitPrice} CHF`;
+                }
+                if (b.count === 1) {
+                    return `Forfait ${b.duration} jours (${b.unitPrice} CHF)`;
+                }
+                return `${b.count} × forfait ${b.duration} jours (${b.unitPrice} CHF)`;
+            });
+            label = parts.join(' + ');
+        }
+
+        return {
+            rentalPrice: bestPrice,
+            label,
+            shortLabel: `${safeDays} jour${safeDays > 1 ? 's' : ''}`,
+            hasCustomTierApplied: usedNonLinear || bestPrice !== linearPrice,
+            mode: 'days',
+            durationHours: null,
+            durationDays: safeDays,
+            breakdown
+        };
+    }
+
     /**
      * Formatage de date au standard suisse JJ.MM.AAAA
      */
@@ -239,11 +410,19 @@
         const startDate = booking.start_date || options.startDate || new Date().toISOString();
         const endDate = booking.end_date || options.endDate || new Date().toISOString();
         const durationDays = computeRentalDays(startDate, endDate);
+        const durationHours = booking.duration_hours || options.durationHours || null;
         const startStr = formatSwissDate(startDate);
         const endStr = formatSwissDate(endDate);
 
         const dailyPrice = parseFloat(trailer.price || (booking.total_price ? (Number(booking.total_price) / durationDays).toFixed(2) : 30));
-        const rentalSubtotal = parseFloat((dailyPrice * durationDays).toFixed(2));
+        const tieredCalc = calculateTieredRentalPrice(
+            { price: dailyPrice, pricing_tiers: trailer.pricing_tiers },
+            durationDays,
+            durationHours
+        );
+        const rentalSubtotal = (booking.rental_price != null && Number(booking.rental_price) > 0)
+            ? parseFloat(Number(booking.rental_price).toFixed(2))
+            : parseFloat(tieredCalc.rentalPrice.toFixed(2));
         const serviceFee = calculateServiceFee(rentalSubtotal);
         const totalPaid = booking.total_price ? parseFloat(Number(booking.total_price).toFixed(2)) : parseFloat((rentalSubtotal + serviceFee).toFixed(2));
         const cautionAmount = resolveCautionAmount(trailer);
@@ -406,7 +585,10 @@
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8.5);
         doc.setTextColor(PRIMARY_TERRACOTTA[0], PRIMARY_TERRACOTTA[1], PRIMARY_TERRACOTTA[2]);
-        doc.text(`Durée totale : ${durationDays} jour${durationDays > 1 ? 's' : ''}`, 134, currentY + 24);
+        const contractDurationLabel = tieredCalc.mode === 'hours'
+            ? `${tieredCalc.durationHours}h (1 jour)`
+            : `${durationDays} jour${durationDays > 1 ? 's' : ''}`;
+        doc.text(`Durée totale : ${contractDurationLabel}`, 134, currentY + 24);
 
         // --- SECTION 3 : DÉCOMPTE FINANCIER & CAUTION ---
         currentY += 34;
@@ -439,8 +621,8 @@
         doc.setFontSize(7.5);
         doc.setTextColor(DARK_STONE[0], DARK_STONE[1], DARK_STONE[2]);
         doc.text(`Mise à disposition de la remorque (${trailerTitle})`, 18, currentY + 11);
-        doc.text(`${durationDays} jour${durationDays > 1 ? 's' : ''}`, 110, currentY + 11);
-        doc.text(`${dailyPrice.toFixed(2)} CHF / j`, 140, currentY + 11);
+        doc.text(tieredCalc.mode === 'hours' ? `${tieredCalc.durationHours}h` : `${durationDays} jour${durationDays > 1 ? 's' : ''}`, 110, currentY + 11);
+        doc.text(tieredCalc.hasCustomTierApplied ? sanitizePdfText(tieredCalc.label) : `${dailyPrice.toFixed(2)} CHF / j`, 140, currentY + 11);
         doc.text(`${rentalSubtotal.toFixed(2)} CHF`, 190, currentY + 11, { align: 'right' });
 
         // Ligne 2 : Frais de service
@@ -1034,6 +1216,8 @@
         generateInspectionReportPdf,
         downloadInspectionReport,
         sanitizePdfText,
-        resolveCautionAmount
+        resolveCautionAmount,
+        normalizePricingTiers,
+        calculateTieredRentalPrice
     };
 }));

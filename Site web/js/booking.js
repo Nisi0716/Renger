@@ -17,6 +17,372 @@ if (typeof window !== 'undefined') {
     window.escapeHtml = escapeHtml;
 }
 
+// ==========================================
+// TARIFS PAR DURÉE & DÉGRESSIFS (HELPERS)
+// ==========================================
+let selectedDurationHours = null;
+try {
+    if (typeof window !== 'undefined') {
+        Object.defineProperty(window, 'selectedDurationHours', {
+            get() { return selectedDurationHours; },
+            set(v) { selectedDurationHours = v !== null && v !== undefined && v !== '' ? Number(v) : null; },
+            configurable: true
+        });
+    }
+} catch (e) {}
+
+function normalizePricingTiers(rawTiers) {
+    let parsed = rawTiers;
+    if (typeof parsed === 'string') {
+        const trimmed = parsed.trim();
+        if (!trimmed) return [];
+        try {
+            parsed = JSON.parse(trimmed);
+        } catch (e) {
+            return [];
+        }
+    }
+    if (!Array.isArray(parsed)) return [];
+
+    const dedupMap = new Map();
+    for (const item of parsed) {
+        if (!item || typeof item !== 'object') continue;
+        const rawUnit = String(item.unit || '').toLowerCase().trim();
+        let unit = null;
+        if (rawUnit === 'hour' || rawUnit === 'hours' || rawUnit === 'h' || rawUnit === 'heure' || rawUnit === 'heures') {
+            unit = 'hours';
+        } else if (rawUnit === 'day' || rawUnit === 'days' || rawUnit === 'j' || rawUnit === 'jour' || rawUnit === 'jours' || rawUnit === 'd') {
+            unit = 'days';
+        }
+        if (!unit) continue;
+
+        const duration = parseInt(item.duration ?? item.value ?? item.count, 10);
+        const price = Math.round(Number(item.price) * 100) / 100;
+        if (!Number.isFinite(duration) || duration <= 0 || duration > 365) continue;
+        if (unit === 'hours' && duration > 72) continue;
+        if (!Number.isFinite(price) || price <= 0 || price > 50000) continue;
+
+        const key = `${unit}:${duration}`;
+        const existing = dedupMap.get(key);
+        if (!existing || price < existing.price) {
+            dedupMap.set(key, { unit, duration, price });
+        }
+    }
+
+    const result = Array.from(dedupMap.values());
+    result.sort((a, b) => {
+        if (a.unit !== b.unit) return a.unit === 'hours' ? -1 : 1;
+        return a.duration - b.duration;
+    });
+    return result;
+}
+
+function getPricingTiersBadgeText(trailer) {
+    if (!trailer) return '';
+    const tiers = normalizePricingTiers(trailer.pricing_tiers);
+    if (tiers.length === 0) return '';
+    const basePrice = Number(trailer.price) || Infinity;
+    const minTierPrice = Math.min(...tiers.map(t => t.price));
+    if (Number.isFinite(minTierPrice) && minTierPrice < basePrice) {
+        const priceStr = Number.isInteger(minTierPrice) ? String(minTierPrice) : minTierPrice.toFixed(2);
+        return `Dès ${priceStr} CHF • Tarifs dégressifs`;
+    }
+    return 'Tarifs dégressifs';
+}
+
+function formatPricingTierChip(tier) {
+    if (!tier || typeof tier !== 'object') return '';
+    const dur = parseInt(tier.duration, 10);
+    const price = Number(tier.price);
+    if (!Number.isFinite(dur) || !Number.isFinite(price)) return '';
+    const priceStr = Number.isInteger(price) ? String(price) : price.toFixed(2);
+    if (tier.unit === 'hours') {
+        return `${dur}h : ${priceStr} CHF`;
+    }
+    return `${dur} jour${dur > 1 ? 's' : ''} : ${priceStr} CHF`;
+}
+
+function formatPricingTiersSummary(rawTiers, maxItems = 4) {
+    const tiers = normalizePricingTiers(rawTiers);
+    if (tiers.length === 0) return '';
+    const visible = tiers.slice(0, maxItems).map(formatPricingTierChip).filter(Boolean);
+    if (tiers.length > maxItems) {
+        visible.push(`+${tiers.length - maxItems}`);
+    }
+    return visible.join(' • ');
+}
+
+function calculateTieredRentalPrice(trailerOrBasePrice, diffDays = 1, durationHours = null) {
+    const isObj = trailerOrBasePrice && typeof trailerOrBasePrice === 'object';
+    const baseDailyPrice = Math.max(0, Number(isObj ? trailerOrBasePrice.price : trailerOrBasePrice) || 0);
+    const tiers = isObj ? normalizePricingTiers(trailerOrBasePrice.pricing_tiers) : [];
+    const safeDays = Math.max(1, parseInt(diffDays, 10) || 1);
+    const requestedHours = durationHours !== null && durationHours !== undefined && durationHours !== ''
+        ? parseInt(durationHours, 10)
+        : null;
+
+    if (safeDays === 1 && requestedHours && requestedHours > 0) {
+        const hourTier = tiers.find(t => t.unit === 'hours' && t.duration === requestedHours);
+        if (hourTier) {
+            const p = Math.round(hourTier.price * 100) / 100;
+            return {
+                rentalPrice: p,
+                label: `Forfait ${hourTier.duration}h × ${hourTier.price} CHF`,
+                shortLabel: `${hourTier.duration}h`,
+                hasCustomTierApplied: true,
+                mode: 'hours',
+                durationHours: hourTier.duration,
+                durationDays: 1,
+                breakdown: [{ count: 1, unit: 'hours', duration: hourTier.duration, unitPrice: hourTier.price, subtotal: p }]
+            };
+        }
+    }
+
+    const dayTiersMap = new Map();
+    dayTiersMap.set(1, baseDailyPrice);
+    for (const t of tiers) {
+        if (t.unit === 'days' && t.duration >= 1 && t.duration <= safeDays) {
+            const existing = dayTiersMap.get(t.duration);
+            if (existing === undefined || t.price < existing) {
+                dayTiersMap.set(t.duration, t.price);
+            }
+        }
+    }
+
+    const hasAnyMultiDayOrCustomDayTier = tiers.some(t => t.unit === 'days' && t.duration <= safeDays && (t.duration > 1 || t.price !== baseDailyPrice));
+    if (!hasAnyMultiDayOrCustomDayTier) {
+        const linearTotal = Math.round(safeDays * baseDailyPrice * 100) / 100;
+        return {
+            rentalPrice: linearTotal,
+            label: `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`,
+            shortLabel: `${safeDays} jour${safeDays > 1 ? 's' : ''}`,
+            hasCustomTierApplied: false,
+            mode: 'days',
+            durationHours: null,
+            durationDays: safeDays,
+            breakdown: [{ count: safeDays, unit: 'days', duration: 1, unitPrice: baseDailyPrice, subtotal: linearTotal }]
+        };
+    }
+
+    const availableDayTiers = Array.from(dayTiersMap.entries())
+        .map(([duration, price]) => ({ duration, price }))
+        .sort((a, b) => b.duration - a.duration);
+
+    const dp = new Array(safeDays + 1).fill(Infinity);
+    const choice = new Array(safeDays + 1).fill(null);
+    dp[0] = 0;
+
+    for (let d = 1; d <= safeDays; d++) {
+        for (const tier of availableDayTiers) {
+            if (tier.duration <= d) {
+                const candidate = Math.round((dp[d - tier.duration] + tier.price) * 100) / 100;
+                if (candidate < dp[d]) {
+                    dp[d] = candidate;
+                    choice[d] = tier;
+                }
+            }
+        }
+    }
+
+    const countsByDuration = new Map();
+    let rem = safeDays;
+    while (rem > 0 && choice[rem]) {
+        const chosen = choice[rem];
+        countsByDuration.set(chosen.duration, {
+            tier: chosen,
+            count: (countsByDuration.get(chosen.duration)?.count || 0) + 1
+        });
+        rem -= chosen.duration;
+    }
+
+    const breakdown = Array.from(countsByDuration.values())
+        .sort((a, b) => b.tier.duration - a.tier.duration)
+        .map(({ tier, count }) => ({
+            count,
+            unit: 'days',
+            duration: tier.duration,
+            unitPrice: tier.price,
+            subtotal: Math.round(count * tier.price * 100) / 100
+        }));
+
+    const linearPrice = Math.round(safeDays * baseDailyPrice * 100) / 100;
+    const bestPrice = Math.round(dp[safeDays] * 100) / 100;
+    const usedNonLinear = breakdown.some(b => b.duration > 1 || b.unitPrice !== baseDailyPrice);
+
+    let label;
+    if (!usedNonLinear) {
+        label = `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`;
+    } else {
+        const parts = breakdown.map(b => {
+            if (b.duration === 1) {
+                return `${b.count} jour${b.count > 1 ? 's' : ''} × ${b.unitPrice} CHF`;
+            }
+            if (b.count === 1) {
+                return `Forfait ${b.duration} jours (${b.unitPrice} CHF)`;
+            }
+            return `${b.count} × forfait ${b.duration} jours (${b.unitPrice} CHF)`;
+        });
+        label = parts.join(' + ');
+    }
+
+    return {
+        rentalPrice: bestPrice,
+        label,
+        shortLabel: `${safeDays} jour${safeDays > 1 ? 's' : ''}`,
+        hasCustomTierApplied: usedNonLinear || bestPrice !== linearPrice,
+        mode: 'days',
+        durationHours: null,
+        durationDays: safeDays,
+        breakdown
+    };
+}
+
+function renderDetailPricingTiers(trailer) {
+    const container = document.getElementById('detail-pricing-tiers');
+    if (!container) return;
+    container.innerHTML = '';
+    const tiers = normalizePricingTiers(trailer?.pricing_tiers);
+    if (tiers.length === 0) {
+        if (container.classList) container.classList.add('hidden');
+        return;
+    }
+    if (container.classList) container.classList.remove('hidden');
+
+    tiers.forEach(tier => {
+        const chip = document.createElement('span');
+        chip.className = ' pricing-tier-detail-chip inline-flex items-center gap-1 bg-terracotta-50 dark:bg-stone-800 border border-terracotta-200 dark:border-stone-700 text-terracotta-700 dark:text-terracotta-400 text-xs font-bold px-2.5 py-1 rounded-lg';
+        chip.textContent = formatPricingTierChip(tier);
+        container.appendChild(chip);
+    });
+}
+
+function renderHourlyTierSelector(trailer, diffDays, isOwnerNow) {
+    const selectorBox = document.getElementById('hourly-tier-selector');
+    const optionsContainer = document.getElementById('hourly-tier-options');
+    if (!selectorBox || !optionsContainer) return;
+
+    const tiers = normalizePricingTiers(trailer?.pricing_tiers);
+    const hourTiers = tiers.filter(t => t.unit === 'hours');
+
+    if (isOwnerNow || diffDays !== 1 || hourTiers.length === 0) {
+        selectedDurationHours = null;
+        if (selectorBox.classList) selectorBox.classList.add('hidden');
+        optionsContainer.innerHTML = '';
+        return;
+    }
+
+    // Validate current selectedDurationHours still exists on this trailer
+    if (selectedDurationHours !== null && !hourTiers.some(t => t.duration === Number(selectedDurationHours))) {
+        selectedDurationHours = null;
+    }
+
+    if (selectorBox.classList) selectorBox.classList.remove('hidden');
+    optionsContainer.innerHTML = '';
+
+    // Option 1..N : forfaits horaires
+    hourTiers.forEach(tier => {
+        const isSelected = Number(selectedDurationHours) === tier.duration;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-duration-hours', String(tier.duration));
+        btn.className = isSelected
+            ? 'hourly-tier-option-btn px-3 py-2 rounded-xl text-xs font-bold border-2 border-terracotta-500 bg-terracotta-500 text-white shadow-sm transition'
+            : 'hourly-tier-option-btn px-3 py-2 rounded-xl text-xs font-bold border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 hover:border-terracotta-400 transition';
+        btn.textContent = `${tier.duration}h — ${tier.price} CHF`;
+        btn.onclick = () => selectBookingHourlyTier(tier.duration);
+        optionsContainer.appendChild(btn);
+    });
+
+    // Option journée complète (24h / 1 jour)
+    const isFullDaySelected = selectedDurationHours === null;
+    const dayTier = tiers.find(t => t.unit === 'days' && t.duration === 1);
+    const dayPrice = dayTier ? dayTier.price : Number(trailer?.price || 0);
+    const fullDayBtn = document.createElement('button');
+    fullDayBtn.type = 'button';
+    fullDayBtn.setAttribute('data-duration-hours', '');
+    fullDayBtn.className = isFullDaySelected
+        ? 'hourly-tier-option-btn px-3 py-2 rounded-xl text-xs font-bold border-2 border-terracotta-500 bg-terracotta-500 text-white shadow-sm transition'
+        : 'hourly-tier-option-btn px-3 py-2 rounded-xl text-xs font-bold border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 hover:border-terracotta-400 transition';
+    fullDayBtn.textContent = `Journée — ${dayPrice} CHF`;
+    fullDayBtn.onclick = () => selectBookingHourlyTier(null);
+    optionsContainer.appendChild(fullDayBtn);
+}
+
+function selectBookingHourlyTier(hours) {
+    selectedDurationHours = (hours !== null && hours !== undefined && hours !== '' && Number(hours) > 0)
+        ? Number(hours)
+        : null;
+    if (!currentTrailer || !selectedStartDate || !selectedEndDate) return;
+    const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+    const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
+    const diffDays = Math.round(Math.abs(utcEnd - utcStart) / (1000 * 60 * 60 * 24)) + 1;
+    const isOwnerNow = !!(currentUser && currentTrailer && currentUser.id === currentTrailer.owner_id);
+    renderHourlyTierSelector(currentTrailer, diffDays, isOwnerNow);
+    updateBookingSummaryUI();
+}
+
+function updateBookingSummaryUI() {
+    if (!currentTrailer || !selectedStartDate || !selectedEndDate) return;
+    const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+    const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
+    const diffTime = Math.abs(utcEnd - utcStart);
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    const effectiveHours = diffDays === 1 ? selectedDurationHours : null;
+    const pricingCalc = calculateTieredRentalPrice(currentTrailer, diffDays, effectiveHours);
+    const rentalPrice = pricingCalc.rentalPrice;
+    const serviceFee = calculateRengerServiceFee(rentalPrice);
+    const totalWithFee = rentalPrice + serviceFee;
+    const caution = getTrailerCaution(currentTrailer);
+
+    const daysEl = document.getElementById('total-days');
+    if (daysEl) daysEl.innerText = diffDays;
+    const pluralEl = document.getElementById('total-days-plural');
+    if (pluralEl) pluralEl.innerText = diffDays > 1 ? 's' : '';
+
+    const detailEl = document.getElementById('booking-pricing-detail');
+    if (detailEl) {
+        if (pricingCalc.hasCustomTierApplied) {
+            detailEl.textContent = pricingCalc.label;
+            if (detailEl.classList) detailEl.classList.remove('hidden');
+        } else {
+            detailEl.textContent = '';
+            if (detailEl.classList) detailEl.classList.add('hidden');
+        }
+    }
+
+    const rentalPriceEl = document.getElementById('total-rental-price');
+    if (rentalPriceEl) rentalPriceEl.innerText = `${rentalPrice} CHF`;
+
+    const serviceFeeEl = document.getElementById('service-fee-price');
+    if (serviceFeeEl) serviceFeeEl.innerText = `${serviceFee.toFixed(2)} CHF`;
+
+    const cautionEl = document.getElementById('caution-amount');
+    if (cautionEl) cautionEl.innerText = `${caution} CHF`;
+
+    const cautionExpEl = document.getElementById('caution-explain-amount');
+    if (cautionExpEl) cautionExpEl.innerText = `${caution} CHF`;
+
+    const isOwnerNow = !!(currentUser && currentTrailer && currentUser.id === currentTrailer.owner_id);
+    const totalPriceEl = document.getElementById('total-price');
+    if (totalPriceEl) totalPriceEl.innerText = isOwnerNow ? "0 CHF" : `${totalWithFee.toFixed(2)} CHF`;
+
+    const bookingSummary = document.getElementById('booking-summary');
+    if (bookingSummary && bookingSummary.classList) bookingSummary.classList.remove('hidden');
+}
+
+if (typeof window !== 'undefined') {
+    window.normalizePricingTiers = normalizePricingTiers;
+    window.getPricingTiersBadgeText = getPricingTiersBadgeText;
+    window.formatPricingTierChip = formatPricingTierChip;
+    window.formatPricingTiersSummary = formatPricingTiersSummary;
+    window.calculateTieredRentalPrice = calculateTieredRentalPrice;
+    window.renderDetailPricingTiers = renderDetailPricingTiers;
+    window.renderHourlyTierSelector = renderHourlyTierSelector;
+    window.selectBookingHourlyTier = selectBookingHourlyTier;
+    window.updateBookingSummaryUI = updateBookingSummaryUI;
+}
+
 async function openTrailerDetail(trailer) {
     if (!trailer) return;
     if (typeof logClick === 'function') logClick(trailer.id);
@@ -34,11 +400,13 @@ async function openTrailerDetail(trailer) {
             .catch(e => console.error('Error incrementing views:', e));
     }
 
-    // Reset des dates à chaque ouverture pour repartir d'un état propre
+    // Reset des dates et de la durée horaire à chaque ouverture pour repartir d'un état propre
     selectedStartDate = null;
     selectedEndDate = null;
+    if (typeof selectedDurationHours !== 'undefined') selectedDurationHours = null;
     document.getElementById('detail-title').innerText = trailer.title;
     document.getElementById('detail-price').innerText = trailer.price;
+    if (typeof renderDetailPricingTiers === 'function') renderDetailPricingTiers(trailer);
     document.getElementById('detail-socket').innerText = trailer.socket;
     document.getElementById('detail-payload').innerText = trailer.payload + " kg";
     const permitEl = document.getElementById('detail-permit');
@@ -125,6 +493,10 @@ async function openTrailerDetail(trailer) {
     
     document.getElementById('booking-summary').classList.add('hidden');
     document.getElementById('booking-dates').value = "";
+    const hourlySelectorEl = document.getElementById('hourly-tier-selector');
+    if (hourlySelectorEl && hourlySelectorEl.classList) hourlySelectorEl.classList.add('hidden');
+    const pricingDetailEl = document.getElementById('booking-pricing-detail');
+    if (pricingDetailEl && pricingDetailEl.classList) pricingDetailEl.classList.add('hidden');
 
         // 1. Réinitialisation des zones à chaque clic sur une annonce
     const equipContainer = document.getElementById('detail-equipments');
@@ -292,38 +664,19 @@ async function openTrailerDetail(trailer) {
                     const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
                     const diffTime = Math.abs(utcEnd - utcStart);
                     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1; 
-                    const rentalPrice = diffDays * Number(currentTrailer.price || 0);
-                    const serviceFee = calculateRengerServiceFee(rentalPrice);
-                    const totalWithFee = rentalPrice + serviceFee;
-                    const caution = getTrailerCaution(currentTrailer);
-                    
-                    const daysEl = document.getElementById('total-days');
-                    if (daysEl) daysEl.innerText = diffDays;
-                    const pluralEl = document.getElementById('total-days-plural');
-                    if (pluralEl) pluralEl.innerText = diffDays > 1 ? 's' : '';
-
-                    const rentalPriceEl = document.getElementById('total-rental-price');
-                    if (rentalPriceEl) rentalPriceEl.innerText = `${rentalPrice} CHF`;
-
-                    const serviceFeeEl = document.getElementById('service-fee-price');
-                    if (serviceFeeEl) serviceFeeEl.innerText = `${serviceFee.toFixed(2)} CHF`;
-
-                    const cautionEl = document.getElementById('caution-amount');
-                    if (cautionEl) cautionEl.innerText = `${caution} CHF`;
-
-                    const cautionExpEl = document.getElementById('caution-explain-amount');
-                    if (cautionExpEl) cautionExpEl.innerText = `${caution} CHF`;
-
                     const isOwnerNow = !!(currentUser && currentTrailer && currentUser.id === currentTrailer.owner_id) || isOwner;
-                    const totalPriceEl = document.getElementById('total-price');
-                    if (totalPriceEl) totalPriceEl.innerText = isOwnerNow ? "0 CHF" : `${totalWithFee.toFixed(2)} CHF`;
 
-                    const bookingSummary = document.getElementById('booking-summary');
-                    if (bookingSummary) bookingSummary.classList.remove('hidden');
+                    if (typeof renderHourlyTierSelector === 'function') renderHourlyTierSelector(currentTrailer, diffDays, isOwnerNow);
+                    if (typeof updateBookingSummaryUI === 'function') updateBookingSummaryUI();
                     updateChatButtonState();
                 } else {
                     selectedStartDate = null;
                     selectedEndDate = null;
+                    if (typeof selectedDurationHours !== 'undefined') selectedDurationHours = null;
+                    const hourlyEl = document.getElementById('hourly-tier-selector');
+                    if (hourlyEl && hourlyEl.classList) hourlyEl.classList.add('hidden');
+                    const detailEl = document.getElementById('booking-pricing-detail');
+                    if (detailEl && detailEl.classList) detailEl.classList.add('hidden');
                     const bookingSummary = document.getElementById('booking-summary');
                     if (bookingSummary) bookingSummary.classList.add('hidden');
                     updateChatButtonState();
@@ -519,7 +872,9 @@ function submitBooking() {
     const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
     const diffTime = Math.abs(utcEnd - utcStart);
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const rentalPrice = diffDays * Number(currentTrailer.price || 0);
+    const effectiveHours = diffDays === 1 ? selectedDurationHours : null;
+    const pricingCalc = calculateTieredRentalPrice(currentTrailer, diffDays, effectiveHours);
+    const rentalPrice = pricingCalc.rentalPrice;
     const serviceFee = calculateRengerServiceFee(rentalPrice);
     const totalToPay = rentalPrice + serviceFee;
     const cautionAmount = getTrailerCaution(currentTrailer);
@@ -537,11 +892,15 @@ function submitBooking() {
     if (datesEl) datesEl.textContent = `${fmtDate(selectedStartDate)} → ${fmtDate(selectedEndDate)}`;
     
     const daysEl = document.getElementById('confirm-days');
-    if (daysEl) daysEl.textContent = `${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+    if (daysEl) {
+        daysEl.textContent = pricingCalc.mode === 'hours'
+            ? `${pricingCalc.durationHours}h (1 jour)`
+            : `${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+    }
 
     // Lignes séparées : Location, Frais Renger, Caution
     const rentalCalcEl = document.getElementById('confirm-rental-calc');
-    if (rentalCalcEl) rentalCalcEl.textContent = `${diffDays} jour${diffDays > 1 ? 's' : ''} × ${currentTrailer.price} CHF / jour`;
+    if (rentalCalcEl) rentalCalcEl.textContent = pricingCalc.label;
 
     const rentalPriceEl = document.getElementById('confirm-rental-price');
     if (rentalPriceEl) rentalPriceEl.textContent = `${rentalPrice} CHF`;
@@ -622,26 +981,29 @@ async function processBooking() {
             ? formatDateToLocalISO
             : (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+        const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
+        const diffDays = Math.round(Math.abs(utcEnd - utcStart) / (1000 * 60 * 60 * 24)) + 1;
+
+        const checkoutPayload = {
+            trailerId: currentTrailer.id,
+            startDate: formatISO(selectedStartDate),
+            endDate: formatISO(selectedEndDate),
+            cautionAmount: cautionAmount
+        };
+        if (diffDays === 1 && selectedDurationHours && Number(selectedDurationHours) > 0) {
+            checkoutPayload.durationHours = Number(selectedDurationHours);
+        }
+
         const callEdge = (typeof callEdgeFunction === 'function')
             ? callEdgeFunction
             : (typeof window !== 'undefined' && typeof window.callEdgeFunction === 'function' ? window.callEdgeFunction : null);
 
         let stripeData;
         if (callEdge) {
-            stripeData = await callEdge('stripe-checkout', {
-                trailerId: currentTrailer.id,
-                startDate: formatISO(selectedStartDate),
-                endDate: formatISO(selectedEndDate),
-                cautionAmount: cautionAmount
-            });
+            stripeData = await callEdge('stripe-checkout', checkoutPayload);
         } else if (supabaseClient && supabaseClient.functions && typeof supabaseClient.functions.invoke === 'function') {
             const { data, error } = await supabaseClient.functions.invoke('stripe-checkout', {
-                body: {
-                    trailerId: currentTrailer.id,
-                    startDate: formatISO(selectedStartDate),
-                    endDate: formatISO(selectedEndDate),
-                    cautionAmount: cautionAmount
-                }
+                body: checkoutPayload
             });
             if (error) throw error;
             stripeData = data;

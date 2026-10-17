@@ -211,6 +211,351 @@ function generateAutoDescription() {
     // Les descriptions automatiques sont désactivées. Le propriétaire rédige sa description.
 }
 
+function normalizePricingTiers(rawTiers) {
+    let parsed = rawTiers;
+    if (typeof parsed === 'string') {
+        const trimmed = parsed.trim();
+        if (!trimmed) return [];
+        try {
+            parsed = JSON.parse(trimmed);
+        } catch (e) {
+            return [];
+        }
+    }
+    if (!Array.isArray(parsed)) return [];
+
+    const dedupMap = new Map();
+    for (const item of parsed) {
+        if (!item || typeof item !== 'object') continue;
+        const rawUnit = String(item.unit || '').toLowerCase().trim();
+        let unit = null;
+        if (rawUnit === 'hour' || rawUnit === 'hours' || rawUnit === 'h' || rawUnit === 'heure' || rawUnit === 'heures') {
+            unit = 'hours';
+        } else if (rawUnit === 'day' || rawUnit === 'days' || rawUnit === 'j' || rawUnit === 'jour' || rawUnit === 'jours' || rawUnit === 'd') {
+            unit = 'days';
+        }
+        if (!unit) continue;
+
+        const duration = parseInt(item.duration ?? item.value ?? item.count, 10);
+        const price = Math.round(Number(item.price) * 100) / 100;
+        if (!Number.isFinite(duration) || duration <= 0 || duration > 365) continue;
+        if (unit === 'hours' && duration > 72) continue;
+        if (!Number.isFinite(price) || price <= 0 || price > 50000) continue;
+
+        const key = `${unit}:${duration}`;
+        const existing = dedupMap.get(key);
+        if (!existing || price < existing.price) {
+            dedupMap.set(key, { unit, duration, price });
+        }
+    }
+
+    const result = Array.from(dedupMap.values());
+    result.sort((a, b) => {
+        if (a.unit !== b.unit) return a.unit === 'hours' ? -1 : 1;
+        return a.duration - b.duration;
+    });
+    return result;
+}
+
+function getPricingTiersBadgeText(trailer) {
+    if (!trailer) return '';
+    const tiers = normalizePricingTiers(trailer.pricing_tiers);
+    if (tiers.length === 0) return '';
+    const basePrice = Number(trailer.price) || Infinity;
+    const minTierPrice = Math.min(...tiers.map(t => t.price));
+    if (Number.isFinite(minTierPrice) && minTierPrice < basePrice) {
+        const priceStr = Number.isInteger(minTierPrice) ? String(minTierPrice) : minTierPrice.toFixed(2);
+        return `Dès ${priceStr} CHF • Tarifs dégressifs`;
+    }
+    return 'Tarifs dégressifs';
+}
+
+function calculateTieredRentalPrice(trailerOrBasePrice, diffDays = 1, durationHours = null) {
+    const isObj = trailerOrBasePrice && typeof trailerOrBasePrice === 'object';
+    const baseDailyPrice = Math.max(0, Number(isObj ? trailerOrBasePrice.price : trailerOrBasePrice) || 0);
+    const tiers = isObj ? normalizePricingTiers(trailerOrBasePrice.pricing_tiers) : [];
+    const safeDays = Math.max(1, parseInt(diffDays, 10) || 1);
+    const requestedHours = durationHours !== null && durationHours !== undefined && durationHours !== ''
+        ? parseInt(durationHours, 10)
+        : null;
+
+    if (safeDays === 1 && requestedHours && requestedHours > 0) {
+        const hourTier = tiers.find(t => t.unit === 'hours' && t.duration === requestedHours);
+        if (hourTier) {
+            const p = Math.round(hourTier.price * 100) / 100;
+            return {
+                rentalPrice: p,
+                label: `Forfait ${hourTier.duration}h × ${hourTier.price} CHF`,
+                shortLabel: `${hourTier.duration}h`,
+                hasCustomTierApplied: true,
+                mode: 'hours',
+                durationHours: hourTier.duration,
+                durationDays: 1,
+                breakdown: [{ count: 1, unit: 'hours', duration: hourTier.duration, unitPrice: hourTier.price, subtotal: p }]
+            };
+        }
+    }
+
+    const dayTiersMap = new Map();
+    dayTiersMap.set(1, baseDailyPrice);
+    for (const t of tiers) {
+        if (t.unit === 'days' && t.duration >= 1 && t.duration <= safeDays) {
+            const existing = dayTiersMap.get(t.duration);
+            if (existing === undefined || t.price < existing) {
+                dayTiersMap.set(t.duration, t.price);
+            }
+        }
+    }
+
+    const hasAnyMultiDayOrCustomDayTier = tiers.some(t => t.unit === 'days' && t.duration <= safeDays && (t.duration > 1 || t.price !== baseDailyPrice));
+    if (!hasAnyMultiDayOrCustomDayTier) {
+        const linearTotal = Math.round(safeDays * baseDailyPrice * 100) / 100;
+        return {
+            rentalPrice: linearTotal,
+            label: `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`,
+            shortLabel: `${safeDays} jour${safeDays > 1 ? 's' : ''}`,
+            hasCustomTierApplied: false,
+            mode: 'days',
+            durationHours: null,
+            durationDays: safeDays,
+            breakdown: [{ count: safeDays, unit: 'days', duration: 1, unitPrice: baseDailyPrice, subtotal: linearTotal }]
+        };
+    }
+
+    const availableDayTiers = Array.from(dayTiersMap.entries())
+        .map(([duration, price]) => ({ duration, price }))
+        .sort((a, b) => b.duration - a.duration);
+
+    const dp = new Array(safeDays + 1).fill(Infinity);
+    const choice = new Array(safeDays + 1).fill(null);
+    dp[0] = 0;
+
+    for (let d = 1; d <= safeDays; d++) {
+        for (const tier of availableDayTiers) {
+            if (tier.duration <= d) {
+                const candidate = Math.round((dp[d - tier.duration] + tier.price) * 100) / 100;
+                if (candidate < dp[d]) {
+                    dp[d] = candidate;
+                    choice[d] = tier;
+                }
+            }
+        }
+    }
+
+    const countsByDuration = new Map();
+    let rem = safeDays;
+    while (rem > 0 && choice[rem]) {
+        const chosen = choice[rem];
+        countsByDuration.set(chosen.duration, {
+            tier: chosen,
+            count: (countsByDuration.get(chosen.duration)?.count || 0) + 1
+        });
+        rem -= chosen.duration;
+    }
+
+    const breakdown = Array.from(countsByDuration.values())
+        .sort((a, b) => b.tier.duration - a.tier.duration)
+        .map(({ tier, count }) => ({
+            count,
+            unit: 'days',
+            duration: tier.duration,
+            unitPrice: tier.price,
+            subtotal: Math.round(count * tier.price * 100) / 100
+        }));
+
+    const linearPrice = Math.round(safeDays * baseDailyPrice * 100) / 100;
+    const bestPrice = Math.round(dp[safeDays] * 100) / 100;
+    const usedNonLinear = breakdown.some(b => b.duration > 1 || b.unitPrice !== baseDailyPrice);
+
+    let label;
+    if (!usedNonLinear) {
+        label = `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`;
+    } else {
+        const parts = breakdown.map(b => {
+            if (b.duration === 1) {
+                return `${b.count} jour${b.count > 1 ? 's' : ''} × ${b.unitPrice} CHF`;
+            }
+            if (b.count === 1) {
+                return `Forfait ${b.duration} jours (${b.unitPrice} CHF)`;
+            }
+            return `${b.count} × forfait ${b.duration} jours (${b.unitPrice} CHF)`;
+        });
+        label = parts.join(' + ');
+    }
+
+    return {
+        rentalPrice: bestPrice,
+        label,
+        shortLabel: `${safeDays} jour${safeDays > 1 ? 's' : ''}`,
+        hasCustomTierApplied: usedNonLinear || bestPrice !== linearPrice,
+        mode: 'days',
+        durationHours: null,
+        durationDays: safeDays,
+        breakdown
+    };
+}
+
+function resolveBookingRentalPrice(booking, fallbackDays = 1) {
+    if (!booking) return 0;
+    if (booking.rental_price !== undefined && booking.rental_price !== null && Number(booking.rental_price) > 0) {
+        return Number(booking.rental_price);
+    }
+    if (booking.trailers && booking.trailers.price != null && Number(booking.trailers.price) > 0) {
+        const calc = calculateTieredRentalPrice(
+            booking.trailers,
+            fallbackDays,
+            booking.duration_hours || null
+        );
+        return calc.rentalPrice;
+    }
+    return Number(booking.total_price) || 0;
+}
+
+// ==========================================
+// GESTION FORMULAIRE DES TARIFS DÉGRESSIFS
+// ==========================================
+function updatePricingTiersEmptyState() {
+    const list = document.getElementById('pricing-tiers-list');
+    const hint = document.getElementById('pricing-tiers-empty-hint');
+    if (!list || !hint) return;
+    const hasRows = (list.children && list.children.length > 0) ||
+        (typeof list.querySelectorAll === 'function' && list.querySelectorAll('.pricing-tier-row').length > 0);
+    if (hint.classList) {
+        if (hasRows) hint.classList.add('hidden');
+        else hint.classList.remove('hidden');
+    }
+}
+
+function addPricingTierRow(initialData = null) {
+    const list = document.getElementById('pricing-tiers-list');
+    if (!list) return null;
+
+    const row = document.createElement('div');
+    row.className = 'pricing-tier-row flex items-center gap-2 bg-stone-50 dark:bg-stone-900/60 p-2 rounded-xl border border-stone-200/70 dark:border-stone-700/70';
+
+    const durationInput = document.createElement('input');
+    durationInput.type = 'number';
+    durationInput.min = '1';
+    durationInput.max = '365';
+    durationInput.placeholder = 'Durée (ex: 2)';
+    durationInput.className = 'pricing-tier-duration w-24 p-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-white text-xs font-bold outline-none focus:ring-2 focus:ring-terracotta-500';
+    durationInput.value = initialData && initialData.duration ? String(initialData.duration) : '';
+
+    const unitSelect = document.createElement('select');
+    unitSelect.className = 'pricing-tier-unit p-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-white text-xs font-bold outline-none focus:ring-2 focus:ring-terracotta-500';
+    const optHours = document.createElement('option');
+    optHours.value = 'hours';
+    optHours.textContent = 'Heure(s)';
+    const optDays = document.createElement('option');
+    optDays.value = 'days';
+    optDays.textContent = 'Jour(s)';
+    unitSelect.appendChild(optHours);
+    unitSelect.appendChild(optDays);
+    unitSelect.value = (initialData && initialData.unit === 'hours') ? 'hours' : 'days';
+
+    const eqSpan = document.createElement('span');
+    eqSpan.className = 'text-stone-400 font-bold text-xs px-0.5';
+    eqSpan.textContent = '=';
+
+    const priceInput = document.createElement('input');
+    priceInput.type = 'number';
+    priceInput.min = '1';
+    priceInput.max = '50000';
+    priceInput.step = '0.5';
+    priceInput.placeholder = 'Prix CHF';
+    priceInput.className = 'pricing-tier-price flex-1 min-w-[80px] p-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-white text-xs font-bold outline-none focus:ring-2 focus:ring-terracotta-500';
+    priceInput.value = initialData && initialData.price !== undefined && initialData.price !== null ? String(initialData.price) : '';
+
+    const chfSpan = document.createElement('span');
+    chfSpan.className = 'text-[11px] font-bold text-stone-500 dark:text-stone-400';
+    chfSpan.textContent = 'CHF';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'pricing-tier-remove-btn text-stone-400 hover:text-rose-500 p-1.5 rounded-lg transition';
+    removeBtn.title = 'Supprimer ce palier';
+    removeBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+    removeBtn.onclick = () => removePricingTierRow(row);
+
+    // Direct references for lightweight DOM test environments
+    row._durationInput = durationInput;
+    row._unitSelect = unitSelect;
+    row._priceInput = priceInput;
+
+    row.appendChild(durationInput);
+    row.appendChild(unitSelect);
+    row.appendChild(eqSpan);
+    row.appendChild(priceInput);
+    row.appendChild(chfSpan);
+    row.appendChild(removeBtn);
+
+    list.appendChild(row);
+    updatePricingTiersEmptyState();
+    return row;
+}
+
+function removePricingTierRow(rowOrBtn) {
+    if (!rowOrBtn) return;
+    const list = document.getElementById('pricing-tiers-list');
+    const row = (rowOrBtn.classList && rowOrBtn.classList.contains && rowOrBtn.classList.contains('pricing-tier-row'))
+        ? rowOrBtn
+        : (typeof rowOrBtn.closest === 'function' ? rowOrBtn.closest('.pricing-tier-row') : rowOrBtn);
+
+    if (row && typeof row.remove === 'function') {
+        row.remove();
+    }
+    if (list && Array.isArray(list.children)) {
+        const idx = list.children.indexOf(row);
+        if (idx !== -1) list.children.splice(idx, 1);
+    }
+    updatePricingTiersEmptyState();
+}
+
+function getPricingTiersFromForm() {
+    const list = document.getElementById('pricing-tiers-list');
+    if (!list) return [];
+
+    let rows = [];
+    if (typeof list.querySelectorAll === 'function') {
+        const nodeList = list.querySelectorAll('.pricing-tier-row');
+        if (nodeList && nodeList.length > 0) {
+            rows = Array.from(nodeList);
+        }
+    }
+    if (rows.length === 0 && list.children && list.children.length > 0) {
+        rows = Array.from(list.children);
+    }
+
+    const rawTiers = [];
+    for (const row of rows) {
+        if (!row) continue;
+        const durEl = row._durationInput || (typeof row.querySelector === 'function' ? row.querySelector('.pricing-tier-duration') : null);
+        const unitEl = row._unitSelect || (typeof row.querySelector === 'function' ? row.querySelector('.pricing-tier-unit') : null);
+        const priceEl = row._priceInput || (typeof row.querySelector === 'function' ? row.querySelector('.pricing-tier-price') : null);
+
+        const duration = durEl ? parseInt(durEl.value, 10) : NaN;
+        const unit = unitEl ? unitEl.value : 'days';
+        const price = priceEl ? parseFloat(priceEl.value) : NaN;
+
+        if (Number.isFinite(duration) && duration > 0 && Number.isFinite(price) && price > 0) {
+            rawTiers.push({ duration, unit, price });
+        }
+    }
+    return normalizePricingTiers(rawTiers);
+}
+
+function setPricingTiersInForm(rawTiers) {
+    const list = document.getElementById('pricing-tiers-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (Array.isArray(list.children)) {
+        list.children.length = 0;
+    }
+    const tiers = normalizePricingTiers(rawTiers);
+    tiers.forEach(t => addPricingTierRow(t));
+    updatePricingTiersEmptyState();
+}
+
 /**
  * Initialise tous les écouteurs d'événements dynamiques du formulaire vendeur.
  */
@@ -261,12 +606,14 @@ function getTrailerFormDraft() {
     const deposit_amount = parseInt(document.querySelector('input[name="deposit_amount"]:checked')?.value, 10) || 200;
     const has_hitch_lock = Boolean(document.getElementById('ad-hitch-lock')?.checked);
     const monetization_mode = document.querySelector('input[name="monetization_mode"]:checked')?.value || 'standard';
+    const pricing_tiers = getPricingTiersFromForm();
 
     return {
         title: document.getElementById('ad-title')?.value || '',
         location: document.getElementById('ad-location')?.value || '',
         license_plate: document.getElementById('ad-license-plate')?.value || '',
         price: document.getElementById('ad-price')?.value || '',
+        pricing_tiers,
         payload: document.getElementById('ad-payload')?.value || '',
         ptac: document.getElementById('ad-ptac')?.value || '',
         length: document.getElementById('ad-length')?.value || '',
@@ -417,6 +764,8 @@ async function handlePublish(event) {
         const hitchLockInput = document.getElementById('ad-hitch-lock');
         const hasHitchLock = hitchLockInput ? Boolean(hitchLockInput.checked) : false;
 
+        const pricingTiers = getPricingTiersFromForm();
+
         const locationInput = (document.getElementById('ad-location')?.value || '').trim();
         const geoData = await geocodeCity(locationInput);
 
@@ -428,6 +777,7 @@ async function handlePublish(event) {
             longitude: geoData.lon,
             description: finalDesc,
             price: isNaN(priceVal) || priceVal < 0 ? 0 : priceVal,
+            pricing_tiers: pricingTiers,
             payload: isNaN(payloadVal) || payloadVal < 0 ? 0 : payloadVal,
             socket: document.querySelector('input[name="prise"]:checked')?.value || '7 broches',
             owner_id: currentUser.id,
@@ -461,7 +811,7 @@ async function handlePublish(event) {
 
         let res = await saveTrailer(payload);
         // Repli gracieux et transparent si le schéma Supabase n'a pas certaines colonnes (gestion multi-colonnes)
-        let maxRetries = 5;
+        let maxRetries = 6;
         while (res.error && res.error.message && maxRetries > 0) {
             const errMsg = res.error.message.toLowerCase();
             let retry = false;
@@ -484,6 +834,10 @@ async function handlePublish(event) {
             }
             if (errMsg.includes('has_hitch_lock') && 'has_hitch_lock' in payload) {
                 delete payload.has_hitch_lock;
+                retry = true;
+            }
+            if (errMsg.includes('pricing_tiers') && 'pricing_tiers' in payload) {
+                delete payload.pricing_tiers;
                 retry = true;
             }
             if (retry) {
@@ -522,6 +876,7 @@ async function handlePublish(event) {
 
             showToast(editId ? "Annonce modifiée !" : "Annonce publiée !", "success");
             document.getElementById('add-trailer-form').reset();
+            setPricingTiersInForm([]);
             delete form.dataset.editId;
             if (submitBtn && submitBtn.dataset.originalText) {
                 submitBtn.innerHTML = submitBtn.dataset.originalText;
@@ -869,7 +1224,9 @@ function createSellerRentalHistoryCard(booking, renterProfile, todayStr, isPro =
     const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
 
     const diffDays = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-    const baseRental = (booking.trailers && booking.trailers.price) ? (diffDays * Number(booking.trailers.price)) : (Number(booking.total_price) || 0);
+    const baseRental = typeof resolveBookingRentalPrice === 'function'
+        ? resolveBookingRentalPrice(booking, diffDays)
+        : (booking.trailers?.price ? (diffDays * Number(booking.trailers.price)) : (Number(booking.total_price) || 0));
     const netEarnings = (baseRental * (isPro ? 1.0 : 0.80)).toFixed(2);
 
     // Badge statut
@@ -1158,7 +1515,7 @@ async function loadProfileData() {
             const sDate = new Date(booking.start_date);
             const eDate = new Date(booking.end_date);
             const days = Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24)) + 1;
-            const baseRental = (booking.trailers && booking.trailers.price) ? (days * Number(booking.trailers.price)) : (Number(booking.total_price) || 0);
+            const baseRental = resolveBookingRentalPrice(booking, days);
             
             // Calculer la commission historique uniquement sur les locations terminées (20%)
             const endStr = booking.end_date ? booking.end_date.split('T')[0] : '';
@@ -1340,14 +1697,15 @@ async function loadProfileData() {
                     let cancelled = 0;
                     adBookings.forEach(b => {
                         if (b.status === 'cancelled') cancelled++;
-                        else if (b.status === 'paid' || b.status === 'confirmed') {
+                        else if (b.status === 'paid' || b.status === 'confirmed' || b.status === 'paye') {
                             const eDateStr = b.end_date ? b.end_date.split('T')[0] : '';
                             if (todayStr > eDateStr) finished++;
                             const s = new Date(b.start_date);
                             const e = new Date(b.end_date);
                             const d = Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
                             adDays += d;
-                            adRev += (d * Number(trailer.price)) * (isPro ? 1.0 : 0.8);
+                            const bookingWithTrailer = b.trailers ? b : { ...b, trailers: trailer };
+                            adRev += resolveBookingRentalPrice(bookingWithTrailer, d) * (isPro ? 1.0 : 0.8);
                         }
                     });
                     
@@ -1553,6 +1911,7 @@ async function openPublicProfile(username) {
         const imgUrl = trailer.image_url || 'https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger';
         const cat = CATEGORY_MAP[trailer.category];
         const isBoosted = trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date();
+        const tiersBadgeText = getPricingTiersBadgeText(trailer);
         card.innerHTML = `
             <div class="h-40 bg-stone-200 dark:bg-stone-700 relative">
                 <img class="public-trailer-img w-full h-full object-cover" alt="" loading="lazy" decoding="async">
@@ -1561,10 +1920,11 @@ async function openPublicProfile(username) {
                 ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow flex items-center gap-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Sponsorisé</span></div>` : ''}
             </div>
             <div class="p-4">
-                <div class="flex justify-between items-start gap-2 mb-3">
+                <div class="flex justify-between items-start gap-2 mb-2">
                     <h4 class="safe-title font-bold text-base dark:text-white flex-1 truncate"></h4>
                     <div class="trailer-rating-badge flex-shrink-0"></div>
                 </div>
+                ${tiersBadgeText ? `<div class="pricing-tiers-card-badge mb-3 inline-flex items-center gap-1 bg-terracotta-50 dark:bg-stone-700/80 text-terracotta-700 dark:text-terracotta-300 border border-terracotta-200/70 dark:border-stone-600 px-2 py-0.5 rounded-md text-[11px] font-bold"></div>` : ''}
                 <button class="w-full bg-terracotta-50 dark:bg-stone-700 text-terracotta-600 dark:text-terracotta-400 font-semibold py-2 rounded-xl text-sm">Voir les détails</button>
             </div>
         `;
@@ -1572,6 +1932,10 @@ async function openPublicProfile(username) {
         card.querySelector('.safe-title').textContent = trailer.title;
         card.querySelector('.safe-price').textContent = trailer.price;
         if (cat) card.querySelector('.safe-cat').textContent = cat.label;
+        const tiersBadgeSlot = card.querySelector('.pricing-tiers-card-badge');
+        if (tiersBadgeSlot && tiersBadgeText) {
+            tiersBadgeSlot.textContent = tiersBadgeText;
+        }
 
         const ratingBadgeSlot = card.querySelector('.trailer-rating-badge');
         if (ratingBadgeSlot) {
@@ -2497,8 +2861,7 @@ function calculateOwnerBalance(sellerBookings = [], payouts = [], isPro = false,
             const sDate = new Date(booking.start_date);
             const eDate = new Date(booking.end_date);
             const days = Math.max(1, Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24)) + 1);
-            const dailyPrice = (booking.trailers && booking.trailers.price != null) ? Number(booking.trailers.price) : 0;
-            const baseRental = dailyPrice > 0 ? (days * dailyPrice) : (Number(booking.total_price) || 0);
+            const baseRental = resolveBookingRentalPrice(booking, days);
             const netRate = isPro ? 1.00 : 0.80;
             totalNetEarnings += (baseRental * netRate);
         }
@@ -2704,6 +3067,14 @@ if (typeof window !== 'undefined') {
     window.closeDisputeModal = closeDisputeModal;
     window.handleSendDispute = handleSendDispute;
     window.getTrailerFormDraft = getTrailerFormDraft;
+    window.normalizePricingTiers = normalizePricingTiers;
+    window.getPricingTiersBadgeText = getPricingTiersBadgeText;
+    window.calculateTieredRentalPrice = calculateTieredRentalPrice;
+    window.resolveBookingRentalPrice = resolveBookingRentalPrice;
+    window.addPricingTierRow = addPricingTierRow;
+    window.removePricingTierRow = removePricingTierRow;
+    window.getPricingTiersFromForm = getPricingTiersFromForm;
+    window.setPricingTiersInForm = setPricingTiersInForm;
     window.calculateOwnerBalance = calculateOwnerBalance;
     window.fetchUserPayouts = fetchUserPayouts;
     window.renderBalanceUI = renderBalanceUI;
@@ -2720,6 +3091,14 @@ if (typeof module !== 'undefined' && module.exports) {
         closeDisputeModal,
         handleSendDispute,
         getTrailerFormDraft,
+        normalizePricingTiers,
+        getPricingTiersBadgeText,
+        calculateTieredRentalPrice,
+        resolveBookingRentalPrice,
+        addPricingTierRow,
+        removePricingTierRow,
+        getPricingTiersFromForm,
+        setPricingTiersInForm,
         createRenterBookingCard,
         createSellerRentalHistoryCard,
         handlePublish,

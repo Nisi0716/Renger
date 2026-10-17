@@ -1055,6 +1055,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         const imgUrl = trailer.image_url || "https://placehold.co/600x400/f5f5f4/a8a29e?text=Renger";
         const cat = CATEGORY_MAP[trailer.category];
         const isBoosted = trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date();
+        const tiersBadgeText = getPricingTiersBadgeText(trailer);
 
         // CORRECTION XSS : L'URL n'est plus interpolée dans le HTML, l'élément img est rempli via .src
         card.innerHTML = `
@@ -1062,6 +1063,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
                 <img class="trailer-card-img w-full h-full object-cover" alt="" loading="lazy" decoding="async">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
                 ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg"><span class="safe-cat"></span></div>` : ''}
+                ${tiersBadgeText ? `<div class="pricing-tiers-card-badge absolute bottom-3 right-3 bg-terracotta-500/95 backdrop-blur-sm text-white text-[11px] font-bold px-2 py-1 rounded-lg shadow"><span class="safe-tiers-badge"></span></div>` : ''}
                 ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow flex items-center gap-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Sponsorisé</span></div>` : ''}
             </div>
             <div class="p-5">
@@ -1079,6 +1081,10 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         card.querySelector('.safe-title').textContent = trailer.title;
         card.querySelector('.safe-price').textContent = trailer.price;
         if (cat) card.querySelector('.safe-cat').textContent = cat.label;
+        if (tiersBadgeText) {
+            const badgeSlot = card.querySelector('.safe-tiers-badge');
+            if (badgeSlot) badgeSlot.textContent = tiersBadgeText;
+        }
 
         // Badge d'évaluation
         const ratingBadgeSlot = card.querySelector('.trailer-rating-badge');
@@ -1711,6 +1717,250 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
+// ==========================================
+// MOTEUR DE TARIFS DÉGRESSIFS & PAR DURÉE (PRICING TIERS)
+// ==========================================
+
+/**
+ * Normalise et trie un tableau (ou chaîne JSON) de paliers tarifaires.
+ * Chaque palier valide : { duration: number, unit: 'hours' | 'days', price: number }
+ */
+function normalizePricingTiers(rawTiers) {
+    let parsed = rawTiers;
+    if (typeof parsed === 'string') {
+        const trimmed = parsed.trim();
+        if (!trimmed) return [];
+        try {
+            parsed = JSON.parse(trimmed);
+        } catch (e) {
+            return [];
+        }
+    }
+    if (!Array.isArray(parsed)) return [];
+
+    const dedupMap = new Map();
+    for (const item of parsed) {
+        if (!item || typeof item !== 'object') continue;
+        const rawUnit = String(item.unit || '').toLowerCase().trim();
+        let unit = null;
+        if (rawUnit === 'hour' || rawUnit === 'hours' || rawUnit === 'h' || rawUnit === 'heure' || rawUnit === 'heures') {
+            unit = 'hours';
+        } else if (rawUnit === 'day' || rawUnit === 'days' || rawUnit === 'j' || rawUnit === 'jour' || rawUnit === 'jours' || rawUnit === 'd') {
+            unit = 'days';
+        }
+        if (!unit) continue;
+
+        const duration = parseInt(item.duration ?? item.value ?? item.count, 10);
+        const price = Math.round(Number(item.price) * 100) / 100;
+        if (!Number.isFinite(duration) || duration <= 0 || duration > 365) continue;
+        if (unit === 'hours' && duration > 72) continue;
+        if (!Number.isFinite(price) || price <= 0 || price > 50000) continue;
+
+        const key = `${unit}:${duration}`;
+        const existing = dedupMap.get(key);
+        if (!existing || price < existing.price) {
+            dedupMap.set(key, { unit, duration, price });
+        }
+    }
+
+    const result = Array.from(dedupMap.values());
+    result.sort((a, b) => {
+        if (a.unit !== b.unit) return a.unit === 'hours' ? -1 : 1;
+        return a.duration - b.duration;
+    });
+    return result;
+}
+
+/**
+ * Formate un palier individuel (ex: "12h : 20 CHF" ou "2 jours : 45 CHF")
+ */
+function formatPricingTierChip(tier) {
+    if (!tier || typeof tier !== 'object') return '';
+    const dur = parseInt(tier.duration, 10);
+    const price = Number(tier.price);
+    if (!Number.isFinite(dur) || !Number.isFinite(price)) return '';
+    const priceStr = Number.isInteger(price) ? String(price) : price.toFixed(2);
+    if (tier.unit === 'hours') {
+        return `${dur}h : ${priceStr} CHF`;
+    }
+    return `${dur} jour${dur > 1 ? 's' : ''} : ${priceStr} CHF`;
+}
+
+/**
+ * Formate la liste complète des paliers (ex: "12h : 20 CHF • 2 jours : 45 CHF")
+ */
+function formatPricingTiersSummary(rawTiers, maxItems = 4) {
+    const tiers = normalizePricingTiers(rawTiers);
+    if (tiers.length === 0) return '';
+    const visible = tiers.slice(0, maxItems).map(formatPricingTierChip).filter(Boolean);
+    if (tiers.length > maxItems) {
+        visible.push(`+${tiers.length - maxItems}`);
+    }
+    return visible.join(' • ');
+}
+
+/**
+ * Génère le texte du badge indicatif pour les cartes du catalogue et du profil public
+ * (ex: "Dès 20 CHF • Tarifs dégressifs" ou "Tarifs dégressifs")
+ */
+function getPricingTiersBadgeText(trailer) {
+    if (!trailer) return '';
+    const tiers = normalizePricingTiers(trailer.pricing_tiers);
+    if (tiers.length === 0) return '';
+    const basePrice = Number(trailer.price) || Infinity;
+    const minTierPrice = Math.min(...tiers.map(t => t.price));
+    if (Number.isFinite(minTierPrice) && minTierPrice < basePrice) {
+        const priceStr = Number.isInteger(minTierPrice) ? String(minTierPrice) : minTierPrice.toFixed(2);
+        return `Dès ${priceStr} CHF • Tarifs dégressifs`;
+    }
+    return 'Tarifs dégressifs';
+}
+
+/**
+ * Calcule le tarif optimal de location selon la durée en jours, la formule horaire éventuelle
+ * (si 1 jour) et les paliers personnalisés de la remorque.
+ */
+function calculateTieredRentalPrice(trailerOrBasePrice, diffDays = 1, durationHours = null) {
+    const isObj = trailerOrBasePrice && typeof trailerOrBasePrice === 'object';
+    const baseDailyPrice = Math.max(0, Number(isObj ? trailerOrBasePrice.price : trailerOrBasePrice) || 0);
+    const tiers = isObj ? normalizePricingTiers(trailerOrBasePrice.pricing_tiers) : [];
+    const safeDays = Math.max(1, parseInt(diffDays, 10) || 1);
+    const requestedHours = durationHours !== null && durationHours !== undefined && durationHours !== ''
+        ? parseInt(durationHours, 10)
+        : null;
+
+    if (safeDays === 1 && requestedHours && requestedHours > 0) {
+        const hourTier = tiers.find(t => t.unit === 'hours' && t.duration === requestedHours);
+        if (hourTier) {
+            const p = Math.round(hourTier.price * 100) / 100;
+            const label = `Forfait ${hourTier.duration}h × ${hourTier.price} CHF`;
+            return {
+                rentalPrice: p,
+                label,
+                calcLabel: label,
+                shortLabel: `${hourTier.duration}h`,
+                durationLabel: `${hourTier.duration}h`,
+                hasCustomTierApplied: true,
+                mode: 'hours',
+                isHourly: true,
+                durationHours: hourTier.duration,
+                durationDays: 1,
+                days: 1,
+                breakdown: [{ count: 1, unit: 'hours', duration: hourTier.duration, unitPrice: hourTier.price, subtotal: p }]
+            };
+        }
+    }
+
+    const dayTiersMap = new Map();
+    dayTiersMap.set(1, baseDailyPrice);
+    for (const t of tiers) {
+        if (t.unit === 'days' && t.duration >= 1 && t.duration <= safeDays) {
+            const existing = dayTiersMap.get(t.duration);
+            if (existing === undefined || t.price < existing) {
+                dayTiersMap.set(t.duration, t.price);
+            }
+        }
+    }
+
+    const hasAnyMultiDayOrCustomDayTier = tiers.some(t => t.unit === 'days' && t.duration <= safeDays && (t.duration > 1 || t.price !== baseDailyPrice));
+    if (!hasAnyMultiDayOrCustomDayTier) {
+        const linearTotal = Math.round(safeDays * baseDailyPrice * 100) / 100;
+        const label = `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`;
+        const shortLabel = `${safeDays} jour${safeDays > 1 ? 's' : ''}`;
+        return {
+            rentalPrice: linearTotal,
+            label,
+            calcLabel: label,
+            shortLabel,
+            durationLabel: shortLabel,
+            hasCustomTierApplied: false,
+            mode: 'days',
+            isHourly: false,
+            durationHours: null,
+            durationDays: safeDays,
+            days: safeDays,
+            breakdown: [{ count: safeDays, unit: 'days', duration: 1, unitPrice: baseDailyPrice, subtotal: linearTotal }]
+        };
+    }
+
+    const availableDayTiers = Array.from(dayTiersMap.entries())
+        .map(([duration, price]) => ({ duration, price }))
+        .sort((a, b) => b.duration - a.duration);
+
+    const dp = new Array(safeDays + 1).fill(Infinity);
+    const choice = new Array(safeDays + 1).fill(null);
+    dp[0] = 0;
+
+    for (let d = 1; d <= safeDays; d++) {
+        for (const tier of availableDayTiers) {
+            if (tier.duration <= d) {
+                const candidate = Math.round((dp[d - tier.duration] + tier.price) * 100) / 100;
+                if (candidate < dp[d]) {
+                    dp[d] = candidate;
+                    choice[d] = tier;
+                }
+            }
+        }
+    }
+
+    const countsByDuration = new Map();
+    let rem = safeDays;
+    while (rem > 0 && choice[rem]) {
+        const chosen = choice[rem];
+        countsByDuration.set(chosen.duration, {
+            tier: chosen,
+            count: (countsByDuration.get(chosen.duration)?.count || 0) + 1
+        });
+        rem -= chosen.duration;
+    }
+
+    const breakdown = Array.from(countsByDuration.values())
+        .sort((a, b) => b.tier.duration - a.tier.duration)
+        .map(({ tier, count }) => ({
+            count,
+            unit: 'days',
+            duration: tier.duration,
+            unitPrice: tier.price,
+            subtotal: Math.round(count * tier.price * 100) / 100
+        }));
+
+    const linearPrice = Math.round(safeDays * baseDailyPrice * 100) / 100;
+    const bestPrice = Math.round(dp[safeDays] * 100) / 100;
+    const usedNonLinear = breakdown.some(b => b.duration > 1 || b.unitPrice !== baseDailyPrice);
+
+    let label;
+    if (!usedNonLinear) {
+        label = `${safeDays} jour${safeDays > 1 ? 's' : ''} × ${baseDailyPrice} CHF / jour`;
+    } else {
+        const parts = breakdown.map(b => {
+            if (b.duration === 1) {
+                return `${b.count} jour${b.count > 1 ? 's' : ''} × ${b.unitPrice} CHF`;
+            }
+            if (b.count === 1) {
+                return `Forfait ${b.duration} jours (${b.unitPrice} CHF)`;
+            }
+            return `${b.count} × forfait ${b.duration} jours (${b.unitPrice} CHF)`;
+        });
+        label = parts.join(' + ');
+    }
+
+    const shortLabel = `${safeDays} jour${safeDays > 1 ? 's' : ''}`;
+    return {
+        rentalPrice: bestPrice,
+        label,
+        calcLabel: label,
+        shortLabel,
+        durationLabel: shortLabel,
+        hasCustomTierApplied: usedNonLinear || bestPrice !== linearPrice,
+        mode: 'days',
+        isHourly: false,
+        durationHours: null,
+        durationDays: safeDays,
+        days: safeDays,
+        breakdown
+    };
+}
+
 if (typeof window !== 'undefined') {
     window.isValidEmail = isValidEmail;
     window.isAllowedEmailDomain = isAllowedEmailDomain;
@@ -1718,6 +1968,11 @@ if (typeof window !== 'undefined') {
     window.validateImageMagicBytes = validateImageMagicBytes;
     window.DISPOSABLE_EMAIL_DOMAINS = DISPOSABLE_EMAIL_DOMAINS;
     window.callEdgeFunction = callEdgeFunction;
+    window.normalizePricingTiers = normalizePricingTiers;
+    window.formatPricingTierChip = formatPricingTierChip;
+    window.formatPricingTiersSummary = formatPricingTiersSummary;
+    window.getPricingTiersBadgeText = getPricingTiersBadgeText;
+    window.calculateTieredRentalPrice = calculateTieredRentalPrice;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -1728,7 +1983,12 @@ if (typeof module !== 'undefined' && module.exports) {
         compressImageFile,
         validateImageMagicBytes,
         DISPOSABLE_EMAIL_DOMAINS,
-        callEdgeFunction
+        callEdgeFunction,
+        normalizePricingTiers,
+        formatPricingTierChip,
+        formatPricingTiersSummary,
+        getPricingTiersBadgeText,
+        calculateTieredRentalPrice
     };
 }
 

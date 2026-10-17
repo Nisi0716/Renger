@@ -263,22 +263,34 @@
 
             <!-- Colonne de droite : Le Calendrier de réservation -->
             <div class="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-lg border border-stone-100 dark:border-stone-700 h-fit sticky top-24">
-                <div id="booking-header" class="flex items-end gap-2 mb-6">
+                <div id="booking-header" class="flex items-end gap-2 mb-4">
                     <span id="detail-price" class="text-4xl font-bold text-stone-900 dark:text-white"></span>
                     <span class="text-stone-500 font-medium pb-1">CHF / jour</span>
                 </div>
 
-                <div class="mb-6">
+                <!-- Grille des paliers de tarifs personnalisés (affichée si la remorque possède des paliers) -->
+                <div id="detail-pricing-tiers" class="hidden mb-5 p-3 rounded-2xl bg-terracotta-50/70 dark:bg-stone-900/80 border border-terracotta-200/70 dark:border-stone-700 text-xs"></div>
+
+                <div class="mb-5">
                     <label for="booking-dates" class="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2 cursor-pointer">Sélectionnez vos dates</label>
                     <input type="text" id="booking-dates" placeholder="Date de départ - Date de retour" class="w-full border-2 border-stone-200 dark:border-stone-700 rounded-2xl p-4 bg-stone-50 dark:bg-stone-900 dark:text-white focus:bg-white focus:border-terracotta-500 outline-none transition cursor-pointer font-medium" readonly>
+                </div>
+
+                <!-- Sélecteur de formule horaire (visible si 1 seul jour sélectionné et paliers horaires disponibles) -->
+                <div id="hourly-tier-selector" class="hidden mb-5 p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700">
+                    <p class="text-xs font-bold text-stone-700 dark:text-stone-300 mb-2">Formule pour 1 jour :</p>
+                    <div id="hourly-tier-options" class="flex flex-wrap gap-2"></div>
                 </div>
 
                 <div id="booking-summary" class="hidden border-t border-stone-200 dark:border-stone-700 pt-5 mb-5 space-y-3">
                     <!-- Détail séparé location -->
                     <div class="flex justify-between items-center text-sm">
-                        <span class="text-stone-600 dark:text-stone-300">
-                            Location (<span id="total-days">0</span> jour<span id="total-days-plural">s</span>)
-                        </span>
+                        <div>
+                            <span class="text-stone-600 dark:text-stone-300">
+                                Location (<span id="total-days">0</span> jour<span id="total-days-plural">s</span>)
+                            </span>
+                            <span id="booking-pricing-detail" class="hidden block text-[11px] text-terracotta-600 dark:text-terracotta-400 font-semibold mt-0.5"></span>
+                        </div>
                         <span id="total-rental-price" class="font-semibold text-stone-900 dark:text-white">0 CHF</span>
                     </div>
 

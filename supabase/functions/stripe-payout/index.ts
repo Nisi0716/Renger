@@ -7,6 +7,117 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface PricingTier {
+  unit: 'hours' | 'days'
+  duration: number
+  price: number
+}
+
+function normalizePricingTiers(rawTiers: unknown): PricingTier[] {
+  let parsed: unknown = rawTiers
+  if (typeof parsed === 'string') {
+    const trimmed = parsed.trim()
+    if (!trimmed) return []
+    try {
+      parsed = JSON.parse(trimmed)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(parsed)) return []
+
+  const dedupMap = new Map<string, PricingTier>()
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Record<string, unknown>
+    const rawUnit = String(rec.unit || '').toLowerCase().trim()
+    let unit: 'hours' | 'days' | null = null
+    if (['hour', 'hours', 'h', 'heure', 'heures'].includes(rawUnit)) {
+      unit = 'hours'
+    } else if (['day', 'days', 'j', 'jour', 'jours', 'd'].includes(rawUnit)) {
+      unit = 'days'
+    }
+    if (!unit) continue
+
+    const duration = parseInt(String(rec.duration ?? rec.value ?? rec.count ?? ''), 10)
+    const price = Math.round(Number(rec.price) * 100) / 100
+    if (!Number.isFinite(duration) || duration <= 0 || duration > 365) continue
+    if (unit === 'hours' && duration > 72) continue
+    if (!Number.isFinite(price) || price <= 0 || price > 50000) continue
+
+    const key = `${unit}:${duration}`
+    const existing = dedupMap.get(key)
+    if (!existing || price < existing.price) {
+      dedupMap.set(key, { unit, duration, price })
+    }
+  }
+
+  const result = Array.from(dedupMap.values())
+  result.sort((a, b) => {
+    if (a.unit !== b.unit) return a.unit === 'hours' ? -1 : 1
+    return a.duration - b.duration
+  })
+  return result
+}
+
+function calculateTieredRentalPrice(
+  trailer: { price?: number | string; pricing_tiers?: unknown } | null | undefined,
+  diffDays: number,
+  durationHours?: number | null
+): number {
+  const baseDailyPrice = Math.max(0, Number(trailer?.price) || 0)
+  const tiers = normalizePricingTiers(trailer?.pricing_tiers)
+  const safeDays = Math.max(1, Math.trunc(diffDays) || 1)
+  const requestedHours = durationHours !== null && durationHours !== undefined
+    ? parseInt(String(durationHours), 10)
+    : null
+
+  if (safeDays === 1 && requestedHours && requestedHours > 0) {
+    const hourTier = tiers.find(t => t.unit === 'hours' && t.duration === requestedHours)
+    if (hourTier) {
+      return Math.round(hourTier.price * 100) / 100
+    }
+  }
+
+  const dayTiersMap = new Map<number, number>()
+  dayTiersMap.set(1, baseDailyPrice)
+  for (const t of tiers) {
+    if (t.unit === 'days' && t.duration >= 1 && t.duration <= safeDays) {
+      const existing = dayTiersMap.get(t.duration)
+      if (existing === undefined || t.price < existing) {
+        dayTiersMap.set(t.duration, t.price)
+      }
+    }
+  }
+
+  const hasAnyMultiDayOrCustomDayTier = tiers.some(
+    t => t.unit === 'days' && t.duration <= safeDays && (t.duration > 1 || t.price !== baseDailyPrice)
+  )
+  if (!hasAnyMultiDayOrCustomDayTier) {
+    return Math.round(safeDays * baseDailyPrice * 100) / 100
+  }
+
+  const availableDayTiers = Array.from(dayTiersMap.entries())
+    .map(([duration, price]) => ({ duration, price }))
+    .sort((a, b) => b.duration - a.duration)
+
+  const dp = new Array<number>(safeDays + 1).fill(Infinity)
+  dp[0] = 0
+
+  for (let d = 1; d <= safeDays; d++) {
+    for (const tier of availableDayTiers) {
+      if (tier.duration <= d) {
+        const candidate = Math.round((dp[d - tier.duration] + tier.price) * 100) / 100
+        if (candidate < dp[d]) {
+          dp[d] = candidate
+        }
+      }
+    }
+  }
+
+  return Math.round(dp[safeDays] * 100) / 100
+}
+
 serve(async (req) => {
   // Gestion du pre-flight CORS
   if (req.method === 'OPTIONS') {
@@ -123,12 +234,22 @@ serve(async (req) => {
     // 4. Calcul du solde réel côté serveur (ZERO TRUST : jamais confiance aux montants fournis par le client)
     const todayStr = new Date().toISOString().split('T')[0]
 
-    // Récupérer toutes les réservations payées/confirmées du propriétaire
-    const { data: bookings, error: bookingsErr } = await supabaseAdmin
+    // Récupérer toutes les réservations payées/confirmées du propriétaire (avec repli si colonnes rental_price/pricing_tiers absentes)
+    let { data: bookings, error: bookingsErr } = await supabaseAdmin
       .from('bookings')
-      .select('id, start_date, end_date, total_price, status, trailer_id, trailers(price)')
+      .select('id, start_date, end_date, total_price, rental_price, duration_hours, status, trailer_id, trailers(price, pricing_tiers)')
       .eq('owner_id', user.id)
       .in('status', ['paye', 'paid', 'confirmed'])
+
+    if (bookingsErr) {
+      const fallbackRes = await supabaseAdmin
+        .from('bookings')
+        .select('id, start_date, end_date, total_price, status, trailer_id, trailers(price)')
+        .eq('owner_id', user.id)
+        .in('status', ['paye', 'paid', 'confirmed'])
+      bookings = fallbackRes.data as any
+      bookingsErr = fallbackRes.error
+    }
 
     if (bookingsErr) {
       throw new Error("Erreur de lecture des réservations : " + bookingsErr.message)
@@ -148,8 +269,16 @@ serve(async (req) => {
         const eDate = new Date(eStr + 'T00:00:00Z')
         const diffMs = Math.abs(eDate.getTime() - sDate.getTime())
         const days = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1)
-        const dailyPrice = (b.trailers && (b.trailers as any).price != null) ? Number((b.trailers as any).price) : 0
-        const baseRental = dailyPrice > 0 ? (days * dailyPrice) : (Number(b.total_price) || 0)
+        const rec = b as any
+        let baseRental = 0
+        if (rec.rental_price != null && Number(rec.rental_price) > 0) {
+          baseRental = Number(rec.rental_price)
+        } else {
+          const dailyPrice = (rec.trailers && rec.trailers.price != null) ? Number(rec.trailers.price) : 0
+          baseRental = dailyPrice > 0
+            ? calculateTieredRentalPrice(rec.trailers, days, rec.duration_hours)
+            : (Number(rec.total_price) || 0)
+        }
         totalNetEarnings += (baseRental * commissionRate)
       }
     }
