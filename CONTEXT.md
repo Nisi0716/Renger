@@ -764,9 +764,20 @@ Toute IA manipulant les prix ou le flux Stripe **doit appliquer scrupuleusement 
     - Journal de sécurité synchronisé dans `.jules/sentinel-backend.md`.
     - Suite de tests `tests/challenger-syni-admin.test.mjs` enrichie et validée à 100%.
 
+- [x] **Déploiement en Production de `stripe-portal` & Configuration Secrets Supabase (17 Octobre 2026) :**
+  - **Edge Function Sécurisée Deno `stripe-portal` (`supabase/functions/stripe-portal/index.ts`)** :
+    - Déployée en production sur Supabase Cloud (`cwifrzajxrcpnqceyxnj`) avec statut `ACTIVE` et `--no-verify-jwt` pour permettre un traitement fluide des requêtes préliminaires CORS (`OPTIONS`).
+    - Authentification JWT stricte interne : validation du jeton d'authentification Bearer via `supabase.auth.getUser(token)`.
+    - Rate limiting anti-abus sur la table PostgreSQL `rate_limits` : maximum 5 requêtes par fenêtre glissante de 10 minutes par `user.id`.
+    - Résolution Zero-Trust du `stripe_customer_id` depuis la table `profiles` avec fallback sécurisé par recherche d'adresse e-mail normalisée sur l'API Stripe.
+    - Création de sessions Stripe Customer Billing Portal (`stripe.billingPortal.sessions.create`) avec assainissement d'origine (`new URL().origin`) éliminant tout risque de chemin dupliqué vers `/profil.html?p=settings-page`.
+  - **Injection de la Clé Maîtresse `SYNI_MASTER_KEY` dans les Secrets Supabase Cloud** :
+    - Secret `SYNI_MASTER_KEY` (`RengerSyni2026!`) injecté avec succès via Supabase CLI (`supabase secrets set`).
+    - Garantit la sécurisation du 2ème facteur d'authentification pour le cockpit suprême Syni Palantir 3.0 et l'Edge Function `syni-data`.
+
 ### ⏳ Prochaines Évolutions Prioritaires
 - [ ] Ouvrir `App/ios/App/App.xcworkspace` dans Xcode pour signer avec le compte Apple Developer (`ch.renger.app`) et publier sur TestFlight / App Store Connect.
 - [ ] Générer le bundle signé `.aab` depuis `App/android/` dans Android Studio pour publication sur la Google Play Console.
 - [ ] Optimiser le chargement mobile des images d'annonces (format WebP automatique).
-- [ ] Déployer la fonction `stripe-portal` sur Supabase Cloud et renseigner `SYNI_MASTER_KEY` dans les secrets Supabase.
+
 
