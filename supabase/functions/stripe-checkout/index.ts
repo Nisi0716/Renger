@@ -345,11 +345,26 @@ serve(async (req) => {
       .select()
       .single()
 
-    if (bookingError && bookingError.message) {
+    let attempts = 0
+    while (bookingError && bookingError.message && attempts < 3) {
+      attempts++
       const errMsg = bookingError.message.toLowerCase()
-      if (errMsg.includes('rental_price') || errMsg.includes('duration_hours')) {
+      let retryNeeded = false
+
+      if (errMsg.includes('rental_price') && 'rental_price' in baseBookingInsert) {
         delete baseBookingInsert.rental_price
+        retryNeeded = true
+      }
+      if (errMsg.includes('duration_hours') && 'duration_hours' in baseBookingInsert) {
         delete baseBookingInsert.duration_hours
+        retryNeeded = true
+      }
+      if ((errMsg.includes('bigint') || errMsg.includes('integer') || errMsg.includes('smallint')) && typeof baseBookingInsert.total_price === 'number' && !Number.isInteger(baseBookingInsert.total_price)) {
+        baseBookingInsert.total_price = Math.round(totalPaidPrice)
+        retryNeeded = true
+      }
+
+      if (retryNeeded) {
         const fallbackInsert = await supabaseAdmin
           .from('bookings')
           .insert([baseBookingInsert])
@@ -357,6 +372,8 @@ serve(async (req) => {
           .single()
         booking = fallbackInsert.data
         bookingError = fallbackInsert.error
+      } else {
+        break
       }
     }
 

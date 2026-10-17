@@ -832,8 +832,11 @@
                     if (lockEl) lockEl.checked = Boolean(trailer.has_hitch_lock);
                 }
 
-                if (trailer.pricing_tiers && typeof setPricingTiersInForm === 'function') {
-                    setPricingTiersInForm(trailer.pricing_tiers);
+                const setTiersFn = (typeof setPricingTiersInForm === 'function')
+                    ? setPricingTiersInForm
+                    : (typeof window !== 'undefined' && typeof window.setPricingTiersInForm === 'function' ? window.setPricingTiersInForm : null);
+                if (trailer.pricing_tiers && setTiersFn) {
+                    setTiersFn(trailer.pricing_tiers);
                 }
 
                 // Titre de la page et en-tête

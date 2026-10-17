@@ -239,18 +239,21 @@ function calculateTieredRentalPrice(trailerOrBasePrice, diffDays = 1, durationHo
 
 function renderDetailPricingTiers(trailer) {
     const container = document.getElementById('detail-pricing-tiers');
+    const wrapper = document.getElementById('detail-pricing-tiers-wrapper');
     if (!container) return;
     container.innerHTML = '';
     const tiers = normalizePricingTiers(trailer?.pricing_tiers);
     if (tiers.length === 0) {
         if (container.classList) container.classList.add('hidden');
+        if (wrapper && wrapper.classList) wrapper.classList.add('hidden');
         return;
     }
     if (container.classList) container.classList.remove('hidden');
+    if (wrapper && wrapper.classList) wrapper.classList.remove('hidden');
 
     tiers.forEach(tier => {
         const chip = document.createElement('span');
-        chip.className = ' pricing-tier-detail-chip inline-flex items-center gap-1 bg-terracotta-50 dark:bg-stone-800 border border-terracotta-200 dark:border-stone-700 text-terracotta-700 dark:text-terracotta-400 text-xs font-bold px-2.5 py-1 rounded-lg';
+        chip.className = 'pricing-tier-detail-chip inline-flex items-center gap-1 bg-white dark:bg-stone-800 border border-terracotta-200 dark:border-stone-700 text-terracotta-700 dark:text-terracotta-400 text-xs font-bold px-2.5 py-1 rounded-lg shadow-2xs';
         chip.textContent = formatPricingTierChip(tier);
         container.appendChild(chip);
     });
@@ -653,6 +656,11 @@ async function openTrailerDetail(trailer) {
             minDate: "today",
             locale: fpLocale || "fr",
             disable: disabledDates,
+            onClose: function(selectedDates, dateStr, instance) {
+                if (selectedDates && selectedDates.length === 1) {
+                    instance.setDate([selectedDates[0], selectedDates[0]], true);
+                }
+            },
             onChange: function(selectedDates) {
                 if (!currentTrailer) return;
                 if (selectedDates.length === 2) {
