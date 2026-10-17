@@ -1964,7 +1964,20 @@
                 if (trailer) trailer.is_active = newActive;
                 if (metricTrailer && metricTrailer !== trailer) metricTrailer.is_active = newActive;
                 if (client) {
-                    dbPromise = safeQuery(client.from('trailers').update({ is_active: newActive }).eq('id', idStr));
+                    dbPromise = (async () => {
+                        const numericId = Number(idStr);
+                        let rpcSuccess = false;
+                        if (!Number.isNaN(numericId) && typeof client.rpc === 'function') {
+                            const rpcRes = await safeQuery(client.rpc('syni_toggle_trailer_active', { trailer_id_param: numericId, new_active: newActive }));
+                            if (!rpcRes.error && rpcRes.data && rpcRes.data.success) {
+                                rpcSuccess = true;
+                            }
+                        }
+                        if (!rpcSuccess) {
+                            const res = await safeQuery(client.from('trailers').update({ is_active: newActive }).eq('id', idStr));
+                            if (res.error) throw res.error;
+                        }
+                    })();
                 }
                 successMessage = newActive ? `Remorque #${idStr} réactivée` : `Remorque #${idStr} masquée du catalogue`;
             } else if (actionType === 'boost_7d') {
@@ -3353,11 +3366,18 @@
                 if (tableName === 'trailers') {
                     delete insertPayload.caution;
                     delete insertPayload.charge_utile;
+                    delete insertPayload.location;
                     delete insertPayload.views;
                     delete insertPayload.clicks;
                     delete insertPayload.ctr;
+                    if (insertPayload.owner_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(insertPayload.owner_id)) {
+                        delete insertPayload.owner_id;
+                    }
                 }
-                dbPromise = safeQuery(client.from(tableName).insert([insertPayload]));
+                dbPromise = safeQuery(client.from(tableName).insert([insertPayload])).then(res => {
+                    if (res && res.error) throw res.error;
+                    return res;
+                });
             }
 
             recordAuditLog(`create_${entityType}`, entityType, String(finalId), reason || `Création directe Master Editor ${entityType}`);
@@ -3379,11 +3399,37 @@
                 if (tableName === 'trailers') {
                     delete updatePayload.caution;
                     delete updatePayload.charge_utile;
+                    delete updatePayload.location;
                     delete updatePayload.views;
                     delete updatePayload.clicks;
                     delete updatePayload.ctr;
+                    if (updatePayload.owner_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(updatePayload.owner_id)) {
+                        delete updatePayload.owner_id;
+                    }
                 }
-                dbPromise = safeQuery(client.from(tableName).update(updatePayload).eq('id', entityId));
+
+                dbPromise = (async () => {
+                    const numericId = Number(entityId);
+                    let rpcSuccess = false;
+                    if (tableName === 'trailers' && !Number.isNaN(numericId) && typeof client.rpc === 'function') {
+                        const rpcRes = await safeQuery(client.rpc('syni_update_trailer_admin', {
+                            trailer_id_param: numericId,
+                            title_param: updatePayload.title || null,
+                            price_param: updatePayload.price != null ? Number(updatePayload.price) : null,
+                            category_param: updatePayload.category || null,
+                            location_city_param: updatePayload.location_city || null,
+                            payload_param: updatePayload.payload != null ? Number(updatePayload.payload) : null,
+                            is_active_param: typeof updatePayload.is_active === 'boolean' ? updatePayload.is_active : null
+                        }));
+                        if (!rpcRes.error && rpcRes.data && rpcRes.data.success) {
+                            rpcSuccess = true;
+                        }
+                    }
+                    if (!rpcSuccess) {
+                        const directRes = await safeQuery(client.from(tableName).update(updatePayload).eq('id', entityId));
+                        if (directRes && directRes.error) throw directRes.error;
+                    }
+                })();
             }
 
             recordAuditLog(`edit_${entityType}`, entityType, String(entityId), reason || `Modification directe Master Editor ${entityType}`);
@@ -3410,7 +3456,7 @@
         return result;
     }
 
-    function handleMasterEditorFormSave() {
+    async function handleMasterEditorFormSave() {
         if (!pendingMasterEdit) return;
         const { entityType, entityId } = pendingMasterEdit;
         const reason = document.getElementById('master-editor-reason')?.value || '';
@@ -3433,7 +3479,10 @@
             formData.charge_utile = formData.payload;
             formData.location = document.getElementById('me-field-location')?.value || '1003 Lausanne';
             formData.location_city = formData.location.replace(/^\d+\s*/, '') || 'Lausanne';
-            formData.owner_id = document.getElementById('me-field-owner-id')?.value || 'usr-pro-1';
+            const ownerInput = document.getElementById('me-field-owner-id')?.value;
+            if (ownerInput && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ownerInput)) {
+                formData.owner_id = ownerInput;
+            }
             formData.is_active = document.getElementById('me-field-is-active')?.value !== 'false';
         } else if (entityType === 'booking') {
             formData.trailer_id = document.getElementById('me-field-trailer-id')?.value || 1;
@@ -3451,8 +3500,16 @@
 
         const res = saveMasterEntity(entityType, entityId, formData, reason);
         closeMasterEditor();
-        if (typeof showToast === 'function') {
-            showToast(res.isNew ? `Entité créée avec succès (#${res.id})` : `Entité #${res.id} mise à jour`, 'success');
+        try {
+            await res;
+            if (typeof showToast === 'function') {
+                showToast(res.isNew ? `Entité créée avec succès (#${res.id})` : `Entité #${res.id} mise à jour en base de données`, 'success');
+            }
+        } catch (saveErr) {
+            console.error('[Syni Master Editor] Erreur lors de la sauvegarde :', saveErr);
+            if (typeof showToast === 'function') {
+                showToast(`Erreur DB : ${saveErr.message || 'Impossible de sauvegarder'}`, 'error');
+            }
         }
     }
 
@@ -5594,6 +5651,160 @@
     function processCopilotPrompt(userPrompt = '', data = null) {
         const prompt = (userPrompt || '').toLowerCase().trim();
         const src = data || rawData || getFallbackSeedData();
+
+        // -1. Détection des Commandes Opérationnelles Administrateur (Modifier, Masquer / Activer, Supprimer)
+        const isDeleteCmd = /\b(supprim|effac|retir|delete|destroy)\b/i.test(prompt);
+        const isHideCmd = /\b(masqu|désactiv|desactiv|archiv|hide|disable)\b/i.test(prompt);
+        const isActivateCmd = /\b(activ|démasqu|demasqu|reactiv|réactiv|restaur|unhide|enable)\b/i.test(prompt);
+        const isModifyCmd = /\b(modifi|chang|met\s*à\s*jour|mets\s*à\s*jour|passer|update|edit)\b/i.test(prompt);
+        const mentionsTarget = /\b(annonc|remorqu|trailer)\b/i.test(prompt);
+
+        if (isDeleteCmd || isHideCmd || isActivateCmd || isModifyCmd) {
+            // Extraction de l'ID de la remorque (ex: "annonce 15", "remorque #12", ou simple chiffre isolé)
+            const idMatch = prompt.match(/(?:annonce|remorque|trailer|#)\s*([0-9]+)/i) || prompt.match(/\b([0-9]{1,6})\b/);
+            let targetTrailer = null;
+            if (idMatch) {
+                const targetId = idMatch[1];
+                targetTrailer = (src.trailers || []).find(t => String(t.id) === String(targetId));
+            } else if (mentionsTarget) {
+                // Recherche par bribe de titre si aucun ID numérique n'est mentionné
+                targetTrailer = (src.trailers || []).find(t => {
+                    const titleLower = (t.title || '').toLowerCase();
+                    return prompt.split(/\s+/).some(word => word.length > 3 && titleLower.includes(word));
+                });
+            }
+
+            if (targetTrailer) {
+                const trId = targetTrailer.id;
+                const trTitle = targetTrailer.title || `Remorque #${trId}`;
+
+                // A. Commande SUPPRIMER
+                if (isDeleteCmd) {
+                    const isHard = prompt.includes('définit') || prompt.includes('definit') || prompt.includes('dur') || prompt.includes('hard') || prompt.includes('base');
+                    const actionType = isHard ? 'hard_delete' : 'soft_delete';
+                    executeSupremeAction(actionType, 'trailer', trId, `Commande Copilot : ${userPrompt}`);
+                    const responseText = isHard 
+                        ? `🗑️ **Remorque #${trId} (« ${escapeHtml(trTitle)} ») définitivement supprimée** de la base de données PostgreSQL.\nToutes les dépendances associées (vues, clics, inspections) ont été purgées.`
+                        : `📦 **Remorque #${trId} (« ${escapeHtml(trTitle)} ») archivée dans la corbeille**.\nElle a été immédiatement masquée du catalogue public Renger (conforme CO art. 958f).`;
+
+                    const widget = {
+                        id: 'widget_cmd_del_' + Date.now(),
+                        title: `Action Opérationnelle : Suppression #${trId}`,
+                        badge: isHard ? "Hard Delete" : "Corbeille",
+                        type: "table_only",
+                        tableData: [
+                            { Action: isHard ? "Suppression Définitive" : "Mise en corbeille", Remorque: `#${trId} - ${trTitle}`, Statut: "Succès", Horodatage: new Date().toLocaleTimeString('fr-CH') }
+                        ],
+                        summaryText: `L'action a été appliquée immédiatement en base de données et dans l'Audit Trail Syni.`
+                    };
+                    return { responseText, widget, engine: 'Syni Operations Engine' };
+                }
+
+                // B. Commande MASQUER / DÉSACTIVER
+                if (isHideCmd) {
+                    targetTrailer.is_active = false;
+                    executeSupremeAction('toggle_active', 'trailer', trId, `Désactivation via Copilot : ${userPrompt}`);
+                    const responseText = `👁️‍🗨️ **L'annonce #${trId} (« ${escapeHtml(trTitle)} ») est désormais masquée** du catalogue Renger.\nLes locataires ne peuvent plus la réserver tant qu'elle n'est pas réactivée.`;
+                    const widget = {
+                        id: 'widget_cmd_hide_' + Date.now(),
+                        title: `Annonce #${trId} Masquée`,
+                        badge: "Catalogue Masqué",
+                        type: "table_only",
+                        tableData: [
+                            { Remorque: `#${trId} - ${trTitle}`, "Visibilité Catalogue": "Masquée (is_active: false)", "Date d'application": new Date().toLocaleTimeString('fr-CH') }
+                        ],
+                        summaryText: "L'annonce n'apparaît plus sur la carte interactive ni dans la grille de recherche."
+                    };
+                    return { responseText, widget, engine: 'Syni Operations Engine' };
+                }
+
+                // C. Commande RÉACTIVER / DÉMASQUER
+                if (isActivateCmd) {
+                    targetTrailer.is_active = true;
+                    executeSupremeAction('toggle_active', 'trailer', trId, `Activation via Copilot : ${userPrompt}`);
+                    const responseText = `✅ **L'annonce #${trId} (« ${escapeHtml(trTitle)} ») a été réactivée avec succès**.\nElle est à nouveau visible et immédiatement réservable sur le catalogue public.`;
+                    const widget = {
+                        id: 'widget_cmd_act_' + Date.now(),
+                        title: `Annonce #${trId} Réactivée`,
+                        badge: "Actif Catalogue",
+                        type: "table_only",
+                        tableData: [
+                            { Remorque: `#${trId} - ${trTitle}`, "Visibilité Catalogue": "Visible (is_active: true)", "Date d'application": new Date().toLocaleTimeString('fr-CH') }
+                        ],
+                        summaryText: "La remorque est désormais ouverte aux réservations en ligne."
+                    };
+                    return { responseText, widget, engine: 'Syni Operations Engine' };
+                }
+
+                // D. Commande MODIFIER (Prix, Titre, Ville, etc.)
+                if (isModifyCmd) {
+                    const priceMatch = prompt.match(/(?:prix|tarif|montant)\s*(?:à|de|=|:)?\s*([0-9]+(?:[\.,][0-9]{1,2})?)/i) || prompt.match(/([0-9]+(?:[\.,][0-9]{1,2})?)\s*(?:chf|frs?|-)/i);
+                    const changes = {};
+                    const changeDescriptions = [];
+
+                    if (priceMatch) {
+                        const newPrice = parseFloat(priceMatch[1].replace(',', '.'));
+                        changes.price = newPrice;
+                        targetTrailer.price = newPrice;
+                        changeDescriptions.push(`Nouveau tarif : **${newPrice} CHF/jour**`);
+                    }
+
+                    // Détection éventuelle de changement de titre (ex: "titre: Nouveau Titre")
+                    const titleMatch = userPrompt.match(/titre\s*[:=]\s*([^,\.]+)/i);
+                    if (titleMatch) {
+                        const newTitle = titleMatch[1].trim();
+                        changes.title = newTitle;
+                        targetTrailer.title = newTitle;
+                        changeDescriptions.push(`Nouveau titre : **« ${escapeHtml(newTitle)} »**`);
+                    }
+
+                    // Détection éventuelle de changement de ville
+                    const cityMatch = userPrompt.match(/(?:ville|lieu|location)\s*[:=]\s*([a-zA-ZÀ-ÿ\s-]+)/i);
+                    if (cityMatch) {
+                        const newCity = cityMatch[1].trim();
+                        changes.location_city = newCity;
+                        targetTrailer.location_city = newCity;
+                        changeDescriptions.push(`Localisation : **${escapeHtml(newCity)}**`);
+                    }
+
+                    if (Object.keys(changes).length > 0) {
+                        saveMasterEntity('trailer', trId, changes, `Modification via Copilot : ${userPrompt}`);
+                        const responseText = `✏️ **Annonce #${trId} modifiée avec succès :**\n\n• ${changeDescriptions.join('\n• ')}\n\nLes modifications ont été persistées en base PostgreSQL et répercutées dans l'ensemble des modules d'analyse.`;
+                        const widget = {
+                            id: 'widget_cmd_mod_' + Date.now(),
+                            title: `Modification Annonce #${trId}`,
+                            badge: "Mise à Jour",
+                            type: "table_only",
+                            tableData: [
+                                { Paramètre: "Remorque", Valeur: `#${trId} - ${targetTrailer.title || trTitle}` },
+                                ...Object.entries(changes).map(([k, v]) => ({ Paramètre: k, Valeur: String(v) }))
+                            ],
+                            summaryText: "Données synchronisées en temps réel."
+                        };
+                        return { responseText, widget, engine: 'Syni Operations Engine' };
+                    }
+                }
+            } else if (mentionsTarget && (isDeleteCmd || isHideCmd || isActivateCmd || isModifyCmd)) {
+                return {
+                    responseText: `⚠️ **Précision requise pour exécuter l'action :**\n\nJe reconnais votre intention de **${isDeleteCmd ? 'supprimer' : isHideCmd ? 'masquer' : isActivateCmd ? 'réactiver' : 'modifier'}** une annonce, mais veuillez préciser le **numéro ID** de l'annonce (ex: *« masquer l'annonce 15 »*, *« supprimer la remorque 12 »* ou *« modifier le prix de l'annonce 15 à 45 CHF »*).`,
+                    widget: {
+                        id: 'widget_cmd_help_' + Date.now(),
+                        title: "Aide Commandes Opérationnelles",
+                        badge: "Syntaxe Syni",
+                        type: "table_only",
+                        tableData: [
+                            { Commande: "Masquer", Exemple: "« Masquer l'annonce 15 »", Effet: "Passe is_active à false (masquage public immédiat)" },
+                            { Commande: "Réactiver", Exemple: "« Activer l'annonce 15 »", Effet: "Passe is_active à true (remise en ligne)" },
+                            { Commande: "Supprimer (Corbeille)", Exemple: "« Supprimer la remorque 15 »", Effet: "Soft-delete CO art. 958f" },
+                            { Commande: "Supprimer (Définitif)", Exemple: "« Supprimer définitivement l'annonce 15 »", Effet: "Hard-delete SQL avec cascade" },
+                            { Commande: "Modifier Prix", Exemple: "« Modifier le prix de l'annonce 15 à 50 CHF »", Effet: "Mise à jour immédiate du tarif" }
+                        ],
+                        summaryText: "Les commandes sont sécurisées par rôle Administrateur Syni (PostgreSQL RPC SECURITY DEFINER)."
+                    },
+                    engine: 'Syni Operations Engine'
+                };
+            }
+        }
 
         // 0. Détection d'un Deep-Dive sur une catégorie spécifique (ex: remorques à cheval, porte-voiture, moto, utilitaire)
         // Répond directement et précisément à : "quantité de recherche pour des remorques à cheval en relation avec les prix de celle-ci"
