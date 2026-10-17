@@ -795,9 +795,12 @@ Toute IA manipulant les prix ou le flux Stripe **doit appliquer scrupuleusement 
     - Synchronisation instantanée dans `App/www/`, `App/ios/` et `App/android/`.
     - Tests challengers Item 10 validés à 100% dans `tests/challenger-owner-experience.test.mjs` (signatures WebP, lazy loading, compression et upload).
 
-### ⏳ Prochaines Évolutions Prioritaires
-- [ ] Ouvrir `App/ios/App/App.xcworkspace` dans Xcode pour signer avec le compte Apple Developer (`ch.renger.app`) et publier sur TestFlight / App Store Connect.
-- [ ] Générer le bundle signé `.aab` depuis `App/android/` dans Android Studio pour publication sur la Google Play Console.
+### ⏳ Prochaines Évolutions Prioritaires (Focus 100% Plateforme Web)
+- [ ] *[En attente / mis en pause jusqu'à nouvel ordre]* Déploiement mobile natif iOS (TestFlight / App Store) et Android (Google Play Store).
+- [ ] **Validation End-to-End du Flux Réservation Web** : Test complet du parcours locataire (sélection dates Flatpickr, devis CHF, caution Stripe off-session, redirection, contrat PDF CO art. 253).
+- [ ] **Tests de Notification E-mails Transactionnels (Resend)** : Vérification des e-mails automatiques post-paiement Stripe (confirmation au locataire et au propriétaire).
+- [ ] **Affinement UX Catalogue & Carte Interactive** : Optimisation des filtres et marqueurs Leaflet sur `remorques.html`.
+
 
 
 
