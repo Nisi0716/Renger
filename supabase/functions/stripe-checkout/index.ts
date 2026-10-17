@@ -87,6 +87,13 @@ serve(async (req) => {
       })
     }
 
+    if (!trailer.price || Number(trailer.price) <= 0 || isNaN(Number(trailer.price))) {
+      return new Response(JSON.stringify({ error: "Prix journalier de la remorque invalide." }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const todayStr = new Date().toISOString().split('T')[0];
     if (startDate < todayStr) {
       return new Response(JSON.stringify({ error: "La date de début ne peut pas être dans le passé." }), {
@@ -102,10 +109,13 @@ serve(async (req) => {
     }
 
     // 3. Calculs financiers précis (Location + Frais Renger 5% min 4.90 CHF)
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const diffTime = end.getTime() - start.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+    // Normalisation UTC minuit pour immuniser contre les décalages DST (changement d'heure) et fuseaux
+    const startParts = String(startDate).split('T')[0].split('-').map(Number)
+    const endParts = String(endDate).split('T')[0].split('-').map(Number)
+    const utcStart = Date.UTC(startParts[0], startParts[1] - 1, startParts[2])
+    const utcEnd = Date.UTC(endParts[0], endParts[1] - 1, endParts[2])
+    const diffTime = Math.abs(utcEnd - utcStart)
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1
     
     // Rate Limiting (VULN-11) : max 5 réservations récentes dans les 10 dernières minutes
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -129,7 +139,7 @@ serve(async (req) => {
       .from('bookings')
       .select('id, status, created_at')
       .eq('trailer_id', trailerId)
-      .in('status', ['paye', 'en_attente', 'indisponible'])
+      .in('status', ['paye', 'paid', 'confirmed', 'active', 'en_attente', 'indisponible'])
       .lte('start_date', endDate)
       .gte('end_date', startDate);
 
@@ -159,9 +169,11 @@ serve(async (req) => {
     // Total effectivement débité sur la carte
     const totalPaidPrice = parseFloat((totalRentalPrice + serviceFee).toFixed(2))
 
-    // Montant de la caution (empreinte non débitée)
+    // Montant de la caution (empreinte non débitée) : barème standard suisse Renger
     const isHeavy = ['cheval', 'voiture', 'refrigere'].includes(trailer.category) || (trailer.payload && trailer.payload > 1200)
-    const caution = Number(trailer.caution) > 0 ? Number(trailer.caution) : (isHeavy ? 400 : 200);
+    const isMedium = trailer.category === 'moto' || (trailer.payload && trailer.payload > 750)
+    const customCaution = Number(trailer.deposit_amount) > 0 ? Number(trailer.deposit_amount) : (Number(trailer.caution) > 0 ? Number(trailer.caution) : (Number(trailer.deposit) > 0 ? Number(trailer.deposit) : 0))
+    const caution = customCaution > 0 ? customCaution : (isHeavy ? 400 : (isMedium ? 300 : 200))
 
     // 4. Création de la réservation en statut 'en_attente'
     const { data: booking, error: bookingError } = await supabaseAdmin

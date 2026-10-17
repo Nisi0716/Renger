@@ -58,6 +58,12 @@ const TIERS = [
         id: 'tier7',
         name: 'Tier 7: Audit SEO, Sitemaps & Données Structurées',
         file: 'tier8-seo-audit.test.mjs'
+    },
+    {
+        tier: 8,
+        id: 'tier8',
+        name: 'Tier 8: Tunnel de Réservation E2E & Stripe Checkout',
+        file: 'tier8-booking-pipeline-e2e.test.mjs'
     }
 ];
 
@@ -68,10 +74,8 @@ function parseArguments() {
     for (const arg of args) {
         if (arg.startsWith('--tier=')) {
             selectedTier = parseInt(arg.split('=')[1], 10);
-            if (selectedTier === 8) selectedTier = 7;
         } else if (/^tier[1-8]$/i.test(arg)) {
             selectedTier = parseInt(arg.replace(/tier/i, ''), 10);
-            if (selectedTier === 8) selectedTier = 7;
         } else if (arg === '-h' || arg === '--help') {
             console.log(`
 ${BOLD}Renger Automated Test Runner — Node.js 24 Native Test Suite${RESET}
@@ -80,14 +84,14 @@ Usage:
   node tests/run-tests.mjs [options]
 
 Options:
-  --tier=N         Exécuter uniquement le palier N (1 à 7)
-  tier1..tier7     Raccourci pour exécuter un palier spécifique
+  --tier=N         Exécuter uniquement le palier N (1 à 8)
+  tier1..tier8     Raccourci pour exécuter un palier spécifique
   --help, -h       Afficher cette aide
 
 Exemples:
-  node tests/run-tests.mjs            # Exécute l'ensemble des 7 paliers
-  node tests/run-tests.mjs --tier=7   # Exécute uniquement le Tier 7 (SEO)
-  node tests/run-tests.mjs tier7      # Exécute uniquement le Tier 7 (SEO)
+  node tests/run-tests.mjs            # Exécute l'ensemble des 8 paliers
+  node tests/run-tests.mjs --tier=8   # Exécute uniquement le Tier 8 (Réservation E2E)
+  node tests/run-tests.mjs tier8      # Exécute uniquement le Tier 8 (Réservation E2E)
 `);
             process.exit(0);
         }
@@ -110,11 +114,18 @@ function parseTestOutput(stdout, stderr) {
     const failed = failMatch ? parseInt(failMatch[1], 10) : 0;
     const durationMs = durationMatch ? parseFloat(durationMatch[1]) : 0;
 
-    // Extraction des échecs détaillés (dédoublonnés)
+    // Extraction des échecs détaillés (dédoublonnés) sous format Spec (✖) ou TAP (not ok)
     const failureDetailsSet = new Set();
     const failureRegex = /✖ ([^\n]+)\s*\(([\d.]+ms)\)[\s\S]*?(?=✖|ℹ|$)/g;
     let match;
     while ((match = failureRegex.exec(combined)) !== null) {
+        const testTitle = match[1].trim();
+        if (!testTitle.startsWith('Tier')) {
+            failureDetailsSet.add(testTitle);
+        }
+    }
+    const tapFailRegex = /(?:^|\n)\s*not ok\s+\d+\s+-\s+([^\n]+)/g;
+    while ((match = tapFailRegex.exec(combined)) !== null) {
         const testTitle = match[1].trim();
         if (!testTitle.startsWith('Tier')) {
             failureDetailsSet.add(testTitle);

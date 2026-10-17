@@ -18,10 +18,11 @@ if (typeof window !== 'undefined') {
 }
 
 async function openTrailerDetail(trailer) {
-    if (trailer && typeof logClick === 'function') logClick(trailer.id);
+    if (!trailer) return;
+    if (typeof logClick === 'function') logClick(trailer.id);
     // MPA : hors de la fiche détail, on navigue vers remorque.html?id=... (la page recharge l'annonce)
     if (!document.getElementById('detail-page')) {
-        if (trailer && trailer.id) window.location.href = 'remorque.html?id=' + encodeURIComponent(trailer.id);
+        if (trailer.id) window.location.href = 'remorque.html?id=' + encodeURIComponent(trailer.id);
         return;
     }
     currentTrailer = trailer;
@@ -281,6 +282,7 @@ async function openTrailerDetail(trailer) {
             locale: fpLocale || "fr",
             disable: disabledDates,
             onChange: function(selectedDates) {
+                if (!currentTrailer) return;
                 if (selectedDates.length === 2) {
                     selectedStartDate = selectedDates[0];
                     selectedEndDate = selectedDates[1];
@@ -290,7 +292,7 @@ async function openTrailerDetail(trailer) {
                     const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
                     const diffTime = Math.abs(utcEnd - utcStart);
                     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1; 
-                    const rentalPrice = diffDays * currentTrailer.price;
+                    const rentalPrice = diffDays * Number(currentTrailer.price || 0);
                     const serviceFee = calculateRengerServiceFee(rentalPrice);
                     const totalWithFee = rentalPrice + serviceFee;
                     const caution = getTrailerCaution(currentTrailer);
@@ -312,8 +314,9 @@ async function openTrailerDetail(trailer) {
                     const cautionExpEl = document.getElementById('caution-explain-amount');
                     if (cautionExpEl) cautionExpEl.innerText = `${caution} CHF`;
 
+                    const isOwnerNow = !!(currentUser && currentTrailer && currentUser.id === currentTrailer.owner_id) || isOwner;
                     const totalPriceEl = document.getElementById('total-price');
-                    if (totalPriceEl) totalPriceEl.innerText = isOwner ? "0 CHF" : `${totalWithFee.toFixed(2)} CHF`;
+                    if (totalPriceEl) totalPriceEl.innerText = isOwnerNow ? "0 CHF" : `${totalWithFee.toFixed(2)} CHF`;
 
                     const bookingSummary = document.getElementById('booking-summary');
                     if (bookingSummary) bookingSummary.classList.remove('hidden');
@@ -390,16 +393,29 @@ async function blockOwnerDates() {
         return showToast("Action non autorisée : vous n'êtes pas le propriétaire.", "error");
     }
     if (!selectedStartDate || !selectedEndDate) return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
+    if (selectedStartDate > selectedEndDate) {
+        return showToast("La date de fin doit être postérieure à la date de début.", "error");
+    }
+    const today = new Date();
+    const utcToday = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+    if (utcStart < utcToday) {
+        return showToast("La date de début ne peut pas être dans le passé.", "error");
+    }
 
     const actionBtn = document.getElementById('action-btn');
     if (actionBtn) actionBtn.disabled = true;
+
+    const formatISO = (typeof formatDateToLocalISO === 'function')
+        ? formatDateToLocalISO
+        : (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     const newBooking = {
         trailer_id: currentTrailer.id,
         renter_id: currentUser.id,
         owner_id: currentTrailer.owner_id,
-        start_date: formatDateToLocalISO(selectedStartDate),
-        end_date: formatDateToLocalISO(selectedEndDate),
+        start_date: formatISO(selectedStartDate),
+        end_date: formatISO(selectedEndDate),
         total_price: 0,
         status: 'indisponible' // Statut spécial pour bloquer sans payer
     };
@@ -477,19 +493,33 @@ function closeCautionInfoModal() {
 function submitBooking() {
     if (!currentUser) {
         showToast("Vous devez être connecté pour réserver.", "error");
-        openAuthModal();
+        if (typeof openAuthModal === 'function') openAuthModal();
         return;
+    }
+    if (!currentTrailer || !currentTrailer.id) {
+        return showToast("Remorque introuvable.", "error");
+    }
+    if (currentUser.id === currentTrailer.owner_id) {
+        return showToast("Vous ne pouvez pas louer votre propre remorque.", "error");
     }
     if (!selectedStartDate || !selectedEndDate) {
         return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
     }
+    if (selectedStartDate > selectedEndDate) {
+        return showToast("La date de fin doit être postérieure à la date de début.", "error");
+    }
+    const today = new Date();
+    const utcToday = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+    if (utcStart < utcToday) {
+        return showToast("La date de début ne peut pas être dans le passé.", "error");
+    }
 
     // Calculer les montants détaillés pour la modale (avec normalisation UTC minuit contre les décalages DST)
-    const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
     const utcEnd = Date.UTC(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate());
     const diffTime = Math.abs(utcEnd - utcStart);
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const rentalPrice = diffDays * currentTrailer.price;
+    const rentalPrice = diffDays * Number(currentTrailer.price || 0);
     const serviceFee = calculateRengerServiceFee(rentalPrice);
     const totalToPay = rentalPrice + serviceFee;
     const cautionAmount = getTrailerCaution(currentTrailer);
@@ -532,46 +562,115 @@ function submitBooking() {
     if (btnCautionEl) btnCautionEl.textContent = `${cautionAmount}`;
 
     // Afficher la modale
-    document.getElementById('booking-confirm-modal').classList.remove('hidden');
+    const modal = document.getElementById('booking-confirm-modal');
+    if (modal) modal.classList.remove('hidden');
 }
 
 function closeBookingConfirmModal() {
-    document.getElementById('booking-confirm-modal').classList.add('hidden');
+    const modal = document.getElementById('booking-confirm-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 // Verrou d'exécution pour éviter les doubles réservations Stripe
 let isProcessingBooking = false;
+try {
+    if (typeof window !== 'undefined') {
+        Object.defineProperty(window, 'isProcessingBooking', {
+            get() { return isProcessingBooking; },
+            set(v) { isProcessingBooking = v; },
+            configurable: true
+        });
+    }
+} catch (e) {}
 
 // Lance la vraie transaction Stripe (appelée depuis le bouton "Confirmer et payer")
 async function processBooking() {
     if (isProcessingBooking) return;
+    if (!currentUser) {
+        showToast("Vous devez être connecté pour réserver.", "error");
+        if (typeof openAuthModal === 'function') openAuthModal();
+        return;
+    }
+    if (currentTrailer && currentUser.id === currentTrailer.owner_id) {
+        return showToast("Vous ne pouvez pas louer votre propre remorque.", "error");
+    }
+    if (!currentTrailer || !currentTrailer.id) {
+        return showToast("Remorque introuvable.", "error");
+    }
+    if (!selectedStartDate || !selectedEndDate) {
+        return showToast("Veuillez sélectionner vos dates sur le calendrier.", "error");
+    }
+    if (selectedStartDate > selectedEndDate) {
+        return showToast("La date de fin doit être postérieure à la date de début.", "error");
+    }
+    const today = new Date();
+    const utcToday = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const utcStart = Date.UTC(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate());
+    if (utcStart < utcToday) {
+        return showToast("La date de début ne peut pas être dans le passé.", "error");
+    }
+
     isProcessingBooking = true;
 
-    closeBookingConfirmModal();
-    if (window.showStripeLoading) window.showStripeLoading();
-    showToast("Création de votre réservation sécurisée...", "info");
-
     try {
+        closeBookingConfirmModal();
+        if (typeof window !== 'undefined' && window.showStripeLoading) window.showStripeLoading();
+        showToast("Création de votre réservation sécurisée...", "info");
+
         const cautionAmount = getTrailerCaution(currentTrailer);
-        const stripeData = await callEdgeFunction('stripe-checkout', {
-            trailerId: currentTrailer.id,
-            startDate: formatDateToLocalISO(selectedStartDate),
-            endDate: formatDateToLocalISO(selectedEndDate),
-            cautionAmount: cautionAmount
-        });
+        const formatISO = (typeof formatDateToLocalISO === 'function')
+            ? formatDateToLocalISO
+            : (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+        const callEdge = (typeof callEdgeFunction === 'function')
+            ? callEdgeFunction
+            : (typeof window !== 'undefined' && typeof window.callEdgeFunction === 'function' ? window.callEdgeFunction : null);
+
+        let stripeData;
+        if (callEdge) {
+            stripeData = await callEdge('stripe-checkout', {
+                trailerId: currentTrailer.id,
+                startDate: formatISO(selectedStartDate),
+                endDate: formatISO(selectedEndDate),
+                cautionAmount: cautionAmount
+            });
+        } else if (supabaseClient && supabaseClient.functions && typeof supabaseClient.functions.invoke === 'function') {
+            const { data, error } = await supabaseClient.functions.invoke('stripe-checkout', {
+                body: {
+                    trailerId: currentTrailer.id,
+                    startDate: formatISO(selectedStartDate),
+                    endDate: formatISO(selectedEndDate),
+                    cautionAmount: cautionAmount
+                }
+            });
+            if (error) throw error;
+            stripeData = data;
+        } else {
+            throw new Error("Fonction d'appel Edge introuvable.");
+        }
         
+        if (!stripeData) {
+            throw new Error("Réponse vide du serveur de paiement.");
+        }
+
         if (stripeData.bookingId) {
-            localStorage.setItem('pending_booking_id', stripeData.bookingId);
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('pending_booking_id', stripeData.bookingId);
+                }
+            } catch (e) {
+                console.warn("Impossible d'enregistrer pending_booking_id dans localStorage:", e);
+            }
         }
 
         if (stripeData.url) {
             window.location.href = stripeData.url; 
         } else {
-            if (window.hideStripeLoading) window.hideStripeLoading();
+            if (typeof window !== 'undefined' && window.hideStripeLoading) window.hideStripeLoading();
             showToast("Erreur de paiement : " + (stripeData.error || stripeData.message || "Lien de paiement introuvable."), "error");
         }
     } catch (err) {
-        if (window.hideStripeLoading) window.hideStripeLoading();
+        if (typeof window !== 'undefined' && window.hideStripeLoading) window.hideStripeLoading();
         showToast("Erreur de réservation : " + err.message, "error");
     } finally {
         isProcessingBooking = false;
@@ -579,17 +678,35 @@ async function processBooking() {
 }
 
 async function checkPaymentStatus() {
+    if (typeof window === 'undefined') return;
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get('payment');
 
     // Lecture du bookingId depuis l'URL (transmis par stripe-checkout Edge Function)
     // ou en fallback depuis localStorage si l'URL ne le contient pas
-    const bookingId = urlParams.get('booking_id') || localStorage.getItem('pending_booking_id');
+    let storedBookingId = null;
+    try {
+        if (typeof localStorage !== 'undefined') {
+            storedBookingId = localStorage.getItem('pending_booking_id');
+        }
+    } catch (e) {}
+    const bookingId = urlParams.get('booking_id') || storedBookingId;
 
     if (paymentStatus === 'success' && bookingId) {
         // Nettoyage immédiat de l'URL et du localStorage
-        localStorage.removeItem('pending_booking_id');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem('pending_booking_id');
+            }
+        } catch (e) {}
+        try {
+            const cleanParams = new URLSearchParams(window.location.search);
+            cleanParams.delete('payment');
+            cleanParams.delete('booking_id');
+            const cleanSearch = cleanParams.toString();
+            const cleanUrl = window.location.pathname + (cleanSearch ? `?${cleanSearch}` : '');
+            window.history.replaceState({}, document.title, cleanUrl);
+        } catch (e) {}
 
         showToast("Paiement reçu ! Vérification en cours...", "info");
 
@@ -609,10 +726,14 @@ async function checkPaymentStatus() {
 
             if (error || !booking) continue;
 
-            if (booking.status === 'paye') {
+            if (booking.status === 'paye' || booking.status === 'paid' || booking.status === 'confirmed') {
                 showToast("Réservation confirmée ! Redirection vers vos réservations...", "success");
                 setTimeout(async () => {
-                    await openProfile();
+                    if (typeof openProfile === 'function') {
+                        await openProfile();
+                    } else if (typeof window !== 'undefined') {
+                        window.location.href = 'profil.html';
+                    }
                 }, 3000);
                 return;
             }
@@ -621,12 +742,27 @@ async function checkPaymentStatus() {
         // Délai dépassé : le webhook n'a pas encore répondu
         showToast("Paiement en cours de traitement bancaire. Votre réservation sera confirmée dès validation.", "info");
         setTimeout(async () => {
-            await openProfile();
+            if (typeof openProfile === 'function') {
+                await openProfile();
+            } else if (typeof window !== 'undefined') {
+                window.location.href = 'profil.html';
+            }
         }, 3000);
 
     } else if (paymentStatus === 'cancel') {
-        localStorage.removeItem('pending_booking_id');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem('pending_booking_id');
+            }
+        } catch (e) {}
+        try {
+            const cleanParams = new URLSearchParams(window.location.search);
+            cleanParams.delete('payment');
+            cleanParams.delete('booking_id');
+            const cleanSearch = cleanParams.toString();
+            const cleanUrl = window.location.pathname + (cleanSearch ? `?${cleanSearch}` : '');
+            window.history.replaceState({}, document.title, cleanUrl);
+        } catch (e) {}
         showToast("Le paiement a été annulé. Votre réservation n'a pas été créée.", "error");
     }
 }
