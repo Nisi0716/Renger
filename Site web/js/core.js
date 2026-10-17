@@ -1059,7 +1059,7 @@ async function loadTrailers(filter = currentFilter, search = currentSearch) {
         // CORRECTION XSS : L'URL n'est plus interpolée dans le HTML, l'élément img est rempli via .src
         card.innerHTML = `
             <div class="h-48 bg-stone-200 dark:bg-stone-700 relative">
-                <img class="trailer-card-img w-full h-full object-cover" alt="">
+                <img class="trailer-card-img w-full h-full object-cover" alt="" loading="lazy" decoding="async">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
                 ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg"><span class="safe-cat"></span></div>` : ''}
                 ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow flex items-center gap-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Sponsorisé</span></div>` : ''}
@@ -1123,29 +1123,43 @@ let pendingPhotos = []; // Array de { file: File, objectUrl: string }
  * Utilise URL.createObjectURL pour un affichage instantané sans surcharger la mémoire en base64.
  */
 async function validateImageMagicBytes(file) {
+    if (!file) return false;
     let buffer;
-    if (file.slice && typeof file.arrayBuffer === 'function') {
-        buffer = await file.slice(0, 4).arrayBuffer();
-    } else {
-        buffer = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = (e) => reject(e);
-            reader.readAsArrayBuffer(file.slice ? file.slice(0, 4) : file);
-        });
+    try {
+        const sliced = file.slice ? file.slice(0, 12) : file;
+        if (typeof sliced.arrayBuffer === 'function') {
+            buffer = await sliced.arrayBuffer();
+        } else if (typeof file.arrayBuffer === 'function') {
+            buffer = await file.arrayBuffer();
+        } else if (typeof FileReader !== 'undefined') {
+            buffer = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(sliced);
+            });
+        } else {
+            return false;
+        }
+    } catch (_) {
+        return false;
     }
     const bytes = new Uint8Array(buffer);
+    if (bytes.length < 4) return false;
     const isJpeg = bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF;
     const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
-    const isWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46; // RIFF
+    // Format WebP (RIFF....WEBP) : bytes 0-3 = "RIFF" (0x52 0x49 0x46 0x46), et bytes 8-11 = "WEBP" si buffer >= 12
+    const isRiff = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
+    const isWebp = isRiff && (bytes.length < 12 || (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50));
     return isJpeg || isPng || isWebp;
 }
 
 /**
- * Compresse et redimensionne une image côté client via un élément Canvas
- * (qualité 0.85, max 2048px) pour éviter le rejet des photos haute résolution (ex: iPhone récents).
+ * Compresse et convertit une image côté client au format WebP haute performance
+ * (qualité 0.82, max 1920x1920) pour optimiser le chargement mobile et l'affichage Retina.
+ * Dispose d'un repli gracieux JPEG si l'environnement ou le navigateur ne supporte pas l'encodage WebP.
  */
-async function compressImageFile(file, maxWidth = 2048, maxHeight = 2048, quality = 0.85) {
+async function compressImageFile(file, maxWidth = 1920, maxHeight = 1920, quality = 0.82) {
     if (!file || !(file instanceof Blob) || (file.type && !file.type.startsWith('image/'))) {
         return file;
     }
@@ -1160,10 +1174,6 @@ async function compressImageFile(file, maxWidth = 2048, maxHeight = 2048, qualit
             img.onload = () => {
                 URL.revokeObjectURL(objectUrl);
                 let { width, height } = img;
-                // Si l'image est déjà sous les limites, conserver telle quelle
-                if (width <= maxWidth && height <= maxHeight && file.size <= 2 * 1024 * 1024) {
-                    return resolve(file);
-                }
                 if (width > maxWidth || height > maxHeight) {
                     const ratio = Math.min(maxWidth / width, maxHeight / height);
                     width = Math.round(width * ratio);
@@ -1176,15 +1186,27 @@ async function compressImageFile(file, maxWidth = 2048, maxHeight = 2048, qualit
                 if (!ctx) return resolve(file);
                 ctx.drawImage(img, 0, 0, width, height);
 
+                const baseName = (file.name || 'photo').replace(/\.[^.]+$/, '');
+
+                // Tentative prioritaire d'encodage en WebP moderne
                 canvas.toBlob((blob) => {
-                    if (!blob) return resolve(file);
-                    const newName = file.name ? file.name.replace(/\.[^.]+$/, '.jpg') : 'photo.jpg';
-                    const compressedFile = new File([blob], newName, {
-                        type: 'image/jpeg',
-                        lastModified: Date.now()
-                    });
-                    resolve(compressedFile);
-                }, 'image/jpeg', quality);
+                    if (blob && blob.type === 'image/webp') {
+                        const webpFile = new File([blob], `${baseName}.webp`, {
+                            type: 'image/webp',
+                            lastModified: Date.now()
+                        });
+                        return resolve(webpFile);
+                    }
+                    // Repli JPEG de sécurité si WebP non supporté par le canvas du client
+                    canvas.toBlob((fallbackBlob) => {
+                        if (!fallbackBlob) return resolve(file);
+                        const fallbackFile = new File([fallbackBlob], `${baseName}.jpg`, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(fallbackFile);
+                    }, 'image/jpeg', quality);
+                }, 'image/webp', quality);
             };
             img.onerror = () => {
                 URL.revokeObjectURL(objectUrl);
@@ -1214,9 +1236,9 @@ async function handleMultiPhotoSelect(event) {
             continue;
         }
 
-        // Compression automatique côté client (canvas) avant contrôle des 5 Mo
+        // Compression & conversion automatique côté client (WebP) avant contrôle des 5 Mo
         try {
-            file = await compressImageFile(file, 2048, 2048, 0.85);
+            file = await compressImageFile(file, 1920, 1920, 0.82);
         } catch (compErr) {
             console.warn("Échec compression image :", compErr);
         }
@@ -1693,6 +1715,7 @@ if (typeof window !== 'undefined') {
     window.isValidEmail = isValidEmail;
     window.isAllowedEmailDomain = isAllowedEmailDomain;
     window.compressImageFile = compressImageFile;
+    window.validateImageMagicBytes = validateImageMagicBytes;
     window.DISPOSABLE_EMAIL_DOMAINS = DISPOSABLE_EMAIL_DOMAINS;
     window.callEdgeFunction = callEdgeFunction;
 }
@@ -1703,6 +1726,7 @@ if (typeof module !== 'undefined' && module.exports) {
         isValidEmail,
         isAllowedEmailDomain,
         compressImageFile,
+        validateImageMagicBytes,
         DISPOSABLE_EMAIL_DOMAINS,
         callEdgeFunction
     };

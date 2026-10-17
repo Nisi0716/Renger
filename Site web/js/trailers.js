@@ -311,9 +311,10 @@ async function handlePublish(event) {
             try {
                 const photosData = await Promise.all(pendingPhotos.map(async (p, idx) => {
                     const dataUrl = await fileToDataURL(p.file);
+                    const ext = (p.file?.name || '').split('.').pop().toLowerCase() || 'webp';
                     return {
-                        name: p.file?.name || `photo_${idx}.jpg`,
-                        type: p.file?.type || 'image/jpeg',
+                        name: p.file?.name || `photo_${idx}.${ext}`,
+                        type: p.file?.type || (ext === 'webp' ? 'image/webp' : 'image/jpeg'),
                         dataUrl: dataUrl
                     };
                 }));
@@ -355,15 +356,19 @@ async function handlePublish(event) {
     }
 
     try {
-        // Upload séquentiel de toutes les photos dans le bucket trailers-images
+        // Upload séquentiel de toutes les photos dans le bucket trailers-images (format WebP optimisé)
         for (let i = 0; i < pendingPhotos.length; i++) {
             const { file } = pendingPhotos[i];
-            const fileExt = file.name.split('.').pop().toLowerCase();
+            const fileExt = (file.name || '').split('.').pop().toLowerCase() || 'webp';
             const fileName = `${currentUser.id}/${Date.now()}_${i}.${fileExt}`;
+            const contentType = file.type || (fileExt === 'webp' ? 'image/webp' : 'image/jpeg');
 
             const { error: uploadError } = await supabaseClient.storage
                 .from('trailers-images')
-                .upload(fileName, file, { upsert: false });
+                .upload(fileName, file, { 
+                    upsert: false,
+                    contentType: contentType
+                });
 
             if (uploadError) {
                 showToast(`Erreur upload photo ${i + 1} : ${uploadError.message}`, "error");
@@ -1550,7 +1555,7 @@ async function openPublicProfile(username) {
         const isBoosted = trailer.boost_end_date && new Date(trailer.boost_end_date) > new Date();
         card.innerHTML = `
             <div class="h-40 bg-stone-200 dark:bg-stone-700 relative">
-                <img class="public-trailer-img w-full h-full object-cover" alt="">
+                <img class="public-trailer-img w-full h-full object-cover" alt="" loading="lazy" decoding="async">
                 <div class="absolute top-3 right-3 bg-white dark:bg-stone-900 px-2 py-1 rounded-lg text-sm font-bold shadow dark:text-white"><span class="safe-price"></span> CHF<span class="text-xs font-normal">/j</span></div>
                 ${cat ? `<div class="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-lg"><span class="safe-cat"></span></div>` : ''}
                 ${isBoosted ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-terracotta-500 to-amber-500 px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow flex items-center gap-1"><svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg><span>Sponsorisé</span></div>` : ''}
@@ -1761,32 +1766,46 @@ async function handleSaveProfile() {
     }
 }
 
-// Upload de l'avatar vers Supabase Storage
+// Upload de l'avatar vers Supabase Storage (conversion WebP optimisée)
 async function handleAvatarUpload(event) {
     if (!supabaseClient || !currentUser) return;
-    const file = event.target.files[0];
+    let file = event.target.files[0];
     if (!file) return;
+
+    const initialExt = (file.name || '').split('.').pop().toLowerCase();
+    if (['svg', 'html', 'htm'].includes(initialExt)) {
+        return showToast("L'extension de l'image n'est pas autorisée.", "error");
+    }
+
+    // Compression et conversion WebP de l'avatar (max 512x512)
+    if (typeof compressImageFile === 'function') {
+        try {
+            file = await compressImageFile(file, 512, 512, 0.85);
+        } catch (e) {
+            console.warn("Échec compression avatar:", e);
+        }
+    }
 
     // Vérifier taille (max 2 Mo)
     if (file.size > 2 * 1024 * 1024) return showToast("Image trop lourde (max 2 Mo).", "error");
 
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (['svg', 'html', 'htm'].includes(ext)) {
-        return showToast("L'extension de l'image n'est pas autorisée.", "error");
-    }
-    
+    const ext = (file.name || '').split('.').pop().toLowerCase() || 'webp';
     const isValid = await validateImageMagicBytes(file);
     if (!isValid) {
         return showToast("Le fichier n'est pas une image valide.", "error");
     }
 
     const filePath = `${currentUser.id}/avatar.${ext}`;
+    const contentType = file.type || (ext === 'webp' ? 'image/webp' : 'image/jpeg');
 
     showToast("Upload en cours...", "info");
 
     const { error: uploadError } = await supabaseClient.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { 
+            upsert: true,
+            contentType: contentType
+        });
 
     if (uploadError) return showToast("Erreur d'upload : " + uploadError.message, "error");
 

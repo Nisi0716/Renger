@@ -239,15 +239,16 @@ describe('Challenger Suite: Trailer Owner Experience & Swiss Business Rigor (Mar
         });
     });
 
-    describe('Item 10: Client-side Photo Compression before Validation', () => {
+    describe('Item 10: Client-side Photo Compression & WebP Optimization', () => {
         let core;
         beforeEach(async () => {
             const coreModule = await import('../Site web/js/core.js');
             core = coreModule.default || coreModule;
         });
 
-        it('core.js must export compressImageFile function', () => {
+        it('core.js must export compressImageFile and validateImageMagicBytes functions', () => {
             assert.equal(typeof core.compressImageFile, 'function', 'compressImageFile doit être exportée');
+            assert.equal(typeof core.validateImageMagicBytes, 'function', 'validateImageMagicBytes doit être exportée');
         });
 
         it('core.js handleMultiPhotoSelect must invoke compressImageFile before size check', () => {
@@ -255,6 +256,62 @@ describe('Challenger Suite: Trailer Owner Experience & Swiss Business Rigor (Mar
             const fnMatch = coreCode.match(/async\s+function\s+handleMultiPhotoSelect[\s\S]*?\{([\s\S]*?)\n\}/);
             assert.ok(fnMatch, 'core.js doit déclarer handleMultiPhotoSelect');
             assert.ok(fnMatch[1].includes('compressImageFile'), 'handleMultiPhotoSelect doit appeler compressImageFile');
+        });
+
+        it('core.js compressImageFile must support WebP target encoding and fallback', () => {
+            const coreCode = fs.readFileSync(path.join(jsDir, 'core.js'), 'utf8');
+            assert.ok(coreCode.includes("'image/webp'"), 'compressImageFile doit cibler le format image/webp');
+            assert.ok(coreCode.includes('.webp'), 'compressImageFile doit générer une extension .webp');
+            assert.ok(coreCode.includes('image/jpeg'), 'compressImageFile doit conserver un repli image/jpeg');
+        });
+
+        it('core.js validateImageMagicBytes must validate WebP, JPEG and PNG signatures', async () => {
+            // Test mock Blob for WebP (RIFF .... WEBP)
+            const webpBytes = new Uint8Array([
+                0x52, 0x49, 0x46, 0x46, // RIFF
+                0x00, 0x00, 0x00, 0x00, // Size
+                0x57, 0x45, 0x42, 0x50  // WEBP
+            ]);
+            const mockWebpFile = {
+                slice: () => ({
+                    arrayBuffer: async () => webpBytes.buffer
+                })
+            };
+            const isWebpValid = await core.validateImageMagicBytes(mockWebpFile);
+            assert.strictEqual(isWebpValid, true, 'validateImageMagicBytes doit valider la signature WebP');
+
+            // Test mock Blob for JPEG
+            const jpegBytes = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
+            const mockJpegFile = {
+                slice: () => ({
+                    arrayBuffer: async () => jpegBytes.buffer
+                })
+            };
+            const isJpegValid = await core.validateImageMagicBytes(mockJpegFile);
+            assert.strictEqual(isJpegValid, true, 'validateImageMagicBytes doit valider la signature JPEG');
+
+            // Test mock invalid file (SVG / HTML / TXT)
+            const textBytes = new Uint8Array([0x3C, 0x73, 0x76, 0x67]); // "<svg"
+            const mockTextFile = {
+                slice: () => ({
+                    arrayBuffer: async () => textBytes.buffer
+                })
+            };
+            const isTextValid = await core.validateImageMagicBytes(mockTextFile);
+            assert.strictEqual(isTextValid, false, 'validateImageMagicBytes doit rejeter les fichiers non-image');
+        });
+
+        it('core.js and trailers.js must set loading="lazy" and decoding="async" on trailer card images', () => {
+            const coreCode = fs.readFileSync(path.join(jsDir, 'core.js'), 'utf8');
+            const trailersCode = fs.readFileSync(path.join(jsDir, 'trailers.js'), 'utf8');
+            assert.ok(coreCode.includes('loading="lazy"') && coreCode.includes('decoding="async"'), 'core.js doit inclure loading="lazy" et decoding="async"');
+            assert.ok(trailersCode.includes('loading="lazy"') && trailersCode.includes('decoding="async"'), 'trailers.js doit inclure loading="lazy" et decoding="async"');
+        });
+
+        it('trailers.js must upload photos and avatar with contentType and WebP fallback', () => {
+            const trailersCode = fs.readFileSync(path.join(jsDir, 'trailers.js'), 'utf8');
+            assert.ok(trailersCode.includes('contentType: contentType'), 'trailers.js doit spécifier explicitement contentType lors de l upload');
+            assert.ok(trailersCode.includes("'webp'") && trailersCode.includes("'image/webp'"), 'trailers.js doit gérer l extension webp et le type MIME image/webp');
         });
     });
 

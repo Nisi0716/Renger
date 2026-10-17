@@ -936,7 +936,7 @@
                         if (Array.isArray(parsedPhotos)) {
                             parsedPhotos.forEach((item, idx) => {
                                 if (item && item.dataUrl) {
-                                    const restoredFile = dataURLtoFile(item.dataUrl, item.name || `photo_${idx}.jpg`);
+                                    const restoredFile = dataURLtoFile(item.dataUrl, item.name || `photo_${idx}.webp`);
                                     if (restoredFile && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
                                         const objectUrl = URL.createObjectURL(restoredFile);
                                         pendingPhotos.push({ file: restoredFile, objectUrl });
