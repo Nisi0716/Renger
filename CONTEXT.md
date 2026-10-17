@@ -762,7 +762,17 @@ Toute IA manipulant les prix ou le flux Stripe **doit appliquer scrupuleusement 
     - Déploiement et exécution immédiate sur la base de données Supabase Cloud (`cwifrzajxrcpnqceyxnj`) via `supabase db query --linked`.
     - Migration sauvegardée dans `supabase/migrations/20260417000000_fix_profiles_pro_rls.sql` et `supabase_migrations.sql`.
     - Journal de sécurité synchronisé dans `.jules/sentinel-backend.md`.
-    - Suite de tests `tests/challenger-syni-admin.test.mjs` enrichie et validée à 100%.
+
+  - [x] **Idempotence des Événements Stripe Webhook (Sentinel PR #9 - 17 Octobre 2026) :**
+  - **Diagnostic & Vulnérabilité (Sévérité : HIGH)** :
+    - L'Edge Function `stripe-webhook` traitait les événements Stripe (`checkout.session.completed`) sans contrôle d'idempotence sur `event.id`.
+    - En cas de réessais automatiques par Stripe ou de doublons réseau lors d'un achat de boost de remorque (`metadata.type === 'boost'`), l'instruction additive `startDate.setDate(startDate.getDate() + durationDays)` était réexécutée en cascade sur la date de fin, prolongeant indûment la durée du boost payé une seule fois (ex: 7 jours se cumulant en 14, 21 ou 28 jours), tout en renvoyant de multiples e-mails de confirmation en double.
+  - **Résolution Zéro-Confiance en BDD & Edge Function** :
+    - Création de la table `public.processed_webhook_events` (`id text PRIMARY KEY`, `event_type text`, `created_at timestamp`) avec RLS stricte interdisant tout accès client direct (lecture/écriture exclusivement réservées à `service_role`).
+    - Migration appliquée en direct sur Supabase Cloud et sauvegardée dans `supabase/migrations/20260418000000_stripe_webhook_idempotency.sql` et `supabase_migrations.sql`.
+    - Mise à jour de `stripe-webhook/index.ts` : vérification préalable de `event.id` et retour immédiat HTTP 200 `{ received: true, idempotent: true }` si l'événement a déjà été traité. Enregistrement systématique de `event.id` après traitement.
+    - Edge Function `stripe-webhook` redéployée avec succès sur Supabase Cloud (`cwifrzajxrcpnqceyxnj`).
+    - Journal de sécurité synchronisé dans `.jules/sentinel-backend.md`.
 
 - [x] **Déploiement en Production de `stripe-portal` & Configuration Secrets Supabase (17 Octobre 2026) :**
   - **Edge Function Sécurisée Deno `stripe-portal` (`supabase/functions/stripe-portal/index.ts`)** :
